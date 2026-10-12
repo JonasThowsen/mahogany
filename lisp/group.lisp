@@ -125,6 +125,8 @@ output. NIL while it waits for one."
   "Move VIEW from the group SOURCE to DESTINATION, where it is shown in
 the current frame when that is empty, else kept hidden behind it."
   (declare (type mahogany-group destination source))
+  (when (eq source destination)
+    (return-from group-move-view))
   (let ((dest-layer (mahogany-group-tiled-container destination))
         (hidden-list (mahogany-group-hidden-views destination))
         (floating (typep (hrt::view-container view) 'tree:floating-frame)))
