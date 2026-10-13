@@ -50,6 +50,8 @@
           bordeaux-threads
           float-features
           trivial-garbage
+          local-time
+          trivial-backtrace
           cffi
           cffi-grovel
           closer-mop

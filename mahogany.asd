@@ -23,6 +23,9 @@
                #:cl-interactive
                #:closer-mop
                #:trivial-garbage
+               ;; init.lisp errors: a timestamp and a backtrace in a file (load-init)
+               #:local-time
+               #:trivial-backtrace
                #:cffi
                ;; Slynk in the session, for SLY and the lisp command (lisp/slynk.lisp)
                #:slynk)
@@ -164,7 +167,8 @@
                (:file "wifi"
                 :depends-on ("system-status" "menu" "launcher" "mode-line" "notifications" "command" "message"))
                (:file "slynk" :depends-on ("config" "command" "message" "globals" "heart" "log"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "tabs" "xwayland" "lid" "notifications" "slynk"))))
+               (:file "load-init" :depends-on ("heart" "package" "config" "log" "state" "message" "command"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "load-init" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "tabs" "xwayland" "lid" "notifications" "slynk"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op
