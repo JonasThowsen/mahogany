@@ -633,8 +633,12 @@ windows came back to, else its first group by number."
            output-layout
            (map 'list #'tree:output-container-output (state-cur-outputs state)))))
     (if config-map
-        (prog1 (hrt::output-configure-atomic config-map)
-          (%update-output-containers state))
+        (if (hrt::output-configure-atomic config-map)
+            ;; Every output, so the ones the layout disables go out of
+            ;; use and the ones it enables come into it:
+            (progn (%update-output-containers state) t)
+            (error 'mahogany/util:recoverable-error
+                   :text "Could not apply output configuration"))
         (let ((config-name (mh/output-config:output-layout-config-name output-layout)))
           (error 'mahogany/util:invalid-operation
                  :text (format nil
@@ -693,6 +697,9 @@ put the outputs to use, or out of it, as it says."
         (dolist (new-output added)
           (remhash new-output config-map)
           (%add-output *compositor-state* new-output))
+        ;; Because we removed the newly added outputs to the
+        ;; map, it now contains just the outputs that need to have their
+        ;; enabled-ness updated:
         (maphash (lambda (output config)
                    (declare (ignore config))
                    (%update-output-enabled *compositor-state* output))
