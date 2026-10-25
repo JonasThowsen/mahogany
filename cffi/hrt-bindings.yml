@@ -3,6 +3,14 @@ package: hrt
 pkg-config:
   - wlroots-0.20
   - heart
+  # What heart's headers include; on distributions that put everything
+  # in /usr/include these add nothing, on Nix they are needed:
+  - wayland-server
+  - pixman-1
+  - cairo
+  - pangocairo
+  - libinput
+  - xkbcommon
 arguments:
   - "-DWLR_USE_UNSTABLE"
   - "-Ibuild/heart/protocols"

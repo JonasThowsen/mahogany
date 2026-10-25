@@ -43,6 +43,46 @@
           slynk
         ];
 
+      # cl-bindgen generates lisp/heart/*-bindings.lisp from heart's headers
+      # (make lisp/heart/hrt-bindings.lisp). It is not in nixpkgs, and the
+      # committed bindings use options (enum-constants, make-inline with a
+      # feature flag) that its PyPI release lacks, so this is git master,
+      # on nixpkgs' libclang Python bindings.
+      clBindgen =
+        pkgs:
+        pkgs.python3Packages.buildPythonApplication {
+          pname = "cl_bindgen";
+          version = "1.6.0-unstable-2026-06-25";
+          pyproject = true;
+          src = pkgs.fetchFromGitHub {
+            owner = "sdilts";
+            repo = "cl-bindgen";
+            rev = "bad33f070cd51aa4f721c8edf96804b4f8547f8d";
+            hash = "sha256-zmdZzFq9TUmVd+H0GuLyNt2s7AN5EKl8jI94yi3UnZk=";
+          };
+          build-system = [ pkgs.python3Packages.setuptools ];
+          dependencies = with pkgs.python3Packages; [
+            libclang
+            pyyaml
+          ];
+          # libclang parses the headers without a compiler driver, so it
+          # needs told where clang's own headers are (cl-bindgen asks
+          # `clang --print-resource-dir`) and where glibc's and
+          # wayland-protocols' are; pkg-config supplies the rest.
+          makeWrapperArgs = [
+            "--prefix"
+            "PATH"
+            ":"
+            "${pkgs.llvmPackages.clang-unwrapped}/bin"
+            "--prefix"
+            "CPATH"
+            ":"
+            "${pkgs.glibc.dev}/include:${pkgs.wayland-protocols}/include"
+          ];
+          doCheck = false;
+          pythonImportsCheck = [ "cl_bindgen" ];
+        };
+
       # What heart (the C backend) is built with.
       heartBuildInputs =
         pkgs: with pkgs; [
@@ -77,6 +117,8 @@
                 pkg-config
                 wayland-scanner
                 gnumake
+                clang-tools # clang-format, see .clang-format
+                (clBindgen pkgs)
                 # Running the compositor nested or on a TTY
                 foot
                 fuzzel
