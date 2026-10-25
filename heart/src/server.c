@@ -58,7 +58,7 @@ bool hrt_server_init(
     const struct hrt_layer_shell_callbacks *layer_shell_callbacks,
     enum wlr_log_importance log_level) {
     wlr_log_init(log_level, NULL);
-    *server = (struct hrt_server){0};
+    *server            = (struct hrt_server){0};
     server->wl_display = wl_display_create();
     struct wl_event_loop *event_loop =
         wl_display_get_event_loop(server->wl_display);
@@ -117,7 +117,8 @@ bool hrt_server_init(
     wlr_primary_selection_v1_device_manager_create(server->wl_display);
     server->ext_image_copy_capture_manager_v1 =
         wlr_ext_image_copy_capture_manager_v1_create(server->wl_display, 1);
-    wlr_ext_output_image_capture_source_manager_v1_create(server->wl_display, 1);
+    wlr_ext_output_image_capture_source_manager_v1_create(server->wl_display,
+                                                          1);
 
     if (!hrt_idle_init(server)) {
         return false;

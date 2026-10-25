@@ -19,8 +19,7 @@ struct hrt_canvas {
 };
 
 static void handle_node_destroy(struct wl_listener *listener, void *data) {
-    struct hrt_canvas *canvas =
-        wl_container_of(listener, canvas, node_destroy);
+    struct hrt_canvas *canvas = wl_container_of(listener, canvas, node_destroy);
     wl_list_remove(&canvas->node_destroy.link);
     canvas->scene_buffer = nullptr;
 }

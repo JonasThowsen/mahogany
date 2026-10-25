@@ -82,7 +82,7 @@ void hrt_event_loop_semaphore_close(struct hrt_fd_semaphore *fd) {
 struct hrt_event_loop_timer *
 hrt_event_loop_timer_add(struct hrt_server *server,
                          hrt_event_loop_timer_func_t callback) {
-  struct hrt_event_loop_timer *timer = calloc(1, sizeof(*timer));
+    struct hrt_event_loop_timer *timer = calloc(1, sizeof(*timer));
     if (!timer) {
         return nullptr;
     }

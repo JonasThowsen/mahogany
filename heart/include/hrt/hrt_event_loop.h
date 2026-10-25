@@ -61,7 +61,7 @@ hrt_event_loop_timer_add(struct hrt_server *server,
                          hrt_event_loop_timer_func_t callback);
 
 int hrt_event_loop_timer_update(struct hrt_event_loop_timer *timer,
-                                 int ms_delay);
+                                int ms_delay);
 
 void hrt_event_loop_timer_destroy(struct hrt_event_loop_timer *timer);
 

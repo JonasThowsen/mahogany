@@ -371,7 +371,9 @@ static void handle_new_popup(struct wl_listener *listener, void *data) {
     if (surface->output) {
         popup_layer = surface->output->scene->top;
     } else {
-        wlr_log(WLR_ERROR, "surface output not assigned; did you forget to call hrt_layer_shell_surface_place?");
+        wlr_log(WLR_ERROR,
+                "surface output not assigned; did you forget to call "
+                "hrt_layer_shell_surface_place?");
         popup_layer = surface->tree;
     }
     struct wlr_xdg_popup *wlr_popup = data;
@@ -436,11 +438,9 @@ hrt_layer_surface_output(struct hrt_layer_shell_surface *layer_shell) {
 
 enum hrt_layer_shell_keyboard_interactivity
 hrt_layer_surface_keyboard_interactivity(
-    struct hrt_layer_shell_surface *surface
-) {
-    return (
-               enum hrt_layer_shell_keyboard_interactivity
-    )surface->layer_surface->current.keyboard_interactive;
+    struct hrt_layer_shell_surface *surface) {
+    return (enum hrt_layer_shell_keyboard_interactivity)
+        surface->layer_surface->current.keyboard_interactive;
 }
 
 enum zwlr_layer_shell_v1_layer
@@ -469,6 +469,6 @@ void hrt_layer_surface_position(struct hrt_layer_shell_surface *surface, int *x,
 
 void hrt_layer_surface_dimensions(struct hrt_layer_shell_surface *surface,
                                   int *width, int *height) {
-    *width = surface->layer_surface->surface->current.buffer_width;
+    *width  = surface->layer_surface->surface->current.buffer_width;
     *height = surface->layer_surface->surface->current.buffer_height;
 }

@@ -35,7 +35,8 @@ static void log_config_status(struct libinput_device *ldev, const char *what,
     }
 }
 
-static struct libinput_device *get_touchpad_device(struct wlr_input_device *dev) {
+static struct libinput_device *
+get_touchpad_device(struct wlr_input_device *dev) {
     // Null for devices that don't come from libinput, headless, or nested.
     if (!wlr_input_device_is_libinput(dev)) {
         return nullptr;
@@ -81,19 +82,18 @@ static void apply_touchpad_config(struct hrt_input *input) {
     if (!ldev) {
         return;
     }
-    log_config_status(ldev, "tap-to-click",
-                      libinput_device_config_tap_set_enabled(
-                          ldev, tap_state(seat, ldev)));
+    log_config_status(
+        ldev, "tap-to-click",
+        libinput_device_config_tap_set_enabled(ldev, tap_state(seat, ldev)));
     if (libinput_device_config_dwt_is_available(ldev)) {
         log_config_status(ldev, "disable-while-typing",
                           libinput_device_config_dwt_set_enabled(
                               ldev, dwt_state(seat, ldev)));
     }
     if (libinput_device_config_accel_is_available(ldev)) {
-        double speed =
-            seat->touchpad.accel_set
-                ? seat->touchpad.accel
-                : libinput_device_config_accel_get_default_speed(ldev);
+        double speed = seat->touchpad.accel_set ?
+            seat->touchpad.accel :
+            libinput_device_config_accel_get_default_speed(ldev);
         log_config_status(ldev, "acceleration",
                           libinput_device_config_accel_set_speed(ldev, speed));
     }
@@ -326,7 +326,7 @@ static void handle_start_drag(struct wl_listener *listener, void *data) {
 
 static void handle_seat_destroy(struct wl_listener *listener, void *data) {
     // struct wlr_seat *wlr_seat = data;
-    struct hrt_seat *seat = wl_container_of(listener, seat, destroy);
+    struct hrt_seat *seat    = wl_container_of(listener, seat, destroy);
     seat->cursor_img_buf_len = 0;
     free(seat->cursor_image);
 
@@ -398,8 +398,8 @@ bool hrt_seat_init(struct hrt_seat *seat, struct hrt_server *server,
     wl_signal_add(&seat->seat->events.destroy, &seat->destroy.seat);
 
     const char *const default_cursor = "default";
-    seat->cursor_img_buf_len = strlen(default_cursor) + 1;
-    seat->cursor_image   = calloc(20, sizeof(char));
+    seat->cursor_img_buf_len         = strlen(default_cursor) + 1;
+    seat->cursor_image               = calloc(20, sizeof(char));
     memcpy(seat->cursor_image, default_cursor, seat->cursor_img_buf_len);
 
     return true;

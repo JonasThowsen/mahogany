@@ -72,7 +72,7 @@ static void handle_new_xdg_decoration(struct wl_listener *listener,
         return;
     }
     view_forget_decoration(view);
-    view->decoration = decoration;
+    view->decoration                     = decoration;
     view->decoration_request_mode.notify = handle_decoration_request_mode;
     wl_signal_add(&decoration->events.request_mode,
                   &view->decoration_request_mode);
@@ -195,9 +195,9 @@ static void handle_xdg_toplevel_commit(struct wl_listener *listener,
     struct hrt_view *view = wl_container_of(listener, view, commit);
     struct wlr_xdg_toplevel *const toplevel = view->xdg_toplevel;
     if (toplevel->base->initial_commit) {
-        wlr_xdg_toplevel_set_tiled(toplevel, WLR_EDGE_TOP | WLR_EDGE_BOTTOM |
-                                                 WLR_EDGE_LEFT |
-                                                 WLR_EDGE_RIGHT);
+        wlr_xdg_toplevel_set_tiled(toplevel,
+                                   WLR_EDGE_TOP | WLR_EDGE_BOTTOM |
+                                       WLR_EDGE_LEFT | WLR_EDGE_RIGHT);
         view_apply_decoration_mode(view);
         view->callbacks->new_view(view);
     } else if (view->xdg_surface->surface->mapped) {
@@ -305,7 +305,6 @@ static void handle_xdg_popup_destroy(struct wl_listener *listener, void *data) {
     wl_list_remove(&popup->new_popup.link);
     wl_list_remove(&popup->reposition.link);
 
-
     free(popup);
 }
 
@@ -401,8 +400,9 @@ bool hrt_xdg_shell_init(struct hrt_server *server) {
         return false;
     }
     server->new_xdg_decoration.notify = handle_new_xdg_decoration;
-    wl_signal_add(&server->xdg_decoration_manager->events.new_toplevel_decoration,
-                  &server->new_xdg_decoration);
+    wl_signal_add(
+        &server->xdg_decoration_manager->events.new_toplevel_decoration,
+        &server->new_xdg_decoration);
 
     server->xdg_activation = wlr_xdg_activation_v1_create(server->wl_display);
     if (!server->xdg_activation) {
