@@ -1,5 +1,8 @@
 (in-package #:mahogany)
 
+;; In mode-line.lisp, which loads after this file:
+(declaim (ftype function mode-line-update mode-line-reset))
+
 (defvar *default-group-name* "DEFAULT")
 
 ;; If there turns out to be more choices than
@@ -72,6 +75,7 @@ or HRT-OUTPUT is NIL or a null pointer."
     ;; Clear the current frame so that subsequent cleanup code
     ;; doesn't try to switch focus to an invalid frame:
     (setf (state-%current-frame state) nil)
+    (mode-line-reset)
     ;; This kicks off the destruction sequence, which
     ;; calls the various output and seat removal callbacks. At the end, we
     ;; are left in a state where all hrt and wlroots based objects
@@ -174,6 +178,7 @@ or HRT-OUTPUT is NIL or a null pointer."
       (when *show-group-name*
         (toast-message state (mahogany-group-name group)
                        :ms-delay *group-name-delay*)))
+    (mode-line-update)
     (hrt:dirty-view-transaction)))
 
 (defun %state-select-group (state designator)
@@ -476,7 +481,8 @@ the current group or a layer shell frame"
            (ring-list:add-item hidden-groups current-group)
            (setf current-group new-group))
           (t
-           (ring-list:add-item hidden-groups new-group)))
+           (ring-list:add-item hidden-groups new-group)
+           (mode-line-update)))
         (log-string :trace "Hidden groups: ~S" hidden-groups))
       new-group)))
 

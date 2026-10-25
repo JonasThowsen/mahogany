@@ -1,0 +1,79 @@
+* The Mode-line
+
+The mode-line is a bar along the top of each output, drawn by Mahogany
+itself. By default it shows the groups, with the current one marked,
+the title of the focused window, and the clock. The tiling area and
+layer-shell surfaces such as bars from other programs leave it room.
+
+The =mode-line= command toggles it. It has no default keybinding; run
+it from the colon prompt (=C-t ;=), or bind it:
+
+#+BEGIN_SRC lisp
+  (mh::define-key mh::*root-map* (mh::kbd "m") #'mh::mode-line)
+#+END_SRC
+
+** What it shows
+
+The configuration property =mh::*mode-line-segments*= lists the
+segments from left to right:
+
+- =:groups= :: every group, the current one marked.
+- =:title= :: the focused window's title, shortened to the room left.
+- =:clock= :: the time, as HH:MM.
+- =:date= :: the weekday, day and month.
+- =:fill= :: the rest of the segments go to the right end.
+- a function :: called with the output, returning a string to show,
+  or =nil= for nothing.
+
+The default is =(:groups :title :fill :clock)=. A function makes any
+information a segment; it runs at every redraw, so keep it quick, and
+start anything slow (a shell command) elsewhere and show its last
+result:
+
+#+BEGIN_SRC lisp
+  (defun battery-segment (output)
+    (declare (ignore output))
+    (with-open-file (s "/sys/class/power_supply/BAT0/capacity"
+                       :if-does-not-exist nil)
+      (when s
+        (format nil "~A%" (read-line s)))))
+
+  (config-system:set-config mh::*mode-line-segments*
+                            '(:groups :title :fill battery-segment :date :clock))
+#+END_SRC
+
+** Appearance
+
+- =mh::*mode-line-theme*= :: the font and colors, a =mh/theme:theme=.
+  The background and font colors are what they say; the border color
+  marks the current group.
+- =mh::*mode-line-height*= :: the height in pixels (28 by default).
+- =mh::*mode-line-padding*= :: the space at the ends and between
+  segments (8).
+- =mh::*mode-line-position*= :: =:top= (the default) or =:bottom=.
+
+#+BEGIN_SRC lisp
+  (config-system:set-config
+   mh::*mode-line-theme*
+   (mh/theme:make-theme :font "Iosevka 13"
+                        :font-color (cl-colors2:rgb 0.92 0.86 0.7)
+                        :background-color (cl-colors2:rgb 0.16 0.16 0.16)
+                        :border-color (cl-colors2:rgb 0.84 0.37 0.22)))
+#+END_SRC
+
+The segments, theme and timing can be changed while Mahogany runs; the
+next redraw shows them. The position and height take effect when the
+mode-line is shown again (run =mode-line= twice, or
+=(mh::mode-line-stop)= then =(mh::mode-line-start)=).
+
+** Timing
+
+The mode-line is redrawn when groups change, and every
+=mh::*mode-line-timeout*= milliseconds (1000) for the clock and the
+window titles.
+
+** Turning it off at startup
+
+#+BEGIN_SRC lisp
+  (config-system:set-config mh::*mode-line-enabled* nil)
+#+END_SRC

@@ -121,7 +121,9 @@
                 :depends-on ("state" "keyboard" "heart" "command" "message"))
                (:file "key-bindings"
                 :depends-on ("kmap-modes" "state" "tree" "input" "command"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package"))))
+               (:file "mode-line"
+                :depends-on ("state" "command" "message" "globals" "tree"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op
