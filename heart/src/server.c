@@ -21,6 +21,8 @@
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_viewporter.h>
+#include <wlr/types/wlr_presentation_time.h>
+#include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_ext_image_copy_capture_v1.h>
 #include <wlr/types/wlr_ext_image_capture_source_v1.h>
 
@@ -100,6 +102,13 @@ bool hrt_server_init(
     wlr_subcompositor_create(server->wl_display);
     wlr_data_device_manager_create(server->wl_display);
     wlr_viewporter_create(server->wl_display);
+    // wlr_scene implements both of these once the globals exist:
+    if (!wlr_presentation_create(server->wl_display, server->backend, 2)) {
+        wlr_log(WLR_ERROR, "Could not create wp_presentation");
+    }
+    if (!wlr_fractional_scale_manager_v1_create(server->wl_display, 1)) {
+        wlr_log(WLR_ERROR, "Could not create wp_fractional_scale_manager_v1");
+    }
 
     wlr_export_dmabuf_manager_v1_create(server->wl_display);
     wlr_screencopy_manager_v1_create(server->wl_display);
