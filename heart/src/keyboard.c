@@ -15,6 +15,7 @@
 
 #include <hrt/hrt_server.h>
 #include <hrt/hrt_input.h>
+#include <hrt/hrt_session_lock.h>
 
 #include "idle_impl.h"
 
@@ -64,7 +65,10 @@ static void seat_handle_key(struct wl_listener *listener, void *data) {
 
     bool handled = false;
 
-    if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+    // While the session is locked, keys go to the lock surface only; no
+    // keybinding runs.
+    if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED &&
+        !hrt_session_locked(server)) {
         const xkb_keysym_t *translated_keysyms;
         uint32_t translated_modifiers;
         size_t translated_keysyms_len = seat_translate_keysyms(

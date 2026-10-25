@@ -22,6 +22,8 @@ struct hrt_scene_root {
     struct {
         struct wl_listener scene_destroy;
     } listeners;
+    // Above everything: the lock surfaces of ext-session-lock.
+    struct wlr_scene_tree *session_lock;
 };
 
 struct hrt_scene_output {
@@ -31,6 +33,7 @@ struct hrt_scene_output {
     struct wlr_scene_tree *top;
     struct wlr_scene_tree *overlay;
     struct hrt_output *output;
+    struct wlr_scene_tree *session_lock;
 };
 
 struct hrt_scene_group {

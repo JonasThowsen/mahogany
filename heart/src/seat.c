@@ -4,6 +4,8 @@
 #include <hrt/hrt_input.h>
 
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_session_lock_v1.h>
+#include <hrt/hrt_session_lock.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/util/log.h>
@@ -44,6 +46,11 @@ void hrt_seat_set_repeat_info(struct hrt_seat *seat, int32_t rate_hz,
 bool hrt_seat_keyboard_focus_surface(struct hrt_seat *seat,
                                      struct wlr_surface *surface) {
     struct wlr_seat *wlr_seat = seat->seat;
+    if (hrt_session_locked(seat->server) && surface &&
+        !wlr_session_lock_surface_v1_try_from_wlr_surface(surface)) {
+        wlr_log(WLR_DEBUG, "Session locked: not focusing a surface");
+        return false;
+    }
     if (!seat->grabbed) {
         struct wlr_surface *prev_surface =
             wlr_seat->keyboard_state.focused_surface;

@@ -78,6 +78,21 @@
   (%with-found-view *compositor-state* (view view-ptr)
     (mahogany-state-view-activate *compositor-state* view)))
 
+(hrt:define-hrt-callback handle-session-locked :void
+    ()
+    ()
+  (log-string :info "Session locked")
+  (setf (state-locked-p *compositor-state*) t))
+
+(hrt:define-hrt-callback handle-session-unlocked :void
+    ()
+    ()
+  (log-string :info "Session unlocked")
+  (setf (state-locked-p *compositor-state*) nil)
+  ;; The lock surface had the keyboard; give it back to the current frame.
+  (alexandria:when-let ((frame (state-current-frame *compositor-state*)))
+    (tree:mark-frame-focused frame (server-seat *compositor-state*))))
+
 (hrt:define-hrt-callback handle-get-view-output :pointer
     ((view-ptr (:pointer (:struct hrt:hrt-view))))
     (:error-val (silence-notes (cffi:null-pointer)))

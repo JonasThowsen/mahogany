@@ -18,6 +18,9 @@ HRT_INCLUDES = $(shell find $(ROOT)/heart/include/hrt/ -type f)
 MANUAL_ORG_FILES = $(shell find doc/manual -path "doc/devel" -prune -type f -o -name "*.org" | sort)
 
 .PHONY: doc run runNoExec clean test
+# Regenerated only on request; make can't tell when the headers changed in a
+# way that matters, and the output is checked in.
+.PHONY: lisp/heart/hrt-bindings.lisp lisp/heart/wlr-bindings.lisp
 
 $(BUILD_DIR)/mahogany: $(BUILD_DIR)/heart/libheart.so build-mahogany.lisp build/internal/projectDependencies FORCE
 	$(call $(LISP), build-mahogany.lisp)

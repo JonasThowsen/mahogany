@@ -22,6 +22,9 @@
 struct wlr_xdg_decoration_manager_v1;
 struct wlr_xdg_activation_v1;
 struct wlr_cursor_shape_manager_v1;
+struct wlr_session_lock_manager_v1;
+struct hrt_session_lock;
+struct hrt_session_lock_callbacks;
 
 struct hrt_server {
     struct wl_display *wl_display;
@@ -83,6 +86,12 @@ struct hrt_server {
     struct wl_listener request_activate;
     // cursor-shape: clients name the cursor instead of drawing it.
     struct wlr_cursor_shape_manager_v1 *cursor_shape_manager;
+    // ext-session-lock, see hrt_session_lock.h:
+    struct wlr_session_lock_manager_v1 *session_lock_manager;
+    struct wl_listener new_session_lock;
+    struct hrt_session_lock *session_lock;
+    bool session_locked;
+    const struct hrt_session_lock_callbacks *session_lock_callbacks;
 };
 
 bool hrt_server_init(

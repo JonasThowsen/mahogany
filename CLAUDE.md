@@ -104,6 +104,10 @@ mahogany, remote»):
   thin wrapper, policy lives in Lisp. Bindings in
   `lisp/heart/hrt-bindings.lisp` are generated with cl-bindgen from
   `cffi/*.yml` (`make lisp/heart/hrt-bindings.lisp`) when headers change.
+- `heart/src/session_lock.c` — ext-session-lock: while a locker such as
+  swaylock holds the session, heart shows only lock surfaces, routes input
+  to them alone and refuses other focus; Lisp hears `locked`/`unlocked`
+  (`state-locked-p`).
 - `lisp/heart/` — the Lisp side of heart: server, event-loop work queue
   and timers, outputs, views, layer shell, subprocesses, messages.
 - `lisp/draw/` — cairo/pango bindings and drawing helpers (`draw:`); with

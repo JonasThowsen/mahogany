@@ -165,6 +165,8 @@ to 1.0 (fastest)."
 
 (cffi:defcstruct hrt-view)
 
+(cffi:defcstruct wlr-xdg-toplevel-decoration-v1)
+
 (cffi:defctype view-destroy-handler :pointer #| function ptr void (struct hrt_view *) |#)
 
 (cffi:defctype view-commit-handler :pointer #| function ptr void (struct hrt_view *) |#)
@@ -382,6 +384,12 @@ Negative values count as 0."
   (output (:pointer (:struct hrt-output))))
 
 #-HRT-DEBUG
+(declaim (inline hrt-output-scale))
+(cffi:defcfun ("hrt_output_scale" hrt-output-scale) :double
+  "The output's scale: layout coordinates times it are pixels."
+  (output (:pointer (:struct hrt-output))))
+
+#-HRT-DEBUG
 (declaim (inline hrt-output-name))
 (cffi:defcfun ("hrt_output_name" hrt-output-name) :string
   (output (:pointer (:struct hrt-output))))
@@ -401,12 +409,6 @@ Negative values count as 0."
 (cffi:defcfun ("hrt_output_serial" hrt-output-serial) :string
   (output (:pointer (:struct hrt-output))))
 
-#-HRT-DEBUG
-(declaim (inline hrt-output-scale))
-(cffi:defcfun ("hrt_output_scale" hrt-output-scale) :double
-  "The output's scale: layout coordinates times it are pixels."
-  (output (:pointer (:struct hrt-output))))
-
 ;; next section imported from file heart/include/hrt/hrt_scene.h
 
 (cffi:defcstruct hrt-scene-root-listeners
@@ -419,14 +421,16 @@ Negative values count as 0."
   (fullscreen :pointer #| (:struct wlr-scene-tree) |#)
   (top :pointer #| (:struct wlr-scene-tree) |#)
   (overlay :pointer #| (:struct wlr-scene-tree) |#)
-  (listeners (:struct hrt-scene-root-listeners)))
+  (listeners (:struct hrt-scene-root-listeners))
+  (session-lock :pointer #| (:struct wlr-scene-tree) |#))
 
 (cffi:defcstruct hrt-scene-output
   (background :pointer #| (:struct wlr-scene-tree) |#)
   (bottom :pointer #| (:struct wlr-scene-tree) |#)
   (top :pointer #| (:struct wlr-scene-tree) |#)
   (overlay :pointer #| (:struct wlr-scene-tree) |#)
-  (output (:pointer (:struct hrt-output))))
+  (output (:pointer (:struct hrt-output)))
+  (session-lock :pointer #| (:struct wlr-scene-tree) |#))
 
 (cffi:defcstruct hrt-scene-group
   (layers :pointer #| (:struct wlr-scene-tree) |#)
@@ -775,6 +779,18 @@ intial placement."
 
 ;; next section imported from file heart/include/hrt/hrt_server.h
 
+(cffi:defcstruct wlr-xdg-decoration-manager-v1)
+
+(cffi:defcstruct wlr-xdg-activation-v1)
+
+(cffi:defcstruct wlr-cursor-shape-manager-v1)
+
+(cffi:defcstruct wlr-session-lock-manager-v1)
+
+(cffi:defcstruct hrt-session-lock)
+
+(cffi:defcstruct hrt-session-lock-callbacks)
+
 (cffi:defcstruct hrt-server-destroy-listener
   (backend (:struct wl-listener))
   (headless (:struct wl-listener))
@@ -820,7 +836,12 @@ intial placement."
   (new-xdg-decoration (:struct wl-listener))
   (xdg-activation :pointer #| (:struct wlr-xdg-activation-v1) |#)
   (request-activate (:struct wl-listener))
-  (cursor-shape-manager :pointer #| (:struct wlr-cursor-shape-manager-v1) |#))
+  (cursor-shape-manager :pointer #| (:struct wlr-cursor-shape-manager-v1) |#)
+  (session-lock-manager :pointer #| (:struct wlr-session-lock-manager-v1) |#)
+  (new-session-lock (:struct wl-listener))
+  (session-lock (:pointer (:struct hrt-session-lock)))
+  (session-locked :bool)
+  (session-lock-callbacks (:pointer (:struct hrt-session-lock-callbacks))))
 
 #-HRT-DEBUG
 (declaim (inline hrt-server-init))
@@ -956,7 +977,13 @@ intial placement."
 
 ;; next section imported from file heart/include/hrt/hrt_canvas.h
 
-(cffi:defcstruct hrt-canvas)
+(cffi:defcstruct hrt-canvas
+  "A rectangle in the scene graph that the compositor draws into itself,
+with cairo: a bar, a menu, an on-screen display.
+
+Draw a frame by calling hrt_canvas_begin, drawing on the surface it
+returns, and calling hrt_canvas_commit to show it. Each frame is a new
+buffer, so a frame being drawn never shows half finished.")
 
 #-HRT-DEBUG
 (declaim (inline hrt-canvas-create))
@@ -1008,3 +1035,30 @@ one. Return false if there is no frame to show."
 (cffi:defcfun ("hrt_canvas_set_enabled" hrt-canvas-set-enabled) :void
   (canvas (:pointer (:struct hrt-canvas)))
   (enabled :bool))
+
+;; next section imported from file heart/include/hrt/hrt_session_lock.h
+
+(cffi:defcstruct hrt-session-lock-callbacks
+  "ext-session-lock: a client such as swaylock locks the session. While
+it is locked, every output shows only the client's lock surface (or
+black until it has one), keyboard and pointer input go only to those
+surfaces, and nothing else can take the focus. Should the client go
+away without unlocking, the session stays locked and blank, red, until
+another client locks it."
+  (locked :pointer #| function ptr void (void) |#)
+  (unlocked :pointer #| function ptr void (void) |#))
+
+#-HRT-DEBUG
+(declaim (inline hrt-session-lock-set-callbacks))
+(cffi:defcfun ("hrt_session_lock_set_callbacks" hrt-session-lock-set-callbacks) :void
+  "Set the callbacks run when the session is locked and unlocked. The
+struct must outlive the server."
+  (server (:pointer (:struct hrt-server)))
+  (callbacks (:pointer (:struct hrt-session-lock-callbacks))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-session-locked))
+(cffi:defcfun ("hrt_session_locked" hrt-session-locked) :bool
+  "Whether the session is locked, including left locked by a client that
+went away."
+  (server (:pointer (:struct hrt-server))))

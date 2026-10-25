@@ -52,6 +52,12 @@
            #:request-fullscreen
            #:get-view-output
            #:request-activate
+           ;; session lock
+           #:hrt-session-lock-callbacks
+           #:locked
+           #:unlocked
+           #:hrt-session-lock-set-callbacks
+           #:hrt-session-locked
            #:view-destroyed
            #:view-mapped-p
            #:view-title

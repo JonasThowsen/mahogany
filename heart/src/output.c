@@ -17,6 +17,7 @@
 #include <wlr/types/wlr_xcursor_manager.h>
 
 #include <hrt/hrt_output.h>
+#include "session_lock_impl.h"
 
 static void handle_request_state(struct wl_listener *listener, void *data) {
     wlr_log(WLR_DEBUG, "Request State Handled");
@@ -400,6 +401,7 @@ static void handle_new_output(struct wl_listener *listener, void *data) {
     wlr_output_init_render(wlr_output, server->allocator, server->renderer);
 
     server->output_callback->output_added(output);
+    hrt_session_lock_add_output(server, output);
 }
 
 static void handle_output_manager_destroy(struct wl_listener *listener,
@@ -422,6 +424,9 @@ static void handle_output_manager_test(struct wl_listener *listener,
 
 static void handle_output_layout_changed(struct wl_listener *listener,
                                          void *data) {
+    struct hrt_server *server_for_lock =
+        wl_container_of(listener, server_for_lock, output_layout_changed);
+    hrt_session_lock_arrange(server_for_lock);
     struct hrt_server *server =
         wl_container_of(listener, server, output_layout_changed);
     struct wlr_output_layout *layout = data;

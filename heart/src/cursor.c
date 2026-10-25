@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <hrt/hrt_session_lock.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_seat.h>
 
@@ -101,9 +102,12 @@ static void seat_motion_absolute(struct wl_listener *listener, void *data) {
 static void seat_button(struct wl_listener *listener, void *data) {
     struct hrt_seat *seat = wl_container_of(listener, seat, button);
     hrt_idle_notify_activity(seat);
-    if (!seat->grabbed) {
-        struct wlr_pointer_button_event *event = data;
-
+    struct wlr_pointer_button_event *event = data;
+    if (hrt_session_locked(seat->server)) {
+        // Only the lock surface under the pointer, if any, hears of it:
+        wlr_seat_pointer_notify_button(seat->seat, event->time_msec,
+                                       event->button, event->state);
+    } else if (!seat->grabbed) {
         /* Notify the client with pointer focus that a button press has occurred */
         seat->callbacks->button_event(seat, event);
     }
@@ -112,8 +116,12 @@ static void seat_button(struct wl_listener *listener, void *data) {
 static void seat_axis(struct wl_listener *listener, void *data) {
     struct hrt_seat *seat = wl_container_of(listener, seat, axis);
     hrt_idle_notify_activity(seat);
-    if (!seat->grabbed) {
-        struct wlr_pointer_axis_event *ev = data;
+    struct wlr_pointer_axis_event *ev = data;
+    if (hrt_session_locked(seat->server)) {
+        wlr_seat_pointer_notify_axis(seat->seat, ev->time_msec, ev->orientation,
+                                     ev->delta, ev->delta_discrete, ev->source,
+                                     ev->relative_direction);
+    } else if (!seat->grabbed) {
         seat->callbacks->wheel_event(seat, ev);
     }
 }

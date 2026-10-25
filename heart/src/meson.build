@@ -15,6 +15,7 @@ hrt_source_files += files(
   'scene.c',
   'scene_descriptor.c',
   'server.c',
+  'session_lock.c',
   'view.c',
   'xdg_shell.c',
   'layer_shell.c',

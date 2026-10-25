@@ -31,6 +31,7 @@
 #include <hrt/hrt_input.h>
 
 #include "idle_impl.h"
+#include "session_lock_impl.h"
 
 static void handle_headless_backend_destroyed(struct wl_listener *listener,
                                               void *data) {
@@ -156,6 +157,10 @@ bool hrt_server_init(
         }
     }
 
+    if (!hrt_session_lock_init(server)) {
+        return false;
+    }
+
     if (!hrt_message_init(server)) {
         wlr_log(WLR_ERROR,
                 "Could not initialize the message system, "
@@ -207,6 +212,7 @@ void hrt_server_finish(struct hrt_server *server) {
     // events of the wlr objects they attach listeners to instead of being cleaned
     // up here...
     hrt_xdg_shell_destroy(server);
+    hrt_session_lock_finish(server);
     hrt_seat_destroy(&server->seat);
 
     hrt_output_destroy(server);

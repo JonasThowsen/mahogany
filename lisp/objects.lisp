@@ -43,7 +43,9 @@
    :read-only t)
   (layer-surfaces (make-hash-table)
    :type hash-table
-   :read-only t))
+   :read-only t)
+  ;; Whether a client holds the session locked (ext-session-lock):
+  (locked-p nil :type boolean))
 
 (declaim (inline state-current-group))
 (defun state-current-group (state)

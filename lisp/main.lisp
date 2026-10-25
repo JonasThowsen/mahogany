@@ -95,6 +95,7 @@ further up. "
 		              (seat-callbacks '(:struct hrt:hrt-seat-callbacks))
 		              (view-callbacks '(:struct hrt:hrt-view-callbacks))
 		              (layer-shell-callbacks '(:struct hrt:hrt-layer-shell-callbacks))
+		              (session-lock-callbacks '(:struct hrt:hrt-session-lock-callbacks))
 		              (server '(:struct hrt:hrt-server)))
     (init-callback-struct output-callbacks (:struct hrt:hrt-output-callbacks)
       (hrt:output-added handle-new-output)
@@ -106,6 +107,9 @@ further up. "
       (hrt:keyboard-keypress-event keyboard-callback))
     (init-view-callbacks view-callbacks)
     (init-layer-shell-callbacks layer-shell-callbacks)
+    (init-callback-struct session-lock-callbacks (:struct hrt:hrt-session-lock-callbacks)
+      (hrt:locked handle-session-locked)
+      (hrt:unlocked handle-session-unlocked))
 
     (server-state-init *compositor-state* server
                        output-callbacks
@@ -113,6 +117,7 @@ further up. "
                        view-callbacks
                        layer-shell-callbacks
                        :debug-level log-level)
+    (hrt:hrt-session-lock-set-callbacks server session-lock-callbacks)
     (log-string :debug "Initialized mahogany state")
     (if (gethash 'no-init-file args)
         (log-string :info "Init file loading skipped")
