@@ -1,5 +1,8 @@
 (in-package #:mahogany)
 
+;; In layouts.lisp, which loads after this file:
+(declaim (ftype function group-views-changed))
+
 (defun make-mahogany-group (name number hrt-server)
   (let* ((hrt-group (hrt:server-group-create hrt-server))
         (tiled-layer (tree:make-layer-container hrt-group)))
@@ -98,7 +101,8 @@ the current frame when that is empty, else kept hidden behind it."
     (push view (mahogany-group-views destination))
     (when (hrt:view-mapped-p view)
       (%add-hidden hidden-list view)
-      (%fill-frame-from-hidden destination (mahogany-group-current-frame destination)))))
+      (%fill-frame-from-hidden destination (mahogany-group-current-frame destination))
+      (group-views-changed destination))))
 
 (defun group-transfer-views (destination source)
   "Transfer the all views from the SOURCE group to the DESTINATION group"
@@ -229,7 +233,8 @@ to match."
         (hrt:scene-layer-add-view hrt-layer view))
       (alexandria:when-let ((to-hide (tree:frame-surface current-frame)))
         (%add-hidden hidden to-hide))
-      (%swap-view-into-frame group current-frame view))))
+      (%swap-view-into-frame group current-frame view)
+      (group-views-changed group (tree:find-root-frame current-frame)))))
 
 (defun group-unmap-view (group view)
   (declare (type mahogany-group group))
@@ -259,7 +264,8 @@ to match."
           (tree:view-frame
            (setf (tree:frame-surface f) nil)
            (when (> (ring-list:ring-list-size hidden) 0)
-             (%swap-view-into-frame group f (%pop-hidden-item hidden)))))
+             (%swap-view-into-frame group f (%pop-hidden-item hidden)))
+           (group-views-changed group (tree:find-root-frame f))))
         (hrt:dirty-view-transaction))
       (ring-list:remove-item hidden view))))
 
@@ -275,7 +281,9 @@ to match."
       (or
        (ring-list:remove-item hidden view)
        (alexandria:when-let ((f (hrt::view-container view)))
-         (setf (tree:frame-surface f) nil))))
+         (setf (tree:frame-surface f) nil)
+         (when (typep f 'tree:view-frame)
+           (group-views-changed group (tree:find-root-frame f))))))
     (setf view-list (remove view view-list :test #'equalp))))
 
 (defmethod tree:find-empty-frame ((group mahogany-group))

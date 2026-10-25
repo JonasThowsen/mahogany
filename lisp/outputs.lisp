@@ -63,7 +63,9 @@ is one."
         (setf (tree:frame-surface target) view)
         (%fill-frame-from-hidden group source)
         (when follow
-          (state-focus-frame state target (server-seat state))))
+          (state-focus-frame state target (server-seat state)))
+        (group-views-changed group (tree:find-root-frame source))
+        (group-views-changed group (tree:find-root-frame target)))
       (hrt:dirty-view-transaction))
     view))
 

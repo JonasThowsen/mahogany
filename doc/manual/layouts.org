@@ -1,0 +1,75 @@
+* Tiling Layouts
+
+A group tiles in one of two ways. By hand, the StumpWM way
+(=:manual=, the default): frames are split and removed with =s-s=,
+=s-S-s=, =s-r=, =s-f=, and windows go into the focused frame, the
+previous one hiding behind it (=s-Tab= cycles). Or by a layout, which
+rebuilds the frames of an output whenever a window comes, goes or
+moves, so every window is on screen:
+
+| Layout               | What it does                                          |
+|----------------------+-------------------------------------------------------|
+| =master-stack=       | the main window left, the rest stacked on the right   |
+| =master-stack-wide=  | the main window on top, the rest side by side below   |
+| =columns=, =rows=    | side by side, or stacked                              |
+| =grid=               | a grid                                                |
+| =dwindle=            | each window halves the last one, spiralling           |
+| =monocle=            | one window at a time, the others behind it (=s-Tab=)  |
+
+- =layout-menu= (=s-S-l=) chooses one for the current group,
+  =layout-next= (=s-l=) and =layout-previous= cycle, manual included.
+- =layout-main-ratio-increase= (=s-==) and =-decrease= (=s--=) change
+  the main window's share in the layouts that have one.
+- Going back to =manual= keeps the frames as the layout left them.
+
+The layout is per group, remembered while the group lives. In
+init.lisp:
+
+#+BEGIN_SRC lisp
+  (setf *default-layout* :master-stack)       ; new groups
+  (setf *group-layout-defaults*               ; by group name
+        '(("DEFAULT" . :master-stack) ("GROUP-2" . :manual)))
+  (setf *layout-main-ratio* 0.55)
+#+END_SRC
+
+From Lisp, =(layout-set :grid)= sets the current group's layout,
+=(setf (group-layout group) :grid)= any group's, and
+=(setf (group-main-ratio group) 0.7)= its ratio.
+
+A window moved in from another group or output, or shown from the
+hidden ones, takes a place in the layout; windows beyond what the
+layout can show (a tiny output) wait hidden behind the last frame.
+A fullscreen window is left alone.
+
+** Layouts of your own
+
+=define-layout= names a layout and gives a function of the number of
+windows, the main ratio and the output's width and height, returning
+a spec:
+
+- =:leaf=, a frame for one window;
+- =(:h RATIO LEFT RIGHT)=, a split with the left part taking RATIO of
+  the width;
+- =(:v RATIO TOP BOTTOM)=, the same, top and bottom.
+
+Windows fill the leaves in order, depth first. =layout-columns= and
+=layout-rows= build equal splits of N leaves, or of a list of specs.
+
+#+BEGIN_SRC lisp
+  (define-layout :centered (n ratio width height)
+      "The main window in the middle, the rest at the sides"
+    (case n
+      (1 :leaf)
+      (2 (list :h ratio :leaf :leaf))
+      (t (let ((side (floor (1- n) 2)))
+           (list :h (/ (- 1 ratio) 2)
+                 (layout-rows side)
+                 (list :h (/ ratio (- 1 (/ (- 1 ratio) 2)))
+                       :leaf
+                       (layout-rows (- n 1 side))))))))
+
+  (layout-set :centered)
+#+END_SRC
+
+The layout runs on every change, so keep it a pure function of its
+arguments.

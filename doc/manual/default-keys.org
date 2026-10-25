@@ -25,6 +25,8 @@ and =lisp/key-bindings.lisp=; init.lisp changes them with
 | =s-f=            | =maximize-current-frame=      | one frame                                    |
 | =s-r=            | =remove-current-frame=        | remove the frame                             |
 | =s-S-w=          | =launcher-windows=            | find a window                                |
+| =s-l= / =s-S-l=  | =layout-next= / =layout-menu= | tiling layouts, see [[file:layouts.org][Tiling Layouts]] |
+| =s-== / =s--=    | =layout-main-ratio-increase= / =-decrease= | the main window's share       |
 | =s-`=            | =scratchpad-toggle=           | the scratchpad window in and out             |
 | =s-S-`=          | =scratchpad-send=             | this window to the scratchpad                |
 | =s-1= … =s-9=    | =select-group-N=              | group N, made when missing                   |

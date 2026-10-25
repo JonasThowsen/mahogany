@@ -13,6 +13,11 @@
 ;; (setf *mode-line-segments*
 ;;       '(:groups :title :fill :network :volume :battery :clock))
 
+;;; Tiling: by hand (:manual, as StumpWM) or a layout per group
+
+;; (setf *default-layout* :master-stack)   ; s-l cycles, s-S-l chooses
+;; (setf *group-layout-defaults* '(("DEFAULT" . :master-stack)))
+
 ;;; Keys: SUPER chords on *top-map*, C-t prefix map in *root-map*
 
 ;; (define-key *top-map* (kbd "s-e") #'launcher-apps)
