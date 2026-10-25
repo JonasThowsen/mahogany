@@ -36,6 +36,7 @@
   (axis (:struct wl-listener))
   (frame (:struct wl-listener))
   (request-cursor (:struct wl-listener))
+  (request-set-shape (:struct wl-listener))
   (keyboard-key (:struct wl-listener))
   (keyboard-modifiers (:struct wl-listener))
   (request-selection (:struct wl-listener))
@@ -181,7 +182,8 @@ to 1.0 (fastest)."
   (request-maximize view-mapped-handler)
   (view-destroyed view-destroy-handler)
   (request-fullscreen view-request-fullscreen)
-  (get-view-output :pointer #| function ptr struct hrt_output *(struct hrt_view *) |#))
+  (get-view-output :pointer #| function ptr struct hrt_output *(struct hrt_view *) |#)
+  (request-activate view-mapped-handler))
 
 (cffi:defcstruct hrt-view
   (width :int)
@@ -199,7 +201,10 @@ to 1.0 (fastest)."
   (request-maximize (:struct wl-listener))
   (request-minimize (:struct wl-listener))
   (request-fullscreen (:struct wl-listener))
-  (callbacks (:pointer (:struct hrt-view-callbacks))))
+  (callbacks (:pointer (:struct hrt-view-callbacks)))
+  (decoration :pointer #| (:struct wlr-xdg-toplevel-decoration-v1) |#)
+  (decoration-request-mode (:struct wl-listener))
+  (decoration-destroy (:struct wl-listener)))
 
 #-HRT-DEBUG
 (declaim (inline hrt-view-info))
@@ -810,7 +815,12 @@ intial placement."
   (view-callbacks (:pointer (:struct hrt-view-callbacks)))
   (layer-shell-callbacks (:pointer (:struct hrt-layer-shell-callbacks)))
   (message-timer-source :pointer #| (:struct wl-event-source) |#)
-  (message-buffer :pointer #| (:struct wlr-scene-buffer) |#))
+  (message-buffer :pointer #| (:struct wlr-scene-buffer) |#)
+  (xdg-decoration-manager :pointer #| (:struct wlr-xdg-decoration-manager-v1) |#)
+  (new-xdg-decoration (:struct wl-listener))
+  (xdg-activation :pointer #| (:struct wlr-xdg-activation-v1) |#)
+  (request-activate (:struct wl-listener))
+  (cursor-shape-manager :pointer #| (:struct wlr-cursor-shape-manager-v1) |#))
 
 #-HRT-DEBUG
 (declaim (inline hrt-server-init))

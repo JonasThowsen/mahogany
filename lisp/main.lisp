@@ -71,7 +71,8 @@ further up. "
     (hrt:view-unmapped handle-view-unmapped)
     (hrt:view-destroyed handle-view-destroyed-event)
     (hrt:request-fullscreen handle-request-fullscreen)
-    (hrt:get-view-output handle-get-view-output)))
+    (hrt:get-view-output handle-get-view-output)
+    (hrt:request-activate handle-request-activate)))
 
 (defun init-layer-shell-callbacks (layer-shell-callbacks)
   (init-callback-struct layer-shell-callbacks (:struct hrt:hrt-layer-shell-callbacks)

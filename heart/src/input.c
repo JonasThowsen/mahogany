@@ -8,6 +8,7 @@
 
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
@@ -211,6 +212,21 @@ static void handle_request_set_cursor(struct wl_listener *listener,
     }
 }
 
+// cursor-shape: the same rule as for a cursor surface, the client under
+// the pointer decides what it looks like.
+static void handle_request_set_cursor_shape(struct wl_listener *listener,
+                                            void *data) {
+    struct hrt_seat *seat = wl_container_of(listener, seat, request_set_shape);
+    const struct wlr_cursor_shape_manager_v1_request_set_shape_event *event =
+        data;
+
+    struct wlr_seat_client *focused = seat->seat->pointer_state.focused_client;
+    if (focused == event->seat_client) {
+        wlr_cursor_set_xcursor(seat->cursor, seat->xcursor_manager,
+                               wlr_cursor_shape_v1_name(event->shape));
+    }
+}
+
 static void handle_request_set_selection(struct wl_listener *listener,
                                          void *data) {
     struct hrt_seat *seat = wl_container_of(listener, seat, request_selection);
@@ -319,6 +335,7 @@ static void handle_seat_destroy(struct wl_listener *listener, void *data) {
     wlr_log(WLR_DEBUG, "Seat destroyed");
 
     wl_list_remove(&seat->request_cursor.link);
+    wl_list_remove(&seat->request_set_shape.link);
     wl_list_remove(&seat->request_selection.link);
     wl_list_remove(&seat->request_primary_selection.link);
     wl_list_remove(&seat->request_start_drag.link);
@@ -344,6 +361,16 @@ bool hrt_seat_init(struct hrt_seat *seat, struct hrt_server *server,
     seat->request_cursor.notify = handle_request_set_cursor;
     wl_signal_add(&seat->seat->events.request_set_cursor,
                   &seat->request_cursor);
+
+    server->cursor_shape_manager =
+        wlr_cursor_shape_manager_v1_create(server->wl_display, 1);
+    if (!server->cursor_shape_manager) {
+        wlr_log(WLR_ERROR, "Could not create wp_cursor_shape_manager_v1");
+        return false;
+    }
+    seat->request_set_shape.notify = handle_request_set_cursor_shape;
+    wl_signal_add(&server->cursor_shape_manager->events.request_set_shape,
+                  &seat->request_set_shape);
 
     if (!hrt_cursor_init(seat, server)) {
         return false;

@@ -51,6 +51,7 @@
            #:request-maximize
            #:request-fullscreen
            #:get-view-output
+           #:request-activate
            #:view-destroyed
            #:view-mapped-p
            #:view-title

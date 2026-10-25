@@ -10,6 +10,7 @@
 #include "hrt_output.h"
 
 struct hrt_view;
+struct wlr_xdg_toplevel_decoration_v1;
 
 typedef void (*view_destroy_handler)(struct hrt_view *view);
 typedef void (*view_commit_handler)(struct hrt_view *view);
@@ -36,6 +37,12 @@ struct hrt_view_callbacks {
 
     view_request_fullscreen request_fullscreen;
     struct hrt_output *(*get_view_output)(struct hrt_view *);
+    /**
+     * A client asked, through xdg-activation with a valid token, for
+     * this mapped view to be focused. Whether it is, is up to the
+     * callback. May be NULL.
+     **/
+    view_mapped_handler request_activate;
 };
 
 struct hrt_view {
@@ -62,6 +69,11 @@ struct hrt_view {
     struct wl_listener request_fullscreen;
 
     const struct hrt_view_callbacks *callbacks;
+
+    // The view's xdg-decoration object, while the client has one:
+    struct wlr_xdg_toplevel_decoration_v1 *decoration;
+    struct wl_listener decoration_request_mode;
+    struct wl_listener decoration_destroy;
 };
 
 void hrt_view_info(struct hrt_view *view);

@@ -19,6 +19,10 @@
 
 #include <hrt/hrt_input.h>
 
+struct wlr_xdg_decoration_manager_v1;
+struct wlr_xdg_activation_v1;
+struct wlr_cursor_shape_manager_v1;
+
 struct hrt_server {
     struct wl_display *wl_display;
     struct wlr_backend *backend;
@@ -70,6 +74,15 @@ struct hrt_server {
 
     struct wl_event_source *message_timer_source;
     struct wlr_scene_buffer *message_buffer;
+
+    // Server-side decorations: every toplevel is asked to draw none.
+    struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
+    struct wl_listener new_xdg_decoration;
+    // xdg-activation: a client asks for a view to be focused.
+    struct wlr_xdg_activation_v1 *xdg_activation;
+    struct wl_listener request_activate;
+    // cursor-shape: clients name the cursor instead of drawing it.
+    struct wlr_cursor_shape_manager_v1 *cursor_shape_manager;
 };
 
 bool hrt_server_init(

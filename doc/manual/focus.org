@@ -19,6 +19,19 @@ settings that control how focus moves from one surface to another.
       or scrolled.
     - =:ignore= :: Ignore the mouse, and just use commands.
     - =:sloppy= :: Set the keyboard focus to whatever surface the cursors is over.
+*** Focus requests from clients
+  A client can ask for one of its windows to be focused through the
+  xdg-activation protocol, with a token it got from a recent user
+  action: a terminal's urgent bell, a browser asked to open a link, a
+  launcher starting an application. Mahogany then makes the window's
+  group the current one and focuses its frame; a window hidden behind
+  another in its frame is shown in the current frame, as =next-view=
+  would. To ignore such requests:
+
+  #+BEGIN_SRC lisp
+    (config-system:set-config mh::*focus-on-activation* nil)
+  #+END_SRC
+
 ** Cursor focus (not yet implemented)
   Cursor focus has two different modes: following the keyboard, or
   having its own separate focus.

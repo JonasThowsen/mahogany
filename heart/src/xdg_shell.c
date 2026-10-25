@@ -15,6 +15,91 @@
 
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/edges.h>
+#include <wlr/types/wlr_xdg_decoration_v1.h>
+#include <wlr/types/wlr_xdg_activation_v1.h>
+
+/**
+ * The view of a toplevel's xdg_surface: hrt_view_init puts the view's
+ * xdg scene tree in the surface's data, and the view in that tree's node.
+ **/
+static struct hrt_view *view_from_xdg_surface(struct wlr_xdg_surface *surface) {
+    if (surface->role != WLR_XDG_SURFACE_ROLE_TOPLEVEL || !surface->data) {
+        return nullptr;
+    }
+    struct wlr_scene_tree *tree = surface->data;
+    return tree->node.data;
+}
+
+/**
+ * Ask the view's client to draw no decorations. A configure can only be
+ * scheduled once the toplevel is initialized, so this runs both when the
+ * decoration appears and at the initial commit, whichever comes last.
+ **/
+static void view_apply_decoration_mode(struct hrt_view *view) {
+    if (view->decoration && view->xdg_toplevel->base->initialized) {
+        wlr_xdg_toplevel_decoration_v1_set_mode(
+            view->decoration, WLR_XDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    }
+}
+
+static void handle_decoration_request_mode(struct wl_listener *listener,
+                                           void *data) {
+    struct hrt_view *view =
+        wl_container_of(listener, view, decoration_request_mode);
+    view_apply_decoration_mode(view);
+}
+
+static void view_forget_decoration(struct hrt_view *view) {
+    if (view->decoration) {
+        wl_list_remove(&view->decoration_request_mode.link);
+        wl_list_remove(&view->decoration_destroy.link);
+        view->decoration = nullptr;
+    }
+}
+
+static void handle_decoration_destroy(struct wl_listener *listener,
+                                      void *data) {
+    struct hrt_view *view = wl_container_of(listener, view, decoration_destroy);
+    view_forget_decoration(view);
+}
+
+static void handle_new_xdg_decoration(struct wl_listener *listener,
+                                      void *data) {
+    struct wlr_xdg_toplevel_decoration_v1 *decoration = data;
+    struct hrt_view *view = view_from_xdg_surface(decoration->toplevel->base);
+    if (!view) {
+        wlr_log(WLR_ERROR, "xdg-decoration for a toplevel without a view");
+        return;
+    }
+    view_forget_decoration(view);
+    view->decoration = decoration;
+    view->decoration_request_mode.notify = handle_decoration_request_mode;
+    wl_signal_add(&decoration->events.request_mode,
+                  &view->decoration_request_mode);
+    view->decoration_destroy.notify = handle_decoration_destroy;
+    wl_signal_add(&decoration->events.destroy, &view->decoration_destroy);
+    view_apply_decoration_mode(view);
+}
+
+static void handle_request_activate(struct wl_listener *listener, void *data) {
+    struct hrt_server *server =
+        wl_container_of(listener, server, request_activate);
+    const struct wlr_xdg_activation_v1_request_activate_event *event = data;
+    struct wlr_xdg_surface *xdg_surface =
+        wlr_xdg_surface_try_from_wlr_surface(event->surface);
+    if (!xdg_surface) {
+        return;
+    }
+    struct hrt_view *view = view_from_xdg_surface(xdg_surface);
+    // A request for a view that is not mapped yet is a startup
+    // notification; nothing to focus:
+    if (!view || !xdg_surface->surface->mapped) {
+        return;
+    }
+    if (server->view_callbacks->request_activate) {
+        server->view_callbacks->request_activate(view);
+    }
+}
 
 static void handle_xdg_toplevel_map(struct wl_listener *listener, void *data) {
     wlr_log(WLR_DEBUG, "XDG Toplevel Mapped!");
@@ -97,6 +182,9 @@ static void handle_xdg_toplevel_destroy(struct wl_listener *listener,
     wl_list_remove(&view->request_maximize.link);
     wl_list_remove(&view->request_minimize.link);
     wl_list_remove(&view->new_popup.link);
+    // The decoration outlives this signal handler by a moment: wlroots
+    // destroys it from the same toplevel destroy signal, after us.
+    view_forget_decoration(view);
 
     hrt_view_cleanup(view);
     free(view);
@@ -110,6 +198,7 @@ static void handle_xdg_toplevel_commit(struct wl_listener *listener,
         wlr_xdg_toplevel_set_tiled(toplevel, WLR_EDGE_TOP | WLR_EDGE_BOTTOM |
                                                  WLR_EDGE_LEFT |
                                                  WLR_EDGE_RIGHT);
+        view_apply_decoration_mode(view);
         view->callbacks->new_view(view);
     } else if (view->xdg_surface->surface->mapped) {
         const uint32_t committed = toplevel->base->current.committed;
@@ -304,9 +393,30 @@ bool hrt_xdg_shell_init(struct hrt_server *server) {
     server->new_xdg_toplevel.notify = handle_new_xdg_toplevel;
     wl_signal_add(&server->xdg_shell->events.new_toplevel,
                   &server->new_xdg_toplevel);
+
+    server->xdg_decoration_manager =
+        wlr_xdg_decoration_manager_v1_create(server->wl_display);
+    if (!server->xdg_decoration_manager) {
+        wlr_log(WLR_ERROR, "Could not create the xdg-decoration manager");
+        return false;
+    }
+    server->new_xdg_decoration.notify = handle_new_xdg_decoration;
+    wl_signal_add(&server->xdg_decoration_manager->events.new_toplevel_decoration,
+                  &server->new_xdg_decoration);
+
+    server->xdg_activation = wlr_xdg_activation_v1_create(server->wl_display);
+    if (!server->xdg_activation) {
+        wlr_log(WLR_ERROR, "Could not create xdg-activation");
+        return false;
+    }
+    server->request_activate.notify = handle_request_activate;
+    wl_signal_add(&server->xdg_activation->events.request_activate,
+                  &server->request_activate);
     return true;
 }
 
 void hrt_xdg_shell_destroy(struct hrt_server *server) {
     wl_list_remove(&server->new_xdg_toplevel.link);
+    wl_list_remove(&server->new_xdg_decoration.link);
+    wl_list_remove(&server->request_activate.link);
 }

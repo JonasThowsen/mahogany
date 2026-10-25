@@ -148,6 +148,17 @@ The order of execution is not guaranteed if multiple lambdas are added at the sa
                     layer-shell-callbacks
                     debug-level)
   (declare (type mahogany/log:log-level-specifier debug-level))
+  ;; SERVER was allocated from the Lisp mirror of struct hrt_server. The
+  ;; mirror is maintained by hand between regenerations of the bindings;
+  ;; a size that differs from C's would be memory corruption, so refuse.
+  (let ((lisp-size (cffi:foreign-type-size '(:struct hrt-server)))
+        (c-size (hrt-server-struct-size)))
+    (unless (= lisp-size c-size)
+      (error 'mahogany/util:mahogany-panic
+             :text (format nil "struct hrt_server is ~D bytes in C but ~D in ~
+                                lisp/heart/hrt-bindings.lisp; regenerate or ~
+                                fix the bindings."
+                           c-size lisp-size))))
   (let ((initialized (hrt-server-init
                       server
                       output-callbacks seat-callbacks view-callbacks

@@ -71,6 +71,13 @@
     (%with-found-view *compositor-state* (view view-ptr)
       (mahogany-state-view-fullscreen *compositor-state* view output fullscreen))))
 
+(hrt:define-hrt-callback handle-request-activate :void
+    ((view-ptr (:pointer (:struct hrt:hrt-view))))
+    ()
+  (log-string :trace "View activation requested")
+  (%with-found-view *compositor-state* (view view-ptr)
+    (mahogany-state-view-activate *compositor-state* view)))
+
 (hrt:define-hrt-callback handle-get-view-output :pointer
     ((view-ptr (:pointer (:struct hrt:hrt-view))))
     (:error-val (silence-notes (cffi:null-pointer)))

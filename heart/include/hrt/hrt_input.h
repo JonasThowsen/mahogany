@@ -39,6 +39,7 @@ struct hrt_seat {
     struct wl_listener axis;
     struct wl_listener frame;
     struct wl_listener request_cursor;
+    struct wl_listener request_set_shape;
     // keyboard events:
     struct wl_listener keyboard_key;
     struct wl_listener keyboard_modifiers;

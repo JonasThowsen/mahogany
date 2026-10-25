@@ -11,6 +11,13 @@
   (member :none :all :minimize :maximize)
   "The client window management events that the compositor listends to.")
 
+(config-system:defconfig *focus-on-activation* t
+  boolean
+  "Whether a window that asks to be focused through xdg-activation (a
+browser when a link is opened in it, for instance) gets the focus: its
+group becomes the current one and its frame is focused. A hidden window
+is shown in the current frame.")
+
 (config-system:defconfig *shutdown-timeout-msec* 1000
   (signed-byte 32) ;; This goes to a a C int; unless this is running
   ;; on a weird machine, it's going to big enough on all platforms.
@@ -602,6 +609,31 @@ the current group or a layer shell frame"
   ;; TODO: Center the view in its frame if the dimensions do not match. May
   ;;  also need to do something if it's now bigger than the frame:
   )
+
+(defun mahogany-state-view-activate (state view)
+  "A client asked for VIEW to be focused (xdg-activation, with a valid
+token): give it the focus when *focus-on-activation* says so."
+  (declare (type mahogany-state state)
+           (type hrt:view view))
+  (when *focus-on-activation*
+    (%with-found-group state (group view)
+      (unless (eq group (state-current-group state))
+        (setf (state-current-group state) group))
+      (alexandria:if-let ((frame (tree:find-view-frame
+                                  (mahogany-group-tiled-container group) view)))
+        (state-focus-frame state frame (server-seat state))
+        ;; Hidden behind another view: show it in the current frame, the
+        ;; way next-view does, hiding what that frame showed.
+        (let ((hidden (mahogany-group-hidden-views group))
+              (cur-frame (mahogany-group-current-frame group)))
+          (when (and (typep cur-frame 'tree:view-frame)
+                     (ring-list:contains-item hidden view))
+            (ring-list:remove-item hidden view)
+            (hrt:view-set-hidden view nil)
+            (alexandria:when-let ((prev (tree:frame-surface cur-frame)))
+              (%add-hidden hidden prev))
+            (%swap-view-into-frame group cur-frame view)
+            (%cur-frame-set-from-group state group)))))))
 
 (defun mahogany-state-view-maximize (state view)
   (declare (type mahogany-state state)
