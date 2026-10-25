@@ -29,11 +29,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792951979,
-        "narHash": "sha256-mEOUtE3Ktku9VawZW+wVljFaQCgOApQjSrmwQL55MEs=",
+        "lastModified": 1792953267,
+        "narHash": "sha256-+jrEWREri+r5pUZMp+aPlO0el9WTonmkAy+zQIoyhLU=",
         "owner": "JonasThowsen",
         "repo": "slynk-cli",
-        "rev": "1e93b1290c7ae5480052990b7f266425dc98bcb2",
+        "rev": "394e1e2ffe9a15a6b40356a3936be0e39615d749",
         "type": "github"
       },
       "original": {
