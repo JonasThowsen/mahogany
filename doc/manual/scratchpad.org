@@ -1,0 +1,30 @@
+* The Scratchpad
+
+The scratchpad is a window kept out of the way, usually a terminal,
+that one key brings into the current frame and the same key puts away
+again, from any group.
+
+- =scratchpad-toggle=: when the focused window came out of the
+  scratchpad, it goes back; otherwise the scratchpad window comes out
+  into the current frame. With nothing in the scratchpad,
+  =*scratchpad-command*= is started (=foot --app-id scratchpad= by
+  default) and its window becomes the scratchpad window.
+- =scratchpad-send=: send the focused window to the scratchpad, making
+  any window a scratchpad window.
+- =scratchpad-menu=: with several windows in the scratchpad, choose
+  which to bring out.
+
+#+BEGIN_SRC lisp
+  (define-key *top-map* (kbd "s-grave") #'scratchpad-toggle)
+  (setf *scratchpad-command* '("foot" "--app-id" "scratchpad" "--title" "scratch"))
+#+END_SRC
+
+Put-away windows live in a group of their own, =.scratchpad=
+(=*scratchpad-group-name*=). Groups whose names start with a dot are
+not shown in the mode-line or the group menus, and =gnext= and =gprev=
+skip them; the windows are still listed by the launcher's window
+list, from where any can be brought out.
+
+What a frame showed before the scratchpad window came in goes behind
+it, as with =next-view=; when the scratchpad window goes away, the
+frame shows that window again.

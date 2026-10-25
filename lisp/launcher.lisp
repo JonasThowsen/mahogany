@@ -275,7 +275,7 @@ directory with a given file wins."
   :action (lambda (view) (mahogany-state-show-view *compositor-state* view)))
 
 (define-launcher-mode :groups (:prompt "Group" :description "Groups")
-  :items (loop for group across (sort (copy-seq (state-groups *compositor-state*)) #'<
+  :items (loop for group across (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
                                       :key #'mahogany-group-number)
                collect (make-menu-item (mahogany-group-name group)
                                        :data group
@@ -284,7 +284,7 @@ directory with a given file wins."
   :action (lambda (group) (setf (state-current-group *compositor-state*) group)))
 
 (define-launcher-mode :move-to-group (:prompt "Move window to" :description "Move the window to a group")
-  :items (loop for group across (sort (copy-seq (state-groups *compositor-state*)) #'<
+  :items (loop for group across (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
                                       :key #'mahogany-group-number)
                unless (eq group (state-current-group *compositor-state*))
                  collect (make-menu-item (mahogany-group-name group) :data group))

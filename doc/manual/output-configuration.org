@@ -162,3 +162,27 @@ several commands available:
 + =output-layout-apply= :: Allows you to select the output layout to
   use. The selection list shown only contains the currently valid
   configurations.
+
+* Moving between outputs
+
+A group spans every output, with a frame tree on each; the windows of
+a group can sit on any output. These move the focus and windows
+between the outputs, in layout order (left to right, then top to
+bottom):
+
+- =focus-next-output=, =focus-previous-output=: focus the current
+  group's frame on the next output, the one it focused there last.
+- =move-window-to-next-output=, =move-window-to-previous-output=: move
+  the focused window into that frame and follow it. What the frame
+  showed goes behind the window; the frame left behind shows a hidden
+  window of the group if there is one.
+- =output-menu= and =move-window-to-output-menu= choose the output
+  from a list, for more than two outputs; both are launcher modes.
+
+From Lisp, =(focus-output output)= and =(move-window-to-output output
+:follow nil)= take an output from =(outputs)=, and =(next-output -1)=
+is the previous one.
+
+Moving a whole group to an output is not a thing to do: a group is on
+every output already. To work the way a group per output would,
+keep the windows of a group on one output, and switch groups.

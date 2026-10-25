@@ -52,8 +52,15 @@ its log. Without a display, export the headless variables above before
   views): wlroots is single-threaded, and a plain `lisp eval` runs in a
   thread of its own. `(hrt:with-main-thread () ...)` does the same from
   code.
+- `lisp eval` reads in `cl-user`: pass `--package mahogany` so the local
+  nicknames `tree:`, `hrt:` read, or write `mahogany/tree:`; a reader
+  error shows as "Stream: STRING-INPUT-STREAM" and the form never runs.
 - `lisp compile FILE:LINE` — recompile one form (as `C-c C-c`); safe from
   any thread, the next event uses the new definition.
+- `defcommand` defines a generic function of that name (cl-interactive),
+  so a `defun` may not share a command's name: `(defun take-screenshot)`
+  + `(defcommand screenshot-area)`, never `(defun screenshot-area)` too.
+  The load errors with "already names an ordinary function".
 - A new file in `mahogany.asd`: `lisp eval '(load (compile-file "lisp/x.lisp"))'`
   gets it into the running image. `(asdf:load-system "mahogany")` works
   too, but when the load errors (a `defcommand` whose name a `defun`

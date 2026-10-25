@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <wlr/config.h>
 #include <wlr/util/log.h>
+#include <wlr/backend/headless.h>
 #include <wlr/backend/wayland.h>
 #include <wlr/backend/multi.h>
 
@@ -31,6 +32,10 @@ static bool add_output(struct wlr_backend *backend) {
         return wlr_x11_output_create(backend);
     }
 #endif
+    if (wlr_backend_is_headless(backend)) {
+        wlr_log(WLR_DEBUG, "Adding headless output");
+        return wlr_headless_add_output(backend, 1280, 720);
+    }
     return false;
 }
 

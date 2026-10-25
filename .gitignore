@@ -29,3 +29,4 @@ ocicl/
 .direnv/
 .slynk-cli/
 result
+*.fasl

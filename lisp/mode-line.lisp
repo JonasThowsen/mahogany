@@ -214,7 +214,7 @@ Then add :uptime to *mode-line-segments*."
   (let ((current (state-current-group *compositor-state*)))
     (map 'list (lambda (group)
                  (list (mahogany-group-name group) (eq group current) group))
-         (sort (copy-seq (state-groups *compositor-state*)) #'<
+         (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
                :key #'mahogany-group-number))))
 
 (defun %mode-line-items (output)

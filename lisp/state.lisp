@@ -173,6 +173,12 @@ or HRT-OUTPUT is NIL or a null pointer."
   fixnum
   "How long the group name is shown for, in milliseconds.")
 
+(defun group-listed-p (group)
+  "Whether GROUP is one the user cycles through and sees in lists: those
+whose names start with a dot, such as the scratchpad's, are not."
+  (let ((name (mahogany-group-name group)))
+    (not (and (plusp (length name)) (char= (char name 0) #\.)))))
+
 (defun (setf state-current-group) (group state)
   (declare (type mahogany-state state)
            (type mahogany-group group))
@@ -192,6 +198,7 @@ or HRT-OUTPUT is NIL or a null pointer."
       (ring-list:remove-item hidden-groups group :test #'eq)
       (when (and previous
                  (not (eq previous group))
+                 (group-listed-p previous)
                  (find previous (state-groups state) :test #'eq)
                  (not (ring-list:contains-item hidden-groups previous :test #'eq)))
         (ring-list:add-item hidden-groups previous)))
@@ -505,7 +512,8 @@ the current group or a layer shell frame"
            (ring-list:add-item hidden-groups current-group)
            (setf current-group new-group))
           (t
-           (ring-list:add-item hidden-groups new-group)
+           (when (group-listed-p new-group)
+             (ring-list:add-item hidden-groups new-group))
            (mode-line-update)))
         (log-string :trace "Hidden groups: ~S" hidden-groups))
       new-group)))
@@ -555,6 +563,11 @@ the current group or a layer shell frame"
         (loop for g across groups
               do (group-rearrange-output g hrt-output))))))
 
+(defglobal *new-view-hook* '()
+  "Functions called with each new view (window) and its group, right
+after it is created and before it is shown; the scratchpad adopts the
+window it started here, and window rules can be built on it.")
+
 (defun mahogany-state-view-add (state view-ptr)
   (declare (type mahogany-state state)
            (type cffi:foreign-pointer view-ptr))
@@ -563,7 +576,12 @@ the current group or a layer shell frame"
                    (server state-server))
       state
     (let ((new-view (group-add-initialize-view current-group view-ptr)))
-      (setf (gethash (cffi:pointer-address view-ptr) view-tbl) new-view))))
+      (setf (gethash (cffi:pointer-address view-ptr) view-tbl) new-view)
+      (dolist (hook *new-view-hook*)
+        (handler-case (funcall hook new-view current-group)
+          (error (c)
+            (log-string :error "New view hook ~S failed: ~A" hook c))))
+      new-view)))
 
 (defun %find-view-in-groups (view groups)
   (find-if (lambda (g) (member view (mahogany-group-views g))) groups))

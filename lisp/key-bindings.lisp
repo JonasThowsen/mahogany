@@ -207,7 +207,7 @@ possible with at most MAX-ROWS rows, and return the text."
 
 (defun interactively-read-group (com im arg prompt)
   (declare (ignore com arg))
-  (let* ((groups (state-groups *compositor-state*))
+  (let* ((groups (remove-if-not #'group-listed-p (state-groups *compositor-state*)))
          ;; It would be good to sort the list so that the current
          ;; group is on the bottom, mark the current group with a `*`,
          ;; or something similar to help user.
