@@ -125,6 +125,7 @@ further up. "
         (log-string :info "Init file loading skipped")
         (let ((*initializing* t))
           (load-config-file (not (gethash 'enable-debugger args)))))
+    (theme-start)
     (when *mode-line-enabled*
       (mode-line-start))
     (start-idle)

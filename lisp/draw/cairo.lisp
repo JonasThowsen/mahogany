@@ -130,6 +130,38 @@ register its types again and hangs. So a loaded library is left alone."
   (surface :pointer)
   (filename :string))
 
+(cffi:defcfun ("cairo_image_surface_create_from_png" cairo-image-surface-create-from-png) :pointer
+  (filename :string))
+
+(cffi:defcfun ("cairo_surface_status" cairo-surface-status) :int
+  (surface :pointer))
+
+(cffi:defcfun ("cairo_image_surface_get_width" cairo-image-surface-get-width) :int
+  (surface :pointer))
+
+(cffi:defcfun ("cairo_image_surface_get_height" cairo-image-surface-get-height) :int
+  (surface :pointer))
+
+(cffi:defcfun ("cairo_set_source_surface" cairo-set-source-surface) :void
+  (cr :pointer)
+  (surface :pointer)
+  (x :double)
+  (y :double))
+
+(cffi:defcfun ("cairo_scale" cairo-scale) :void
+  (cr :pointer)
+  (sx :double)
+  (sy :double))
+
+(cffi:defcfun ("cairo_get_source" cairo-get-source) :pointer
+  (cr :pointer))
+
+(cffi:defcfun ("cairo_pattern_set_filter" cairo-pattern-set-filter) :void
+  (pattern :pointer)
+  (filter :int))
+
+(defconstant +filter-good+ 2)
+
 ;;; pango
 
 (defconstant +pango-scale+ 1024

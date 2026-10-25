@@ -197,10 +197,7 @@ directory with a given file wins."
   "How often each application and command was chosen, by name.")
 
 (defun %history-file ()
-  ;; XDG_STATE_HOME, which this UIOP has no function for:
-  (let ((state-home (or (uiop:getenv-absolute-directory "XDG_STATE_HOME")
-                        (uiop:subpathname (user-homedir-pathname) ".local/state/"))))
-    (uiop:subpathname state-home "mahogany/launcher-history.sexp")))
+  (state-file "launcher-history.sexp"))
 
 (defun %load-history ()
   (ignore-errors

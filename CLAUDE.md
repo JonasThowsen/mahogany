@@ -117,4 +117,10 @@ mahogany, remote»):
   groups and compositor state; `lisp/command.lisp`, `lisp/key-bindings.lisp`,
   `lisp/kmap-modes.lisp` — commands and keymaps; `lisp/main.lisp` — startup
   and the user's `~/.config/mahogany/init.lisp`.
+- Lisp desktop pieces, one file each: `lisp/mode-line.lisp` (bar and
+  its modules), `lisp/menu.lisp` + `lisp/launcher.lisp` (menus, launcher
+  modes), `lisp/osd.lisp`, `lisp/idle.lisp`, `lisp/system-status.lisp`
+  (battery, network, volume, brightness via subprocesses),
+  `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
+  canvas). Each has a manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

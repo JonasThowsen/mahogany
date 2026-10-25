@@ -135,7 +135,9 @@
                 :depends-on ("state" "command" "message" "globals" "input" "tree"))
                (:file "launcher"
                 :depends-on ("menu" "key-bindings" "command" "system"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd"))))
+               (:file "themes"
+                :depends-on ("mode-line" "menu" "osd" "message" "launcher" "tree" "globals"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

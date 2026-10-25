@@ -1,7 +1,8 @@
 (in-package #:mahogany)
 
 ;; In mode-line.lisp, which loads after this file:
-(declaim (ftype function mode-line-update mode-line-reset stop-idle menu-cancel))
+(declaim (ftype function mode-line-update mode-line-reset stop-idle menu-cancel
+                        wallpaper-update wallpaper-reset))
 
 (defvar *default-group-name* "DEFAULT")
 
@@ -83,6 +84,7 @@ or HRT-OUTPUT is NIL or a null pointer."
     ;; doesn't try to switch focus to an invalid frame:
     (setf (state-%current-frame state) nil)
     (mode-line-reset)
+    (wallpaper-reset)
     (stop-idle)
     ;; A menu open at shutdown: its thread must not wait forever.
     (menu-cancel)
@@ -379,7 +381,8 @@ the current group or a layer shell frame"
     (unless (state-%current-frame *compositor-state*)
       (let ((cur-group (state-current-group *compositor-state*)))
         (group-focus cur-group (server-seat *compositor-state*))
-        (setf (state-%current-frame *compositor-state*) (mahogany-group-current-frame cur-group))))))
+        (setf (state-%current-frame *compositor-state*) (mahogany-group-current-frame cur-group)))))
+  (wallpaper-update))
 
 (defun %make-output-process-timer (state change-data)
   (declare (type mahogany-state state))
@@ -538,7 +541,8 @@ the current group or a layer shell frame"
   (hrt:with-view-transaction ()
     (with-accessors ((groups state-groups)) state
       (loop for g across groups
-            do (group-reconfigure-outputs g (state-cur-outputs state))))))
+            do (group-reconfigure-outputs g (state-cur-outputs state)))))
+  (wallpaper-update))
 
 (defun mahogany-state-layers-arrange (state output)
   (declare (type mahogany-state state)

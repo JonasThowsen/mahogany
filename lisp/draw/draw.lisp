@@ -198,3 +198,34 @@ width and height drawn, in pixels."
   (with-layout (layout cr :text (unless markup text) :markup (when markup text)
                           :font font)
     (layout-pixel-size layout)))
+
+;;; Images
+
+(defun load-png (pathname)
+  "A cairo image surface with the PNG at PATHNAME, to destroy with
+cairo-surface-destroy, or NIL when it cannot be read."
+  (let ((surface (cairo-image-surface-create-from-png (namestring pathname))))
+    (if (zerop (cairo-surface-status surface))
+        surface
+        (progn (cairo-surface-destroy surface) nil))))
+
+(defun image-size (surface)
+  "The width and height of the image SURFACE, as two values."
+  (values (cairo-image-surface-get-width surface)
+          (cairo-image-surface-get-height surface)))
+
+(defun draw-image-cover (cr image width height)
+  "Draw the image surface IMAGE scaled to cover WIDTH x HEIGHT at the
+origin, keeping its proportions, centered, cropping what does not fit."
+  (multiple-value-bind (iw ih) (image-size image)
+    (when (and (plusp iw) (plusp ih))
+      (let* ((scale (max (/ width iw) (/ height ih)))
+             (dx (/ (- width (* iw scale)) 2))
+             (dy (/ (- height (* ih scale)) 2)))
+        (save-restore (cr)
+          (clip-rectangle cr 0 0 width height)
+          (cairo-translate cr (float dx 1d0) (float dy 1d0))
+          (cairo-scale cr (float scale 1d0) (float scale 1d0))
+          (cairo-set-source-surface cr image 0d0 0d0)
+          (cairo-pattern-set-filter (cairo-get-source cr) +filter-good+)
+          (cairo-paint cr))))))

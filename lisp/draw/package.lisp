@@ -33,6 +33,11 @@ so those coordinates are layout pixels.")
    #:show-layout
    #:draw-text
    #:text-size
+   ;; images
+   #:load-png
+   #:image-size
+   #:draw-image-cover
+   #:cairo-surface-destroy
    ;; the bindings, for what the helpers don't cover
    #:cairo-create #:cairo-destroy #:cairo-save #:cairo-restore
    #:cairo-set-source-rgba #:cairo-set-operator #:cairo-set-line-width

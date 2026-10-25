@@ -154,7 +154,7 @@ pixels.
 | Keybinding cheat sheet | =SUPER+K=        | generated from the kmaps, zero maintenance                   |
 | Clipboard history    | cliphist           | heart already has data-control; keep history in Lisp         |
 | Screenshot / record menu | capture menu   | =grim=/=slurp=/=wf-recorder= via =subprocess-collect=        |
-| Wallpaper            | swaybg             | later: a canvas on the background layer                       |
+| Wallpaper            | swaybg             | done: =lisp/themes.lisp= draws the theme's PNG on a background-layer canvas |
 
 ** D. System integration ("the OS features")
 
@@ -191,10 +191,11 @@ module, then per-service clients.
   focus, =SUPER+Shift+arrows= swap, XF86 media/brightness keys), with
   the =C-t= prefix map kept for StumpWM users. Mahogany's kmap modes
   make both possible.
-- Themes: a theme is Lisp data (colors, font, border, gaps, wallpaper)
-  applied to everything in the image at once; optionally written out to
-  external apps' configs the way Omarchy does (terminal, mako) while
-  those are still external.
+- Themes: done in =lisp/themes.lisp=: =define-theme= / =set-theme=
+  apply colors, font, borders and wallpaper to everything in the image
+  at once, presets and =~/.config/mahogany/themes/*.lisp=,
+  =*theme-hooks*= for writing external apps' configs the way Omarchy
+  does (terminal, mako) while those are still external.
 - Flake: =packages.mahogany=, a NixOS module (session file for =ly=,
   autostart, portal config), =nix flake check= running the tests
   headless.

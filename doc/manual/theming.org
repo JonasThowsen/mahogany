@@ -1,5 +1,102 @@
 * Customizing Mahogany's Appearance
 
+** Themes
+
+A theme is one set of colors, a font and a wallpaper that everything
+Mahogany draws takes from: the mode-line, menus and the launcher, the
+on-screen display, toast messages, the frame borders and the
+wallpaper. Switching themes changes all of them at once, live.
+
+Mahogany comes with =tokyo-night= (the default), =catppuccin=,
+=catppuccin-latte= (light), =nord=, =gruvbox=, =everforest=,
+=kanagawa=, =rose-pine=, =matte-black= and =mahogany= (the colors it
+had before themes). The theme chosen last is remembered across
+restarts.
+
+- =theme-menu= (also the "Themes" mode of the launcher) lists the
+  themes; choosing one applies it.
+- =next-theme= and =previous-theme= cycle through them, for a key:
+
+#+BEGIN_SRC lisp
+  (define-key *top-map* (kbd "s-C-S-SPC") #'next-theme)
+#+END_SRC
+
+- =(set-theme :nord)= from init.lisp or the REPL does the same. In
+  init.lisp it also pins the theme: the remembered one is then ignored.
+- =*default-theme*= is used at the very first start.
+
+*** Defining a theme
+
+=define-theme= names a theme and gives its colors as =#rrggbb=
+strings (or =cl-colors2= rgb values). Only what differs from the
+defaults needs giving:
+
+#+BEGIN_SRC lisp
+  (define-theme :mine
+    :description "Blue on dark"
+    :font "monospace 12"
+    :foreground "#c0caf5"      ; text
+    :background "#1a1b26"      ; panels: the mode-line, menus, messages
+    :surface "#24283b"         ; second background; unfocused frame borders
+    :accent "#7aa2f7"          ; the current group, the selection, focused frames
+    :muted "#565f89"           ; details, empty frames
+    :error "#f7768e"           ; error messages
+    :wallpaper "~/Pictures/mine.png")
+#+END_SRC
+
+=:border-focus= and =:border-unfocus= override the border colors
+(the accent and the surface by default), =:wallpaper-color= the
+color shown without a wallpaper (the background by default).
+Redefining the theme in use applies the change at once.
+
+Files in =~/.config/mahogany/themes/= (=*theme-directories*=) that
+contain =define-theme= forms are loaded at startup, and again by
+=reload-themes=; a theme file is the place to keep each theme.
+
+*** The wallpaper
+
+The wallpaper is a PNG file, scaled to cover each output, keeping
+its proportions. Each theme can have its own (=:wallpaper=); without
+one, the output shows the theme's wallpaper color. =set-wallpaper=
+(the =wallpaper= command asks for the file) shows another file with
+any theme, until =(set-wallpaper nil)=:
+
+#+BEGIN_SRC lisp
+  (set-wallpaper "~/Pictures/today.png")
+#+END_SRC
+
+*** Theming other programs
+
+=*theme-hooks*= holds functions called with the theme after it has
+been applied. That is where to theme programs outside the image, the
+way Omarchy does: write a color file and let the program pick it up.
+The colors are =cl-colors2= rgb values with components from 0 to 1:
+
+#+BEGIN_SRC lisp
+  (defun hex (color)
+    (format nil "~2,'0x~2,'0x~2,'0x"
+            (round (* 255 (cl-colors2:rgb-red color)))
+            (round (* 255 (cl-colors2:rgb-green color)))
+            (round (* 255 (cl-colors2:rgb-blue color)))))
+
+  (defun theme-foot (theme)
+    (with-open-file (out "~/.config/foot/theme.ini" :direction :output
+                                                     :if-exists :supersede)
+      (format out "[colors]~%foreground=~A~%background=~A~%"
+              (hex (theme-foreground theme))
+              (hex (theme-background theme)))))
+
+  (push 'theme-foot *theme-hooks*)
+#+END_SRC
+
+*** Themes of single components
+
+=set-theme= fills =*mode-line-theme*=, =*menu-theme*=, =*osd-theme*=,
+=*message-theme*= and =*message-error-theme*= (=mh/theme:make-theme=
+values with a font, a font color, a background color and a border
+color). Setting one of them afterwards changes that component alone,
+until the next =set-theme=.
+
 ** Cursor Theming
 
 Mahogany uses xcursor themes to customize the appearance of the
