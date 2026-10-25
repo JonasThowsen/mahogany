@@ -35,6 +35,77 @@
   (:method ()
     (mh-sys:open-terminal)))
 
+(defcommand show-time ()
+  (:documentation "Show the current date and time in a message")
+  (:method ()
+    (multiple-value-bind (sec min hour day month year)
+        (decode-universal-time (get-universal-time))
+      (declare (ignore sec))
+      (toast-message *compositor-state*
+                     (format nil "~D-~2,'0D-~2,'0D ~2,'0D:~2,'0D"
+                             year month day hour min)))))
+
+(defun %binding-name (binding)
+  (string-downcase
+   (if (typep binding 'generic-function)
+       (symbol-name (c2mop:generic-function-name binding))
+       (princ-to-string binding))))
+
+(defun %active-bindings ()
+  "Return a list of (KEYS-STRING . NAME) for every key binding that is
+active, shorter key sequences first. A sequence bound in more than one
+keymap is listed once, with the binding that wins."
+  (let ((seen (make-hash-table :test 'equal))
+        (result nil))
+    ;; The keymaps are searched in order, so the first binding wins:
+    (dolist (kmap (state-keybindings *compositor-state*))
+      (map-kmap-bindings
+       (lambda (keys binding)
+         (let ((keys-string (format nil "~{~A~^ ~}"
+                                    (mapcar (lambda (key)
+                                              (with-output-to-string (s)
+                                                (pprint-key key s)))
+                                            keys))))
+           (unless (gethash keys-string seen)
+             (setf (gethash keys-string seen) t)
+             (push (list (length keys) keys-string (%binding-name binding))
+                   result))))
+       kmap))
+    (mapcar (lambda (entry) (cons (second entry) (third entry)))
+            (stable-sort result
+                         (lambda (a b)
+                           (if (= (first a) (first b))
+                               (string-lessp (second a) (second b))
+                               (< (first a) (first b))))))))
+
+(defun %format-in-columns (entries max-rows)
+  "Lay out the strings ENTRIES top to bottom in as few columns as
+possible with at most MAX-ROWS rows, and return the text."
+  (let* ((count (length entries))
+         (rows (ceiling count (max 1 (ceiling count max-rows))))
+         (width (+ 3 (reduce #'max entries :key #'length :initial-value 0)))
+         (entries (coerce entries 'vector)))
+    (with-output-to-string (s)
+      (dotimes (row (min rows count))
+        (unless (zerop row)
+          (terpri s))
+        (loop for i from row below count by rows
+              do (format s "~vA" width (aref entries i)))))))
+
+(defcommand describe-bindings ()
+  (:documentation "Show every key binding that is active now")
+  (:method ()
+    (let* ((bindings (%active-bindings))
+           (key-width (reduce #'max bindings :key (lambda (b) (length (car b)))
+                                             :initial-value 0)))
+      (toast-message *compositor-state*
+                     (%format-in-columns
+                      (mapcar (lambda (b)
+                                (format nil "~vA  ~A" key-width (car b) (cdr b)))
+                              bindings)
+                      20)
+                     :ms-delay 15000))))
+
 (defcommand split-frame-h ()
   (:documentation "Split the current frame horizontally")
   (:method ()
@@ -393,6 +464,8 @@ valid output layouts")
   (define-kmap
     (kbd "!") #'run-shell-command
     (kbd ";") #'colon
+    (kbd "a") #'show-time
+    (kbd "?") #'describe-bindings
     (kbd "o") #'next-frame
     (kbd "O") #'prev-frame
     (kbd "k") #'close-current-view

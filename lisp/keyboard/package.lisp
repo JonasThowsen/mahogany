@@ -20,6 +20,7 @@
            #:kmap
            #:make-kmap
            #:kmap-lookup
+           #:map-kmap-bindings
            #:pprint-kmap
            #:key-state
            #:make-key-state

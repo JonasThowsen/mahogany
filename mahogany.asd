@@ -21,6 +21,7 @@
                #:bordeaux-threads
                #:float-features
                #:cl-interactive
+               #:closer-mop
                #:trivial-garbage
                #:cffi)
   :in-order-to ((test-op (test-op mahogany-test)))

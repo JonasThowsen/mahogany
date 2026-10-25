@@ -67,6 +67,18 @@ Example:
            (optimize (speed 3) (safety 1)))
   (gethash key (kmap-bindings keymap)))
 
+(defun map-kmap-bindings (function kmap &optional prefix)
+  "Call FUNCTION with the list of keys and the binding of every key
+sequence in KMAP that does not lead to another keymap, following the
+keymaps it binds. KMAP may also be a symbol whose value is a keymap.
+PREFIX is put in front of each list of keys."
+  (maphash (lambda (key binding)
+             (let ((keys (append prefix (list key))))
+               (if (kmap-or-kmap-symbol-p binding)
+                   (map-kmap-bindings function binding keys)
+                   (funcall function keys binding))))
+           (kmap-bindings (if (kmap-p kmap) kmap (symbol-value kmap)))))
+
 (defun pprint-kmap (map &optional (stream *standard-output*))
   "Pretty-print a `kmap' human-readably."
   (declare (type kmap map) (type stream stream)
