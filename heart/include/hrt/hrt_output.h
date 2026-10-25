@@ -41,6 +41,8 @@ struct hrt_output {
     struct wl_listener request_state;
     struct wl_listener frame;
     struct wl_listener destroy;
+    // Turned off by hrt_output_set_power; still part of the layout.
+    bool powered_off;
 };
 
 struct hrt_output_callbacks {
@@ -74,7 +76,20 @@ void hrt_output_position(struct hrt_output *output, int *x, int *y);
 void hrt_output_set_reserved(struct hrt_output *output, int top, int right,
                              int bottom, int left);
 
+/**
+ * Whether the output is in use: configured on, whether or not its power
+ * is off at the moment.
+ **/
 bool hrt_output_enabled(struct hrt_output *output);
+
+/**
+ * Turn the output's power off, or on again. It keeps its place in the
+ * layout and its windows; this is for idling, not for configuration.
+ * Returns false if the output refused.
+ **/
+bool hrt_output_set_power(struct hrt_output *output, bool on);
+
+bool hrt_output_powered_off(struct hrt_output *output);
 
 /**
  * The output's scale: layout coordinates times it are pixels.

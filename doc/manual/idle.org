@@ -1,0 +1,43 @@
+* Idling
+
+After a while without keyboard or pointer input, Mahogany can lock the
+session and turn the screens off, the way swayidle or hypridle do for
+other compositors. The timeouts are a configuration property:
+
+#+BEGIN_SRC lisp
+  ;; After 5 minutes lock, after 10 turn the screens off (the default):
+  (config-system:set-config mh::*idle-timeouts* '((300 :lock) (600 :screen-off)))
+#+END_SRC
+
+Each entry is =(SECONDS ACTION)=:
+
+- =:lock= :: run =mh::*idle-lock-command*= (=swaylock -f= by default),
+  unless the session is locked already.
+- =:screen-off= :: turn every output off; the next input turns them on.
+  The windows keep their places.
+- a string :: a shell command to run.
+- a function :: called with =:idle= when the time is up and =:resume= at
+  the next input, for anything else:
+
+#+BEGIN_SRC lisp
+  (defun dim-screen (phase)
+    (uiop:launch-program (if (eq phase :idle)
+                             "brightnessctl -s set 10%"
+                             "brightnessctl -r")))
+
+  (config-system:set-config mh::*idle-timeouts*
+                            '((120 dim-screen) (300 :lock) (600 :screen-off)))
+#+END_SRC
+
+Input restarts every timeout. While a visible window asks not to be
+considered idle (a video playing, through the idle-inhibit protocol),
+the timeouts do not run out.
+
+A change to the timeouts in a running Mahogany takes effect with the
+=restart-idle= command. =toggle-idle= turns idling off and on, for a
+presentation; =lock-session= locks at once. None has a default
+keybinding:
+
+#+BEGIN_SRC lisp
+  (mh::define-key mh::*root-map* (mh::kbd "L") #'mh::lock-session)
+#+END_SRC

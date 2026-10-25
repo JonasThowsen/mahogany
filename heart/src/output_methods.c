@@ -23,7 +23,30 @@ void hrt_output_set_reserved(struct hrt_output *output, int top, int right,
 }
 
 bool hrt_output_enabled(struct hrt_output *output) {
-    return output->wlr_output->enabled;
+    return output->wlr_output->enabled || output->powered_off;
+}
+
+bool hrt_output_set_power(struct hrt_output *output, bool on) {
+    struct wlr_output *wlr_output = output->wlr_output;
+    if (on == !output->powered_off) {
+        return true;
+    }
+    struct wlr_output_state state;
+    wlr_output_state_init(&state);
+    wlr_output_state_set_enabled(&state, on);
+    bool ok = wlr_output_commit_state(wlr_output, &state);
+    wlr_output_state_finish(&state);
+    if (ok) {
+        output->powered_off = !on;
+    } else {
+        wlr_log(WLR_ERROR, "Could not turn output %s %s", wlr_output->name,
+                on ? "on" : "off");
+    }
+    return ok;
+}
+
+bool hrt_output_powered_off(struct hrt_output *output) {
+    return output->powered_off;
 }
 
 double hrt_output_scale(struct hrt_output *output) {

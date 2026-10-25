@@ -119,6 +119,16 @@
            #:output-scene-layer
            #:output-resolution
            #:output-scale
+           #:output-set-power
+           #:output-powered-off-p
+           ;; idle timeouts
+           #:idle-timeout
+           #:add-idle-timeout
+           #:destroy-idle-timeout
+           #:idle-timeout-msec
+           #:idle-milliseconds
+           #:idle-inhibited-p
+           #:idle-activity
            #:output-position
            #:output-usable-area
            #:output-set-reserved

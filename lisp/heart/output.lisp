@@ -193,6 +193,16 @@ surfaces then use what is left."
   (declare (type output output))
   (hrt-output-enabled (output-hrt-output output)))
 
+(defun output-set-power (output on)
+  "Turn OUTPUT's power off, or on again. It keeps its place in the
+layout and its windows. Returns true when the output did it."
+  (declare (type output output))
+  (hrt-output-set-power (output-hrt-output output) (and on t)))
+
+(defun output-powered-off-p (output)
+  (declare (type output output))
+  (hrt-output-powered-off (output-hrt-output output)))
+
 (defun output-scale (output)
   "The output's scale: layout coordinates times it are pixels."
   (declare (type output output))

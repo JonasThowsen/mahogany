@@ -125,6 +125,7 @@ further up. "
           (load-config-file (not (gethash 'enable-debugger args)))))
     (when *mode-line-enabled*
       (mode-line-start))
+    (start-idle)
     (unwind-protect
          (hrt:server-start server)
       (log-string :debug "Cleaning up...")

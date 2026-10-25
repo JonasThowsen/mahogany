@@ -36,6 +36,7 @@ endif
 
 lisp/heart/hrt-bindings.lisp: $(ROOT)/cffi/hrt-bindings.yml $(HRT_INCLUDES) $(BUILD_DIR)/heart/libheart.so
 	PKG_CONFIG_PATH=$(BUILD_DIR)/heart/meson-uninstalled:$$PKG_CONFIG_PATH cl-bindgen b cffi/hrt-bindings.yml
+	sed -i -f cffi/hand-adjustments.sed $@
 
 lisp/heart/wlr-bindings.lisp: $(ROOT)/cffi/wlr-bindings.yml $(BUILD_DIR)/heart/libheart.so
 	PKG_CONFIG_PATH=$(BUILD_DIR)/heart/meson-uninstalled:$$PKG_CONFIG_PATH cl-bindgen b cffi/wlr-bindings.yml

@@ -328,7 +328,8 @@ well behaved ones should."
   (layer-surfaces (:struct wl-list))
   (request-state (:struct wl-listener))
   (frame (:struct wl-listener))
-  (destroy (:struct wl-listener)))
+  (destroy (:struct wl-listener))
+  (powered-off :bool))
 
 (cffi:defcstruct hrt-output-callbacks
   (output-added :pointer #| function ptr void (struct hrt_output *) |#)
@@ -381,6 +382,22 @@ Negative values count as 0."
 #-HRT-DEBUG
 (declaim (inline hrt-output-enabled))
 (cffi:defcfun ("hrt_output_enabled" hrt-output-enabled) :bool
+  "Whether the output is in use: configured on, whether or not its power
+is off at the moment."
+  (output (:pointer (:struct hrt-output))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-output-set-power))
+(cffi:defcfun ("hrt_output_set_power" hrt-output-set-power) :bool
+  "Turn the output's power off, or on again. It keeps its place in the
+layout and its windows; this is for idling, not for configuration.
+Returns false if the output refused."
+  (output (:pointer (:struct hrt-output)))
+  (on :bool))
+
+#-HRT-DEBUG
+(declaim (inline hrt-output-powered-off))
+(cffi:defcfun ("hrt_output_powered_off" hrt-output-powered-off) :bool
   (output (:pointer (:struct hrt-output))))
 
 #-HRT-DEBUG
@@ -841,7 +858,10 @@ intial placement."
   (new-session-lock (:struct wl-listener))
   (session-lock (:pointer (:struct hrt-session-lock)))
   (session-locked :bool)
-  (session-lock-callbacks (:pointer (:struct hrt-session-lock-callbacks))))
+  (session-lock-callbacks (:pointer (:struct hrt-session-lock-callbacks)))
+  (idle-timeouts (:struct wl-list))
+  (idle-last-activity-msec :int64)
+  (idle-inhibited :bool))
 
 #-HRT-DEBUG
 (declaim (inline hrt-server-init))
@@ -1061,4 +1081,45 @@ struct must outlive the server."
 (cffi:defcfun ("hrt_session_locked" hrt-session-locked) :bool
   "Whether the session is locked, including left locked by a client that
 went away."
+  (server (:pointer (:struct hrt-server))))
+
+;; next section imported from file heart/include/hrt/hrt_idle.h
+
+(cffi:defcstruct hrt-idle-timeout)
+
+(cffi:defctype hrt-idle-timeout-func :pointer #| function ptr void (struct hrt_idle_timeout *, void *) |#)
+
+#-HRT-DEBUG
+(declaim (inline hrt-idle-timeout-add))
+(cffi:defcfun ("hrt_idle_timeout_add" hrt-idle-timeout-add) (:pointer (:struct hrt-idle-timeout))
+  "Add a timeout of TIMEOUT_MSEC. RESUME may be NULL. DATA is handed to
+both functions. Returns NULL when it could not be made."
+  (server (:pointer (:struct hrt-server)))
+  (timeout-msec :uint32)
+  (idle hrt-idle-timeout-func)
+  (resume hrt-idle-timeout-func)
+  (data (:pointer :void)))
+
+#-HRT-DEBUG
+(declaim (inline hrt-idle-timeout-destroy))
+(cffi:defcfun ("hrt_idle_timeout_destroy" hrt-idle-timeout-destroy) :void
+  (timeout (:pointer (:struct hrt-idle-timeout))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-idle-milliseconds))
+(cffi:defcfun ("hrt_idle_milliseconds" hrt-idle-milliseconds) :uint64
+  "Milliseconds since the last input, or since the start."
+  (server (:pointer (:struct hrt-server))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-idle-inhibited))
+(cffi:defcfun ("hrt_idle_inhibited" hrt-idle-inhibited) :bool
+  "Whether a visible client asks that the user not be considered idle."
+  (server (:pointer (:struct hrt-server))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-idle-activity))
+(cffi:defcfun ("hrt_idle_activity" hrt-idle-activity) :void
+  "Count as input: restart the timeouts and run the resume functions of
+those that had run out. For waking up from Lisp, say on a lid opening."
   (server (:pointer (:struct hrt-server))))

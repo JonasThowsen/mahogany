@@ -59,6 +59,8 @@
                               :depends-on ("cffi-util" "hrt-bindings"))
                              (:file "canvas"
                               :depends-on ("cffi-util" "hrt-bindings" "output"))
+                             (:file "idle"
+                              :depends-on ("hrt-bindings" "callback"))
                              (:file "subprocess"
                               :depends-on ("cffi-util" "hrt-bindings" "callback"))
                              (:file "view"
@@ -123,7 +125,9 @@
                 :depends-on ("kmap-modes" "state" "tree" "input" "command"))
                (:file "mode-line"
                 :depends-on ("state" "command" "message" "globals" "tree"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line"))))
+               (:file "idle"
+                :depends-on ("state" "command" "message" "globals"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

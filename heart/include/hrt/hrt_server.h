@@ -6,6 +6,7 @@
 #include "hrt/hrt_layer_shell.h"
 #include "wlr/backend/session.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <wayland-server-core.h>
 #include <wayland-server.h>
@@ -92,6 +93,10 @@ struct hrt_server {
     struct hrt_session_lock *session_lock;
     bool session_locked;
     const struct hrt_session_lock_callbacks *session_lock_callbacks;
+    // Idle timeouts of the compositor's own, see hrt_idle.h:
+    struct wl_list idle_timeouts;
+    int64_t idle_last_activity_msec;
+    bool idle_inhibited;
 };
 
 bool hrt_server_init(

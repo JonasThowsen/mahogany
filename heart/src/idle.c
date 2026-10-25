@@ -10,6 +10,8 @@
 #include <hrt/hrt_server.h>
 
 #include "idle_impl.h"
+#include <hrt/hrt_idle.h>
+#include <time.h>
 
 struct hrt_idle_inhibitor {
     struct hrt_server *server;
@@ -60,6 +62,7 @@ static void idle_inhibit_update(void *data) {
     }
 
     wlr_idle_notifier_v1_set_inhibited(server->idle_notifier, inhibited);
+    server->idle_inhibited = inhibited;
 }
 
 void hrt_idle_inhibit_schedule(struct hrt_server *server) {
@@ -139,7 +142,106 @@ static void handle_inhibit_manager_destroy(struct wl_listener *listener,
     server->idle_inhibit_manager = nullptr;
 }
 
+// The compositor's own timeouts
+
+struct hrt_idle_timeout {
+    struct hrt_server *server;
+    uint32_t timeout_msec;
+    hrt_idle_timeout_func idle;
+    hrt_idle_timeout_func resume;
+    void *data;
+    struct wl_event_source *timer;
+    // Whether the idle function has run and the resume one is due:
+    bool idle_now;
+    struct wl_list link; // hrt_server.idle_timeouts
+};
+
+static int64_t now_msec(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
+static int handle_idle_timeout(void *data) {
+    struct hrt_idle_timeout *timeout = data;
+    struct hrt_server *server        = timeout->server;
+    if (server->idle_inhibited) {
+        // Look again in a while; input meanwhile restarts the full wait.
+        wl_event_source_timer_update(timeout->timer, 1000);
+        return 0;
+    }
+    int64_t idle_for = now_msec() - server->idle_last_activity_msec;
+    if (idle_for < timeout->timeout_msec) {
+        // Woken early: the wait was restarted by input (or the clock is
+        // off by a tick); wait the remainder.
+        wl_event_source_timer_update(timeout->timer,
+                                     timeout->timeout_msec - idle_for);
+        return 0;
+    }
+    timeout->idle_now = true;
+    timeout->idle(timeout, timeout->data);
+    return 0;
+}
+
+struct hrt_idle_timeout *hrt_idle_timeout_add(struct hrt_server *server,
+                                              uint32_t timeout_msec,
+                                              hrt_idle_timeout_func idle,
+                                              hrt_idle_timeout_func resume,
+                                              void *data) {
+    struct hrt_idle_timeout *timeout = calloc(1, sizeof(*timeout));
+    if (!timeout) {
+        wlr_log(WLR_ERROR, "Could not allocate an idle timeout");
+        return nullptr;
+    }
+    timeout->server       = server;
+    timeout->timeout_msec = timeout_msec;
+    timeout->idle         = idle;
+    timeout->resume       = resume;
+    timeout->data         = data;
+    timeout->timer =
+        wl_event_loop_add_timer(wl_display_get_event_loop(server->wl_display),
+                                handle_idle_timeout, timeout);
+    if (!timeout->timer) {
+        free(timeout);
+        return nullptr;
+    }
+    wl_list_insert(&server->idle_timeouts, &timeout->link);
+    wl_event_source_timer_update(timeout->timer, timeout_msec);
+    return timeout;
+}
+
+void hrt_idle_timeout_destroy(struct hrt_idle_timeout *timeout) {
+    wl_event_source_remove(timeout->timer);
+    wl_list_remove(&timeout->link);
+    free(timeout);
+}
+
+uint64_t hrt_idle_milliseconds(struct hrt_server *server) {
+    return now_msec() - server->idle_last_activity_msec;
+}
+
+bool hrt_idle_inhibited(struct hrt_server *server) {
+    return server->idle_inhibited;
+}
+
+void hrt_idle_activity(struct hrt_server *server) {
+    server->idle_last_activity_msec = now_msec();
+    struct hrt_idle_timeout *timeout, *tmp;
+    // A resume function may destroy its timeout:
+    wl_list_for_each_safe(timeout, tmp, &server->idle_timeouts, link) {
+        wl_event_source_timer_update(timeout->timer, timeout->timeout_msec);
+        if (timeout->idle_now) {
+            timeout->idle_now = false;
+            if (timeout->resume) {
+                timeout->resume(timeout, timeout->data);
+            }
+        }
+    }
+}
+
 bool hrt_idle_init(struct hrt_server *server) {
+    wl_list_init(&server->idle_timeouts);
+    server->idle_last_activity_msec = now_msec();
     server->idle_notifier = wlr_idle_notifier_v1_create(server->wl_display);
     server->idle_inhibit_manager =
         wlr_idle_inhibit_v1_create(server->wl_display);
@@ -162,4 +264,5 @@ bool hrt_idle_init(struct hrt_server *server) {
 void hrt_idle_notify_activity(struct hrt_seat *seat) {
     wlr_idle_notifier_v1_notify_activity(seat->server->idle_notifier,
                                          seat->seat);
+    hrt_idle_activity(seat->server);
 }

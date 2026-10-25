@@ -27,6 +27,7 @@ files:
   - heart/include/hrt/hrt_border_box.h
   - heart/include/hrt/hrt_canvas.h
   - heart/include/hrt/hrt_session_lock.h
+  - heart/include/hrt/hrt_idle.h
 pointer-expansion:
   include:
     match: "hrt.*"

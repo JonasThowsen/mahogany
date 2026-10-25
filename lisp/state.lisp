@@ -1,7 +1,7 @@
 (in-package #:mahogany)
 
 ;; In mode-line.lisp, which loads after this file:
-(declaim (ftype function mode-line-update mode-line-reset))
+(declaim (ftype function mode-line-update mode-line-reset stop-idle))
 
 (defvar *default-group-name* "DEFAULT")
 
@@ -83,6 +83,7 @@ or HRT-OUTPUT is NIL or a null pointer."
     ;; doesn't try to switch focus to an invalid frame:
     (setf (state-%current-frame state) nil)
     (mode-line-reset)
+    (stop-idle)
     ;; This kicks off the destruction sequence, which
     ;; calls the various output and seat removal callbacks. At the end, we
     ;; are left in a state where all hrt and wlroots based objects
