@@ -495,9 +495,12 @@ the current group or a layer shell frame"
   (let ((index (%next-group-index state)))
     (%next-group-name index)))
 
-(defun mahogany-state-group-add (state &key group-name (make-current t))
+(defun mahogany-state-group-add (state &key group-name (make-current t) number)
+  "Add a group named GROUP-NAME (the next free number by default), with
+NUMBER or the lowest free number from 1, and make it current unless
+MAKE-CURRENT is NIL."
   (declare (type mahogany-state state))
-  (let ((index (%next-group-index state)))
+  (let ((index (or number (%next-group-index state))))
     (unless group-name
       (setf group-name (%next-group-name index)))
     (let ((new-group (%add-group state group-name index)))

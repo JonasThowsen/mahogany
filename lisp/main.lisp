@@ -129,6 +129,7 @@ further up. "
     (when *mode-line-enabled*
       (mode-line-start))
     (start-idle)
+    (run-autostart)
     (unwind-protect
          (hrt:server-start server)
       (log-string :debug "Cleaning up...")

@@ -143,7 +143,9 @@
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree"))
                (:file "outputs"
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree" "scratchpad"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs"))))
+               (:file "default-bindings"
+                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

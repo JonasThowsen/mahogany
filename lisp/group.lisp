@@ -80,7 +80,16 @@
     (setf (mahogany-group-active-p group) t)
     (hrt:hrt-scene-group-set-enabled hrt-group t)))
 
+(defun %fill-frame-from-hidden (group frame)
+  "Show a hidden window of GROUP in FRAME when it is an empty frame."
+  (when (and (typep frame 'tree:view-frame)
+             (null (tree:frame-surface frame)))
+    (alexandria:when-let ((view (%pop-hidden-item (mahogany-group-hidden-views group))))
+      (%swap-view-into-frame group frame view))))
+
 (defun group-move-view (source destination view)
+  "Move VIEW from the group SOURCE to DESTINATION, where it is shown in
+the current frame when that is empty, else kept hidden behind it."
   (declare (type mahogany-group destination source))
   (let ((dest-layer (mahogany-group-tiled-container destination))
         (hidden-list (mahogany-group-hidden-views destination)))
@@ -88,7 +97,8 @@
     (tree:layer-container-transfer-view dest-layer view)
     (push view (mahogany-group-views destination))
     (when (hrt:view-mapped-p view)
-      (%add-hidden hidden-list view))))
+      (%add-hidden hidden-list view)
+      (%fill-frame-from-hidden destination (mahogany-group-current-frame destination)))))
 
 (defun group-transfer-views (destination source)
   "Transfer the all views from the SOURCE group to the DESTINATION group"

@@ -29,9 +29,12 @@ started.")
   (or (find *scratchpad-group-name* (state-groups *compositor-state*)
             :key #'mahogany-group-name :test #'string=)
       (and create
+           ;; Number 0, which the numbered groups never take, so s-1..9
+           ;; and the group lists stay as they are:
            (mahogany-state-group-add *compositor-state*
                                      :group-name *scratchpad-group-name*
-                                     :make-current nil))))
+                                     :make-current nil
+                                     :number 0))))
 
 (defun %live-view-p (view)
   (%find-view-in-groups view (state-groups *compositor-state*)))
@@ -40,13 +43,6 @@ started.")
   "The windows in the scratchpad, most recently put there first."
   (let ((group (scratchpad-group nil)))
     (and group (mahogany-group-views group))))
-
-(defun %fill-frame-from-hidden (group frame)
-  "Show a hidden window of GROUP in FRAME when it is empty."
-  (when (and (typep frame 'tree:view-frame)
-             (null (tree:frame-surface frame)))
-    (alexandria:when-let ((view (%pop-hidden-item (mahogany-group-hidden-views group))))
-      (%swap-view-into-frame group frame view))))
 
 (defun send-to-scratchpad (&optional view)
   "Send VIEW, or the focused window, to the scratchpad."

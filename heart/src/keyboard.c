@@ -32,6 +32,22 @@ static size_t seat_translate_keysyms(struct hrt_seat *seat,
     return xkb_state_key_get_syms(keyboard->xkb_state, keycode, keysyms);
 }
 
+/*
+ * The keysyms of KEYCODE at the first level of its layout, with every
+ * modifier held, for keybindings written as s-S-2 rather than s-at:
+ * tried when the translated keysyms (at, shift consumed) bind nothing.
+ */
+static size_t seat_raw_keysyms(struct hrt_seat *seat, xkb_keycode_t keycode,
+                               const xkb_keysym_t **keysyms,
+                               uint32_t *modifiers) {
+    struct wlr_keyboard *keyboard = &seat->keyboard_group->keyboard;
+    *modifiers                    = wlr_keyboard_get_modifiers(keyboard);
+    xkb_layout_index_t layout =
+        xkb_state_key_get_layout(keyboard->xkb_state, keycode);
+    return xkb_keymap_key_get_syms_by_level(keyboard->keymap, keycode, layout,
+                                            0, keysyms);
+}
+
 static bool execute_hardcoded_bindings(struct hrt_server *server,
                                        const xkb_keysym_t *pressed_keysyms,
                                        uint32_t modifiers, size_t keysyms_len) {
@@ -81,6 +97,28 @@ static void seat_handle_key(struct wl_listener *listener, void *data) {
             .wl_key_state = event->state,
         };
         handled = seat->callbacks->keyboard_keypress_event(seat, &key_info);
+
+        if (!handled) {
+            const xkb_keysym_t *raw_keysyms;
+            uint32_t raw_modifiers;
+            size_t raw_keysyms_len =
+                seat_raw_keysyms(seat, keycode, &raw_keysyms, &raw_modifiers);
+            bool same = raw_keysyms_len == translated_keysyms_len &&
+                raw_modifiers == translated_modifiers;
+            for (size_t i = 0; same && i < raw_keysyms_len; ++i) {
+                same = raw_keysyms[i] == translated_keysyms[i];
+            }
+            if (!same && raw_keysyms_len > 0) {
+                struct hrt_keypress_info raw_info = {
+                    .keysyms      = raw_keysyms,
+                    .keysyms_len  = raw_keysyms_len,
+                    .modifiers    = raw_modifiers,
+                    .wl_key_state = event->state,
+                };
+                handled =
+                    seat->callbacks->keyboard_keypress_event(seat, &raw_info);
+            }
+        }
 
         if (!handled) {
             handled = execute_hardcoded_bindings(server, translated_keysyms,

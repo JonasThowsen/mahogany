@@ -341,5 +341,69 @@
       );
 
       formatter = forAllSystems (pkgs: pkgs.nixfmt);
+
+      # A NixOS module: programs.mahogany.enable = true gives a Mahogany
+      # session in the display manager, with the programs the default
+      # setup uses (terminal, screenshots, clipboard, lock screen, X
+      # apps through xwayland-satellite, the icon font of the mode-line).
+      nixosModules.default =
+        { config, lib, pkgs, ... }:
+        let
+          cfg = config.programs.mahogany;
+          session = pkgs.runCommand "mahogany-session" { passthru.providedSessions = [ "mahogany" ]; } ''
+            mkdir -p $out/share/wayland-sessions
+            cat > $out/share/wayland-sessions/mahogany.desktop <<DESKTOP
+            [Desktop Entry]
+            Name=Mahogany
+            Comment=A tiling Wayland compositor in Common Lisp
+            Exec=${lib.getExe cfg.package}
+            Type=Application
+            DesktopNames=Mahogany
+            DESKTOP
+          '';
+        in
+        {
+          options.programs.mahogany = {
+            enable = lib.mkEnableOption "Mahogany, a tiling Wayland compositor in Common Lisp";
+            package = lib.mkOption {
+              type = lib.types.package;
+              default = self.packages.${pkgs.stdenv.hostPlatform.system}.mahogany;
+              defaultText = lib.literalExpression "mahogany.packages.\${system}.mahogany";
+              description = "The Mahogany package the session runs.";
+            };
+            extraPackages = lib.mkOption {
+              type = lib.types.listOf lib.types.package;
+              default = with pkgs; [
+                foot
+                grim
+                satty
+                wl-clipboard
+                swaylock
+                xwayland-satellite
+                brightnessctl
+              ];
+              defaultText = lib.literalExpression "[ foot grim satty wl-clipboard swaylock xwayland-satellite brightnessctl ]";
+              description = "Programs the default setup uses: the terminal, screenshots and their editing, the clipboard, the lock screen, X applications, brightness keys.";
+            };
+          };
+          config = lib.mkIf cfg.enable {
+            environment.systemPackages = [ cfg.package ] ++ cfg.extraPackages;
+            services.displayManager.sessionPackages = [ session ];
+            # The mode-line's icons:
+            fonts.packages = [ pkgs.nerd-fonts.symbols-only ];
+            # swaylock authenticates through PAM:
+            security.pam.services.swaylock = { };
+            security.polkit.enable = lib.mkDefault true;
+            hardware.graphics.enable = lib.mkDefault true;
+            xdg.portal = {
+              enable = lib.mkDefault true;
+              extraPortals = [
+                pkgs.xdg-desktop-portal-wlr
+                pkgs.xdg-desktop-portal-gtk
+              ];
+              config.Mahogany.default = [ "wlr" "gtk" ];
+            };
+          };
+        };
     };
 }

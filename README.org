@@ -102,6 +102,27 @@ to customize which applications are used.
   set it in your config file.
 + [[https://github.com/davatorium/rofi][Rofi]], for reading input from the user.
 
+** NixOS
+
+The flake has a module that gives a display manager a Mahogany session
+with the programs the default setup uses (foot, grim and satty,
+wl-clipboard, swaylock, xwayland-satellite, the Nerd Font icons):
+
+#+BEGIN_SRC nix
+  {
+    inputs.mahogany.url = "github:JonasThowsen/mahogany";
+    # among the system's modules:
+    #   inputs.mahogany.nixosModules.default
+    #   { programs.mahogany.enable = true; }
+  }
+#+END_SRC
+
+=programs.mahogany.package= and =programs.mahogany.extraPackages=
+change what it installs. Without a display manager, =nix run
+github:JonasThowsen/mahogany= from a TTY starts it. The default keys
+are listed in [[./doc/manual/default-keys.org][the manual]], and
+[[./examples/init.lisp][examples/init.lisp]] shows how to change them.
+
 ** Getting Started
 
 Mahogany is currently in a pre-alpha state. Help is needed (see [[https://github.com/stumpwm/mahogany/milestones][list of

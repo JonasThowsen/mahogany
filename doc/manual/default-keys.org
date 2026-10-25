@@ -1,0 +1,71 @@
+* The Default Keys
+
+Mahogany comes with two sets of keys: SUPER chords, the way most
+Wayland desktops have them, and the =C-t= prefix map of StumpWM
+(=*root-map*=; =C-t ?= lists it). =s-k= (=describe-bindings=) shows
+everything bound right now. Both live in =lisp/default-bindings.lisp=
+and =lisp/key-bindings.lisp=; init.lisp changes them with
+=define-key= and =undefine-key= on =*top-map*=, see
+[[file:kmap-keybindings.org][Customizing Keybindings]].
+
+| Key              | Command                       | What it does                                 |
+|------------------+-------------------------------+----------------------------------------------|
+| =s-RET=          | =open-terminal=               | a terminal (=*default-terminals*=)           |
+| =s-SPC=          | =launcher-apps=               | start an application                         |
+| =s-M-SPC=        | =launcher-menu=               | the launcher's modes                         |
+| =s-x=            | =launcher-commands=           | run a command by name                        |
+| =s-;=            | =colon=                       | the command prompt                           |
+| =s-k=            | =describe-bindings=           | the keys bound now                           |
+| =s-w=            | =close-current-view=          | close the window                             |
+| =s-Tab= / =s-S-Tab= | =next-view= / =previous-view= | the next window hidden behind this frame  |
+| =s-Down= / =s-Up= | the same                     |                                              |
+| =s-o= / =s-S-o=  | =next-frame= / =prev-frame=   | focus the next frame                         |
+| =s-Right= / =s-Left= | the same                  |                                              |
+| =s-s= / =s-S-s=  | =split-frame-v= / =split-frame-h= | split the frame                          |
+| =s-f=            | =maximize-current-frame=      | one frame                                    |
+| =s-r=            | =remove-current-frame=        | remove the frame                             |
+| =s-S-w=          | =launcher-windows=            | find a window                                |
+| =s-`=            | =scratchpad-toggle=           | the scratchpad window in and out             |
+| =s-S-`=          | =scratchpad-send=             | this window to the scratchpad                |
+| =s-1= … =s-9=    | =select-group-N=              | group N, made when missing                   |
+| =s-S-1= … =s-S-9= | =move-window-to-group-N=     | the window to group N                        |
+| =s-g= / =s-S-g=  | =launcher-groups= / =move-window-to-group-menu= | groups by name             |
+| =s-]= / =s-[=    | =gnext= / =gprev=             | the next or previous group                   |
+| =s-.= / =s-,=    | =focus-next-output= / =focus-previous-output= | the next output              |
+| =s-S-.= / =s-S-,= | =move-window-to-next-output= / =-previous-output= | the window along     |
+| =s-b=            | =mode-line=                   | the bar on and off                           |
+| =s-C-SPC=        | =theme-menu=                  | choose a theme                               |
+| =s-C-S-SPC=      | =next-theme=                  | the next theme                               |
+| =s-ESC=          | =lock-session=                | lock                                         |
+| =s-S-e=          | =shutdown-confirm=            | quit Mahogany                                |
+| =Print= / =S-Print= / =C-Print= | =screenshot-area= / =-window= / =-screen= | screenshots   |
+| =XF86Audio*=, =XF86MonBrightness*= | volume and brightness | with an on-screen display     |
+
+** Keys and keyboard layouts
+
+A key is matched twice: first as the layout types it (=Shift-2= is
+=at= on a US keyboard, =quotedbl= on a Norwegian one), then as the
+key itself with the modifiers held (=S-2=). So =s-S-2= works on every
+layout, and =s-at= works too where =at= is on the 2. Keys such as
+=s-[= and =s-;= are where the US layout has them; on a layout
+without them, bind something else:
+
+#+BEGIN_SRC lisp
+  (define-key *top-map* (kbd "s-aring") #'gnext)   ; å on a Norwegian keyboard
+#+END_SRC
+
+** Autostart
+
+=*autostart*= lists programs started with the session, each a list
+of arguments or a shell command string:
+
+#+BEGIN_SRC lisp
+  (setf *autostart* '(("xwayland-satellite") "mako"))
+#+END_SRC
+
+A program that is not installed is logged and skipped.
+
+** An example init.lisp
+
+=examples/init.lisp= in the repository shows the usual changes: the
+theme, keys, programs, idle times, a launcher mode of your own.
