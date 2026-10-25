@@ -22,8 +22,12 @@ MANUAL_ORG_FILES = $(shell find doc/manual -path "doc/devel" -prune -type f -o -
 $(BUILD_DIR)/mahogany: $(BUILD_DIR)/heart/libheart.so build-mahogany.lisp build/internal/projectDependencies FORCE
 	$(call $(LISP), build-mahogany.lisp)
 
+# When the Lisp dependencies are provided by the environment (the Nix dev
+# shell sets MAHOGANY_NIX), the Quicklisp install step is skipped.
 build/internal/projectDependencies: mahogany.asd
+ifndef MAHOGANY_NIX
 	yes | $(call $(LISP), scripts/install-dependencies.lisp) mahogany
+endif
 	mkdir -p $(@D)
 	touch $@
 
@@ -60,7 +64,9 @@ clean:
 
 
 build/internal/testDependencies: mahogany-test.asd
+ifndef MAHOGANY_NIX
 	yes | $(call $(LISP), scripts/install-dependencies.lisp) mahogany-test
+endif
 	mkdir -p $(@D)
 	touch $@
 

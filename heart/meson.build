@@ -27,6 +27,7 @@ wlroots_version = ['>=0.20.0', '<0.21.0']
 
 cairo          = dependency('cairo', required: true)
 libinput       = dependency('libinput', required: true)
+libdrm         = dependency('libdrm', required: true)  # drm_fourcc.h
 pangocairo     = dependency('pangocairo', required: true)
 pixman         = dependency(
   'pixman-1',
@@ -107,6 +108,7 @@ subdir('src')
 
 hrt_deps = [
   cairo,
+  libdrm,
   libinput,
   pangocairo,
   pixman,

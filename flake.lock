@@ -1,0 +1,48 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1792898606,
+        "narHash": "sha256-Mg3rRjsbMqhSMxop5PYMXos8SwAjejrxSgVThTvP9eg=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "1f607aa79b6356ed45d3cd3c8079c196e79efa2c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "slynk-cli": "slynk-cli"
+      }
+    },
+    "slynk-cli": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792950891,
+        "narHash": "sha256-StqcijMddhN8qX3tj6wACXfOSip37lQzvHO+zmoAWO8=",
+        "owner": "JonasThowsen",
+        "repo": "slynk-cli",
+        "rev": "1b97329dcd8c45b9e5de7932c1e9ebc82d30add7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "JonasThowsen",
+        "repo": "slynk-cli",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

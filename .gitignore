@@ -24,3 +24,8 @@ compile_commands.json
 # Package management
 ocicl/
 /.qlot/
+
+# Nix / direnv / slynk-cli
+.direnv/
+.slynk-cli/
+result
