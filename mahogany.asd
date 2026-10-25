@@ -37,8 +37,13 @@
                 :components ((:file "view-interface")))
                (:module theme
                 :components ((:file "theme")))
+               (:module draw
+                :serial t
+                :components ((:file "package")
+                             (:file "cairo")
+                             (:file "draw")))
                (:module heart
-                :depends-on ("interfaces" "theme" "util" "log")
+                :depends-on ("interfaces" "theme" "draw" "util" "log")
                 :components ((:file "package")
                              (:file "wl-bindings" :depends-on ("package"))
                              (:file "wlr-bindings" :depends-on ("wl-bindings"))
@@ -52,6 +57,8 @@
                               :depends-on ("cffi-util" "hrt-bindings" "output"))
                              (:file "output"
                               :depends-on ("cffi-util" "hrt-bindings"))
+                             (:file "canvas"
+                              :depends-on ("cffi-util" "hrt-bindings" "output"))
                              (:file "subprocess"
                               :depends-on ("cffi-util" "hrt-bindings" "callback"))
                              (:file "view"

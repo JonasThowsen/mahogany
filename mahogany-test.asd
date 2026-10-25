@@ -12,6 +12,7 @@ This file is a part of mahogany.
   :components ((:file "util")
 	           (:file "ring-list")
                (:file "theme/theme-tests")
+               (:file "draw-tests")
 	           (:file "tree-tests" :depends-on ("util"))
 	           (:file "keyboard-tests")
                (:file "output-config-tests" :depends-on ("util"))

@@ -76,6 +76,11 @@ void hrt_output_set_reserved(struct hrt_output *output, int top, int right,
 
 bool hrt_output_enabled(struct hrt_output *output);
 
+/**
+ * The output's scale: layout coordinates times it are pixels.
+ **/
+double hrt_output_scale(struct hrt_output *output);
+
 char *hrt_output_name(struct hrt_output *output);
 
 char *hrt_output_make(struct hrt_output *output);

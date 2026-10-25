@@ -111,9 +111,25 @@
            #:output-scene
            #:output-scene-layer
            #:output-resolution
+           #:output-scale
            #:output-position
            #:output-usable-area
            #:output-set-reserved
+           ;; canvases drawn by Lisp
+           #:canvas
+           #:make-canvas
+           #:canvas-p
+           #:canvas-destroy
+           #:canvas-destroyed-p
+           #:canvas-output
+           #:canvas-width
+           #:canvas-height
+           #:canvas-set-position
+           #:canvas-set-enabled
+           #:canvas-begin
+           #:canvas-commit
+           #:with-canvas-frame
+           #:output-canvases
            #:output-full-name
            #:output-enabled
            #:output-name

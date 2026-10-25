@@ -396,6 +396,12 @@ Negative values count as 0."
 (cffi:defcfun ("hrt_output_serial" hrt-output-serial) :string
   (output (:pointer (:struct hrt-output))))
 
+#-HRT-DEBUG
+(declaim (inline hrt-output-scale))
+(cffi:defcfun ("hrt_output_scale" hrt-output-scale) :double
+  "The output's scale: layout coordinates times it are pixels."
+  (output (:pointer (:struct hrt-output))))
+
 ;; next section imported from file heart/include/hrt/hrt_scene.h
 
 (cffi:defcstruct hrt-scene-root-listeners

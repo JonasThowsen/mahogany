@@ -26,6 +26,10 @@ bool hrt_output_enabled(struct hrt_output *output) {
     return output->wlr_output->enabled;
 }
 
+double hrt_output_scale(struct hrt_output *output) {
+    return output->wlr_output->scale;
+}
+
 char *hrt_output_name(struct hrt_output *output) {
     return output->wlr_output->name;
 }

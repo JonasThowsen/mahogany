@@ -83,6 +83,7 @@
                 rofi
                 wlr-randr
                 wayland-utils
+                grim # screenshots, also of a headless compositor
               ])
               ++ heartBuildInputs pkgs;
 
@@ -96,9 +97,10 @@
             hardeningDisable = [ "fortify" ];
 
             shellHook = ''
-              # libheart.so is built into build/heart; libwlroots and libxkbcommon
-              # are loaded by name through CFFI.
-              export LD_LIBRARY_PATH="$PWD/build/heart:${pkgs.wlroots}/lib:${pkgs.libxkbcommon}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+              # libheart.so is built into build/heart; libwlroots, libxkbcommon and,
+              # for drawing without heart (the tests), cairo, pango and gobject are
+              # loaded by name through CFFI.
+              export LD_LIBRARY_PATH="$PWD/build/heart:${pkgs.wlroots}/lib:${pkgs.libxkbcommon}/lib:${pkgs.cairo}/lib:${pkgs.pango.out}/lib:${pkgs.glib.out}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
             '';
           };
         }

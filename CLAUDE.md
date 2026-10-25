@@ -97,6 +97,9 @@ mahogany, remote»):
   `cffi/*.yml` (`make lisp/heart/hrt-bindings.lisp`) when headers change.
 - `lisp/heart/` — the Lisp side of heart: server, event-loop work queue
   and timers, outputs, views, layer shell, subprocesses, messages.
+- `lisp/draw/` — cairo/pango bindings and drawing helpers (`draw:`); with
+  `hrt:make-canvas` and `hrt:with-canvas-frame` (`lisp/heart/canvas.lisp`)
+  Lisp draws bars, menus and OSDs directly into an output's scene.
 - `lisp/tree/` — the frame tree; `lisp/group.lisp`, `lisp/state.lisp` —
   groups and compositor state; `lisp/command.lisp`, `lisp/key-bindings.lisp`,
   `lisp/kmap-modes.lisp` — commands and keymaps; `lisp/main.lisp` — startup

@@ -136,8 +136,12 @@
           (hrt-output-configure hrt-output hrt-config))
         (hrt-output-configure hrt-output (cffi:null-pointer)))))
 
+(declaim (ftype function %destroy-output-canvases))
 (defun destroy-output (mh-output)
-  (declare (ignore mh-output)))
+  "Let go of what Lisp holds for MH-OUTPUT: called when the output is
+removed, before its hrt_output is freed."
+  (declare (type output mh-output))
+  (%destroy-output-canvases mh-output))
 
 #-hrt-debug
 (declaim (inline output-resolution output-position))
@@ -188,6 +192,11 @@ surfaces then use what is left."
 (defun output-enabled (output)
   (declare (type output output))
   (hrt-output-enabled (output-hrt-output output)))
+
+(defun output-scale (output)
+  "The output's scale: layout coordinates times it are pixels."
+  (declare (type output output))
+  (hrt-output-scale (output-hrt-output output)))
 
 (declaim (inline output-scene))
 (defun output-scene (output)
