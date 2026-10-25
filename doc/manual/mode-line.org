@@ -15,32 +15,59 @@ it from the colon prompt (=C-t ;=), or bind it:
 ** What it shows
 
 The configuration property =mh::*mode-line-segments*= lists the
-segments from left to right:
+segments from left to right; each is the name of a module:
 
-- =:groups= :: every group, the current one marked.
+- =:groups= :: every group, the current one marked. A click on a group
+  goes to it; the wheel over the bar goes through the groups.
 - =:title= :: the focused window's title, shortened to the room left.
-- =:clock= :: the time, as HH:MM.
-- =:date= :: the weekday, day and month.
+- =:network= :: the SSID when on wifi (through =iwctl= or =iw=), the
+  interface when wired, "offline" otherwise.
+- =:volume= :: the default sink's volume, through =wpctl=; a click mutes,
+  the wheel changes it. Hidden without =wpctl=.
+- =:brightness= :: the backlight, from =/sys/class/backlight=; the wheel
+  changes it through =brightnessctl=. Hidden without a backlight.
+- =:battery= :: the charge, with the icon following the level and red
+  under 15%. Hidden without a battery.
+- =:date=, =:clock= :: weekday, day and month; HH:MM.
 - =:fill= :: the rest of the segments go to the right end.
 - a function :: called with the output, returning a string to show,
   or =nil= for nothing.
 
-The default is =(:groups :title :fill :clock)=. A function makes any
-information a segment; it runs at every redraw, so keep it quick, and
-start anything slow (a shell command) elsewhere and show its last
-result:
+The default is =(:groups :title :fill :network :volume :brightness
+:battery :date :clock)=. The icons are Nerd Font glyphs; they need a
+Nerd Font installed (Symbols Nerd Font is enough), and
+=(config-system:set-config mh::*mode-line-icons* nil)= turns them off.
+=mh::*icons*= maps their names to glyphs, for other glyphs or plain
+characters.
+
+*** Modules of your own
+
+A module is defined with =define-mode-line-module=: its text, evaluated
+at every redraw with =output= bound, and optionally an icon, a color,
+what a click and the wheel do, and a =:refresh= function run every
+=:interval= seconds for anything that should be read asynchronously
+(=mh::run-async= runs a program and calls back with its output):
 
 #+BEGIN_SRC lisp
-  (defun battery-segment (output)
-    (declare (ignore output))
-    (with-open-file (s "/sys/class/power_supply/BAT0/capacity"
-                       :if-does-not-exist nil)
-      (when s
-        (format nil "~A%" (read-line s)))))
+  (defvar *weather* nil)
+
+  (mh::define-mode-line-module :weather
+      (:icon "☀" :interval 600
+       :refresh (lambda ()
+                  (mh::run-async '("curl" "-s" "wttr.in/Oslo?format=%t")
+                                 (lambda (output code)
+                                   (declare (ignore code))
+                                   (setf *weather* (and output (string-trim '(#\Newline) output)))
+                                   (mh::mode-line-update))))
+       :on-click (lambda () (uiop:launch-program "xdg-open https://wttr.in/Oslo")))
+    *weather*)
 
   (config-system:set-config mh::*mode-line-segments*
-                            '(:groups :title :fill battery-segment :date :clock))
+                            '(:groups :title :fill :weather :volume :battery :clock))
 #+END_SRC
+
+The module takes no room while its text is =nil=. Redefining a module
+replaces it, live.
 
 ** Appearance
 

@@ -123,15 +123,19 @@
                 :depends-on ("state" "keyboard" "heart" "command" "message"))
                (:file "key-bindings"
                 :depends-on ("kmap-modes" "state" "tree" "input" "command"))
+               (:file "system-status"
+                :depends-on ("state" "globals" "heart"))
                (:file "mode-line"
-                :depends-on ("state" "command" "message" "globals" "tree"))
+                :depends-on ("state" "command" "message" "globals" "tree" "system-status"))
+               (:file "osd"
+                :depends-on ("mode-line" "menu" "key-bindings" "command"))
                (:file "idle"
                 :depends-on ("state" "command" "message" "globals"))
                (:file "menu"
                 :depends-on ("state" "command" "message" "globals" "input" "tree"))
                (:file "launcher"
                 :depends-on ("menu" "key-bindings" "command" "system"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher"))))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

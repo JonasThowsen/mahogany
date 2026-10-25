@@ -1,5 +1,8 @@
 (in-package #:mahogany)
 
+;; In osd.lisp, which loads after this file:
+(declaim (ftype function %show-volume))
+
 ;;; The mode-line: a bar at the top (or bottom) of each output, drawn by
 ;;; Lisp on a canvas, as StumpWM's. It shows segments: the groups with
 ;;; the current one marked, the focused window's title, the clock, and
@@ -33,13 +36,53 @@ segments.")
   "Colors and font of the mode-line. The border color marks the current
 group.")
 
-(config:defconfig *mode-line-segments* '(:groups :title :fill :clock)
+(config:defconfig *mode-line-segments*
+    '(:groups :title :fill :network :volume :brightness :battery :date :clock)
   list
-  "What the mode-line shows, left to right. A segment is :groups (every
-group, the current one marked), :title (the focused window's title,
-shortened to the room left), :clock (HH:MM), :date (weekday, day and
-month), :fill (the rest goes to the right end), or a function of the
-output returning a string, or NIL for nothing.")
+  "What the mode-line shows, left to right: the names of modules
+(define-mode-line-module; built in: :groups, :title, :clock, :date,
+:network, :volume, :brightness, :battery), :fill (the rest goes to the
+right end), a function of the output returning a string, or NIL for
+nothing. Modules with nothing to show, such as :battery on a desktop,
+take no room.")
+
+(config:defconfig *mode-line-icons* t
+  boolean
+  "Whether modules show their icons (Nerd Font glyphs, which need a Nerd
+Font such as Symbols Nerd Font installed) before their text.")
+
+(config:defconfig *icons*
+    (list :battery-charging (string (code-char #xF0084))
+          :battery-full (string (code-char #xF0079))
+          :battery-levels (list (string (code-char #xF008E))  ; empty
+                                (string (code-char #xF007A))  ; 10
+                                (string (code-char #xF007B))
+                                (string (code-char #xF007C))
+                                (string (code-char #xF007D))
+                                (string (code-char #xF007E))  ; 50
+                                (string (code-char #xF007F))
+                                (string (code-char #xF0080))
+                                (string (code-char #xF0081))
+                                (string (code-char #xF0082))  ; 90
+                                (string (code-char #xF0079)))
+          :wifi (string (code-char #xF0928))
+          :wired (string (code-char #xF0200))
+          :offline (string (code-char #xF092D))
+          :volume (string (code-char #xF057E))
+          :volume-muted (string (code-char #xF0581))
+          :microphone (string (code-char #xF036C))
+          :brightness (string (code-char #xF00E0))
+          :clock (string (code-char #xF0954))
+          :calendar (string (code-char #xF00ED)))
+  list
+  "The icons, Nerd Font glyphs by default, by name. Replace an entry to
+use another glyph or a plain character.")
+
+(defun icon (name)
+  "The icon NAME as a string, or NIL when icons are off or NAME is unknown."
+  (when *mode-line-icons*
+    (let ((icon (getf *icons* name)))
+      (if (stringp icon) icon nil))))
 
 (config:defconfig *mode-line-timeout* 1000
   fixnum
@@ -49,8 +92,8 @@ window titles. Group and focus changes redraw it at once.")
 (defstruct (mode-line (:constructor %make-mode-line (output canvas)))
   (output nil :type hrt:output :read-only t)
   (canvas nil :type hrt:canvas :read-only t)
-  ;; What a click does where: a list of (X0 X1 FUNCTION), from the last
-  ;; draw.
+  ;; What a click or the wheel does where: a list of
+  ;; (X0 X1 ON-CLICK ON-SCROLL), from the last draw.
   (hits '() :type list))
 
 (defglobal *mode-lines* (make-hash-table :test 'equal)
@@ -58,6 +101,88 @@ window titles. Group and focus changes redraw it at once.")
 
 (defglobal *mode-line-timer* nil
   "The timer that redraws the mode-lines, while they are shown.")
+
+;;; Modules
+
+(defstruct (mode-line-module (:constructor %make-mode-line-module))
+  (name nil :type keyword)
+  ;; (output) -> the text to show, or NIL to show nothing:
+  (text nil :type function)
+  ;; A string, or the name of an icon in *icons*:
+  (icon nil)
+  ;; A color for this module's text, or NIL for the theme's:
+  (color nil)
+  ;; () and (delta): what a click and the wheel over the module do:
+  (on-click nil :type (or null function))
+  (on-scroll nil :type (or null function))
+  ;; Seconds between calls of REFRESH, a function starting whatever
+  ;; (asynchronous) reading the text needs:
+  (interval nil)
+  (refresh nil :type (or null function))
+  (last-refresh 0))
+
+(defglobal *mode-line-modules* (make-hash-table)
+  "The mode-line's modules, by name.")
+
+(defun register-mode-line-module (name &key text icon color on-click on-scroll interval refresh)
+  (check-type name keyword)
+  (setf (gethash name *mode-line-modules*)
+        (%make-mode-line-module :name name :text text :icon icon :color color
+                                :on-click on-click :on-scroll on-scroll
+                                :interval interval :refresh refresh))
+  name)
+
+(defmacro define-mode-line-module (name (&key icon color on-click on-scroll interval refresh)
+                                   &body text-body)
+  "Define a module the mode-line can show, named by the keyword NAME.
+TEXT-BODY is evaluated at every redraw, with OUTPUT bound to the output,
+and gives the text to show, or NIL for nothing. ICON is a string or the
+name of an icon in *icons*, shown before the text. COLOR, a cl-colors2
+rgb, colors the text. ON-CLICK is a function of no arguments; ON-SCROLL
+a function of the wheel's direction, 1 or -1. REFRESH is a function
+called every INTERVAL seconds to start reading something asynchronously
+(see run-async), for text that is not cheap to get.
+
+  (define-mode-line-module :uptime (:icon \"⏱\" :interval 60)
+    (with-open-file (in \"/proc/uptime\")
+      (format nil \"~Dh\" (floor (read in) 3600))))
+
+Then add :uptime to *mode-line-segments*."
+  `(register-mode-line-module ,name
+                              :text (lambda (output) (declare (ignorable output)) ,@text-body)
+                              :icon ,icon :color ,color
+                              :on-click ,on-click :on-scroll ,on-scroll
+                              :interval ,interval :refresh ,refresh))
+
+(defun %module-item (module output)
+  "The item of MODULE for OUTPUT, or NIL when it shows nothing."
+  (let ((text (handler-case (funcall (mode-line-module-text module) output)
+                (error (c)
+                  (log-string :error "Mode-line module ~S: ~A" (mode-line-module-name module) c)
+                  nil))))
+    (when (and text (plusp (length text)))
+      (let* ((icon (mode-line-module-icon module))
+             (icon (cond ((stringp icon) (and *mode-line-icons* icon))
+                         ((keywordp icon) (icon icon))
+                         (t nil))))
+        (list :text (if icon (format nil "~A ~A" icon text) text)
+              :color (mode-line-module-color module)
+              :on-click (mode-line-module-on-click module)
+              :on-scroll (mode-line-module-on-scroll module))))))
+
+(defun %refresh-modules ()
+  "Start the asynchronous refreshes that are due."
+  (let ((now (get-universal-time)))
+    (dolist (segment *mode-line-segments*)
+      (alexandria:when-let ((module (and (keywordp segment)
+                                         (gethash segment *mode-line-modules*))))
+        (when (and (mode-line-module-refresh module)
+                   (>= (- now (mode-line-module-last-refresh module))
+                       (or (mode-line-module-interval module) 10)))
+          (setf (mode-line-module-last-refresh module) now)
+          (handler-case (funcall (mode-line-module-refresh module))
+            (error (c)
+              (log-string :error "Mode-line module ~S refresh: ~A" segment c))))))))
 
 ;;; Segments
 
@@ -97,9 +222,11 @@ window titles. Group and focus changes redraw it at once.")
 marked flexible) and :fill."
   (let ((items '()))
     (dolist (segment *mode-line-segments* (nreverse items))
-      (flet ((add (text &rest options)
+      (flet ((add (text &rest options &key icon &allow-other-keys)
                (when (and text (plusp (length text)))
-                 (push (list* :text text options) items))))
+                 (push (list* :text (if icon (format nil "~A ~A" icon text) text)
+                              (alexandria:remove-from-plist options :icon))
+                       items))))
         (case segment
           (:groups (loop for (name current group) in (%mode-line-groups)
                          do (add name :marked current
@@ -108,14 +235,20 @@ marked flexible) and :fill."
                                                (setf (state-current-group *compositor-state*)
                                                      group))))))
           (:title (add (mode-line-title) :flexible t))
-          (:clock (add (mode-line-clock)))
-          (:date (add (mode-line-date)))
+          (:clock (add (mode-line-clock) :icon (icon :clock)))
+          (:date (add (mode-line-date) :icon (icon :calendar)))
           (:fill (push :fill items))
           ((nil))
-          (t (add (handler-case (funcall segment output)
-                    (error (c)
-                      (log-string :error "Mode-line segment ~S: ~A" segment c)
-                      nil)))))))))
+          (t (let ((module (and (keywordp segment) (gethash segment *mode-line-modules*))))
+               (cond (module
+                      (alexandria:when-let ((item (%module-item module output)))
+                        (push item items)))
+                     ((keywordp segment)
+                      (log-string :warn "No mode-line module ~S" segment))
+                     (t (add (handler-case (funcall segment output)
+                               (error (c)
+                                 (log-string :error "Mode-line segment ~S: ~A" segment c)
+                                 nil))))))))))))
 
 ;;; Drawing
 
@@ -141,7 +274,7 @@ places as a list of (X0 X1 FUNCTION)."
                        sum (+ (text-width item) pad)))
              (draw-item (item x available)
                "Draw ITEM at X in at most AVAILABLE pixels; return its width."
-               (destructuring-bind (&key text marked flexible on-click) item
+               (destructuring-bind (&key text marked flexible on-click on-scroll color) item
                  (let* ((room (if flexible (max 0 (- available pad)) nil))
                         (chip (if marked chip-pad 0)))
                    (draw:with-layout (layout cr :text text :font font
@@ -154,9 +287,9 @@ places as a list of (X0 X1 FUNCTION)."
                             cr x (- y chip) (+ w (* 2 chip)) (+ h (* 2 chip)) 4
                             (mh/theme:theme-border-color theme)))
                          (draw:show-layout cr layout (+ x chip) y
-                                           (mh/theme:theme-font-color theme))
-                         (when on-click
-                           (push (list x (+ x w (* 2 chip)) on-click) hits))
+                                           (or color (mh/theme:theme-font-color theme)))
+                         (when (or on-click on-scroll)
+                           (push (list x (+ x w (* 2 chip)) on-click on-scroll) hits))
                          (+ w (* 2 chip)))))))))
       ;; From the right end first, so the left side knows its room:
       (let ((x (- width pad)))
@@ -192,18 +325,26 @@ places as a list of (X0 X1 FUNCTION)."
   "A click on MODE-LINE: run what is under X."
   (declare (ignore y))
   (when (and pressed (= button hrt:+button-left+))
-    (loop for (x0 x1 function) in (mode-line-hits mode-line)
-          when (<= x0 x x1)
-            do (funcall function)
+    (loop for (x0 x1 on-click on-scroll) in (mode-line-hits mode-line)
+          do (progn on-scroll)
+          when (and on-click (<= x0 x x1))
+            do (funcall on-click)
                (mode-line-update)
                (return))))
 
-(defun %mode-line-scroll (vertical delta)
-  "The wheel over a mode-line goes through the groups."
+(defun %mode-line-scroll (mode-line x vertical delta)
+  "The wheel over MODE-LINE at X: the module there takes it (the volume,
+say), otherwise it goes through the groups."
   (when vertical
-    (if (plusp delta)
-        (state-next-hidden-group *compositor-state*)
-        (state-prev-hidden-group *compositor-state*))))
+    (let ((direction (if (plusp delta) 1 -1)))
+      (loop for (x0 x1 on-click on-scroll) in (mode-line-hits mode-line)
+            do (progn on-click)
+            when (and on-scroll (<= x0 x x1))
+              do (funcall on-scroll direction)
+                 (return-from %mode-line-scroll))
+      (if (plusp direction)
+          (state-next-hidden-group *compositor-state*)
+          (state-prev-hidden-group *compositor-state*)))))
 
 ;;; Mode-lines of the outputs
 
@@ -224,8 +365,8 @@ places as a list of (X0 X1 FUNCTION)."
                   (%mode-line-click mode-line x y button pressed))
                 (hrt:canvas-on-axis canvas)
                 (lambda (canvas x y vertical delta)
-                  (declare (ignore canvas x y))
-                  (%mode-line-scroll vertical delta)))
+                  (declare (ignore canvas y))
+                  (%mode-line-scroll mode-line x vertical delta)))
           (%mode-line-reserve output *mode-line-height*)
           (setf (gethash name *mode-lines*) mode-line)))))
 
@@ -240,6 +381,7 @@ places as a list of (X0 X1 FUNCTION)."
   "Redraw the mode-lines of the outputs in use, making those that are
 missing and dropping those of outputs that have gone."
   (when (and *mode-line-enabled* (state-server *compositor-state*))
+    (%refresh-modules)
     (let ((outputs (map 'list #'tree:output-container-output
                         (state-cur-outputs *compositor-state*))))
       (maphash (lambda (name mode-line)
@@ -304,3 +446,64 @@ missing and dropping those of outputs that have gone."
     (if *mode-line-enabled*
         (mode-line-stop)
         (mode-line-start))))
+
+;;; The built-in modules
+
+(define-mode-line-module :battery (:icon :battery-full)
+  (alexandria:when-let ((status (battery-status)))
+    (format nil "~D%" (getf status :percent))))
+
+;; The battery's icon and color follow its level:
+(setf (mode-line-module-text (gethash :battery *mode-line-modules*))
+      (lambda (output)
+        (declare (ignore output))
+        (alexandria:when-let ((status (battery-status)))
+          (let* ((percent (getf status :percent))
+                 (state (getf status :state))
+                 (module (gethash :battery *mode-line-modules*)))
+            (setf (mode-line-module-icon module)
+                  (if (member state '(:charging :full))
+                      :battery-charging
+                      (nth (min 10 (floor percent 10)) (getf *icons* :battery-levels)))
+                  (mode-line-module-color module)
+                  (when (and (eq state :discharging) (<= percent 15))
+                    (colors:rgb 0.95 0.3 0.3)))
+            (format nil "~D%" percent)))))
+
+(define-mode-line-module :brightness (:icon :brightness
+                                      :on-scroll (lambda (direction)
+                                                   (brightness-change (* direction *brightness-step*)
+                                                                      (lambda (percent)
+                                                                        (declare (ignore percent))
+                                                                        (mode-line-update)))))
+  (alexandria:when-let ((percent (brightness-percent)))
+    (format nil "~D%" percent)))
+
+(define-mode-line-module :volume (:icon :volume
+                                  :interval 5
+                                  :refresh (lambda () (volume-refresh (lambda (status)
+                                                                        (declare (ignore status))
+                                                                        (mode-line-update))))
+                                  :on-click (lambda () (volume-toggle-mute #'%show-volume))
+                                  :on-scroll (lambda (direction)
+                                               (volume-change (* direction *volume-step*) #'%show-volume)))
+  (alexandria:when-let ((status *volume-status*))
+    (let ((module (gethash :volume *mode-line-modules*)))
+      (setf (mode-line-module-icon module)
+            (if (getf status :muted) :volume-muted :volume)))
+    (if (getf status :muted)
+        "muted"
+        (format nil "~D%" (getf status :percent)))))
+
+(define-mode-line-module :network (:icon :offline
+                                   :interval 10
+                                   :refresh (lambda () (network-refresh (lambda (status)
+                                                                          (declare (ignore status))
+                                                                          (mode-line-update)))))
+  (let ((status *network-status*)
+        (module (gethash :network *mode-line-modules*)))
+    (setf (mode-line-module-icon module)
+          (case (getf status :kind) (:wifi :wifi) (:wired :wired) (t :offline)))
+    (cond ((null status) "offline")
+          ((eq (getf status :kind) :wifi) (or (getf status :ssid) (getf status :interface)))
+          (t (getf status :interface)))))

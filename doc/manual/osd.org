@@ -1,0 +1,14 @@
+* Volume, Brightness and the On-screen Display
+
+The volume and brightness keys of the keyboard (XF86AudioRaiseVolume
+and friends) are bound outside any prefix to the commands =volume-up=,
+=volume-down=, =volume-mute=, =microphone-mute=, =brightness-up= and
+=brightness-down=. They go through =wpctl= (WirePlumber) and
+=brightnessctl=, in steps of =mh::*volume-step*= and
+=mh::*brightness-step*= percent (5), and show the new value for a
+moment in the on-screen display, a small panel with a bar.
+
+=mh::*osd-timeout*= (1500 ms), =mh::*osd-position*= (=:top=, =:center=
+or =:bottom=) and =mh::*osd-theme*= configure the display, and
+=(mh::osd-show "Caps lock" :icon "⇪")= shows anything else on it:
+=:percent= adds the bar.
