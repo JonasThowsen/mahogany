@@ -34,6 +34,16 @@
 ;; (setf *scratchpad-command* '("foot" "--app-id" "scratchpad"))
 ;; (setf *autostart* '(("xwayland-satellite") "mako"))
 
+;;; The lid: lock when it closes; with an external monitor, the
+;;; built-in screen goes off and its windows move over
+
+;; (setf *lid-close-action* :nothing)
+;; (setf *lid-switch-outputs* nil)
+
+;;; X11 programs run through xwayland-satellite when it is installed
+
+;; (setf *xwayland* nil)
+
 ;;; Locking and idle: lock after 5 minutes, screen off after 10
 
 ;; (setf *idle-timeouts* '((300 :lock) (600 :screen-off)))

@@ -1,0 +1,22 @@
+* X11 Programs
+
+Mahogany runs X11 programs through =xwayland-satellite=: it runs
+Xwayland as an ordinary Wayland client of Mahogany, and each X11
+window comes in as a Wayland window, tiled and themed like the rest.
+Nothing in Mahogany knows about X11.
+
+When =xwayland-satellite= is installed, Mahogany starts it with the
+session on display =*xwayland-display*= (=:0=) and sets =DISPLAY= for
+the programs it starts, and through
+=dbus-update-activation-environment= for systemd's user services and
+D-Bus activation, so programs started from elsewhere find it too.
+
+#+BEGIN_SRC lisp
+  (setf *xwayland* nil)          ; never run it (default :auto; t: always)
+  (setf *xwayland-display* ":1")
+#+END_SRC
+
+The NixOS module installs =xwayland-satellite=. What satellite cannot
+do (X11 programs that need to see each other's windows, some games,
+screen sharing from X11 programs) would need Xwayland built into the
+compositor, which is planned for later if it turns out to matter.

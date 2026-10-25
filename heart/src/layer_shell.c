@@ -169,7 +169,11 @@ static void arrange_surface(const struct wlr_box *full_area,
 void hrt_layer_shell_arrange_layers(struct hrt_output *output,
                                     bool emit_event) {
     struct hrt_scene_output *scene_output = output->scene;
-    struct wlr_box usable_area            = {0};
+    // An output that is switched off has nothing to arrange:
+    if (scene_output == NULL || !output->wlr_output->enabled) {
+        return;
+    }
+    struct wlr_box usable_area = {0};
     hrt_output_position(output, &usable_area.x, &usable_area.y);
     wlr_output_effective_resolution(output->wlr_output, &usable_area.width,
                                     &usable_area.height);

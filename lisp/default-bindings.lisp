@@ -110,12 +110,14 @@ a list of arguments or a shell command string, such as
 logged and skipped.")
 
 (defun run-autostart ()
-  "Start the programs in *autostart*, a moment after the server is up."
-  (when *autostart*
+  "Start xwayland-satellite and the programs in *autostart*, a moment
+after the server is up."
+  (when (or *autostart* *xwayland*)
     (let ((timer (hrt:server-make-timer
                   (state-server *compositor-state*)
                   (lambda (timer)
                     (hrt:timer-handle-destroy timer)
+                    (start-xwayland)
                     (dolist (command *autostart*)
                       (let ((program (if (listp command) (first command) command)))
                         (if (and (listp command)

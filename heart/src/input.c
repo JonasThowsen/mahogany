@@ -10,6 +10,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_switch.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
 
@@ -135,6 +136,27 @@ static void add_new_pointer(struct hrt_input *input, struct hrt_seat *seat) {
     apply_touchpad_config(input);
 }
 
+static void handle_switch_toggle(struct wl_listener *listener, void *data) {
+    struct hrt_input *input = wl_container_of(listener, input, switch_toggle);
+    struct wlr_switch_toggle_event *event = data;
+    struct hrt_seat *seat                 = input->seat;
+    wlr_log(WLR_DEBUG, "Switch %d toggled to %d", event->switch_type,
+            event->switch_state);
+    if (seat->callbacks && seat->callbacks->switch_event) {
+        seat->callbacks->switch_event(seat, (int)event->switch_type,
+                                      event->switch_state ==
+                                          WLR_SWITCH_STATE_ON);
+    }
+}
+
+static void add_new_switch(struct hrt_input *input, struct hrt_seat *seat) {
+    struct wlr_switch *switch_device =
+        wlr_switch_from_input_device(input->wlr_input_device);
+    input->switch_toggle.notify = handle_switch_toggle;
+    wl_signal_add(&switch_device->events.toggle, &input->switch_toggle);
+    (void)seat;
+}
+
 static uint32_t find_input_caps(struct hrt_seat *seat,
                                 struct hrt_input *input) {
     uint32_t caps = 0;
@@ -165,6 +187,9 @@ static void input_device_destroy(struct wl_listener *listener, void *data) {
 
     /* // Signals */
     wl_list_remove(&input->destroy.link);
+    if (input->wlr_input_device->type == WLR_INPUT_DEVICE_SWITCH) {
+        wl_list_remove(&input->switch_toggle.link);
+    }
     wl_list_remove(&input->link);
 
     free(input);
@@ -191,6 +216,9 @@ static void new_input_notify(struct wl_listener *listener, void *data) {
             break;
         case WLR_INPUT_DEVICE_POINTER:
             add_new_pointer(input, seat);
+            break;
+        case WLR_INPUT_DEVICE_SWITCH:
+            add_new_switch(input, seat);
             break;
         default:
             break;

@@ -63,13 +63,15 @@
 (cffi:defcstruct hrt-seat-callbacks
   (button-event :pointer #| function ptr void (struct hrt_seat *, struct wlr_pointer_button_event *) |#)
   (wheel-event :pointer #| function ptr void (struct hrt_seat *, struct wlr_pointer_axis_event *) |#)
-  (keyboard-keypress-event :pointer #| function ptr _Bool (struct hrt_seat *, struct hrt_keypress_info *) |#))
+  (keyboard-keypress-event :pointer #| function ptr _Bool (struct hrt_seat *, struct hrt_keypress_info *) |#)
+  (switch-event :pointer #| function ptr void (struct hrt_seat *, int, _Bool) |#))
 
 (cffi:defcstruct hrt-input
   (wlr-input-device :pointer #| (:struct wlr-input-device) |#)
   (seat (:pointer (:struct hrt-seat)))
   (link (:struct wl-list))
-  (destroy (:struct wl-listener)))
+  (destroy (:struct wl-listener))
+  (switch-toggle (:struct wl-listener)))
 
 #-HRT-DEBUG
 (declaim (inline hrt-seat-reset-view-under))

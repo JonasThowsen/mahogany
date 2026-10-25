@@ -134,5 +134,10 @@ mahogany, remote»):
   modes), `lisp/osd.lisp`, `lisp/idle.lisp`, `lisp/system-status.lisp`
   (battery, network, volume, brightness via subprocesses),
   `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
-  canvas). Each has a manual page in `doc/manual/`.
+  canvas), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,
+  `lisp/outputs.lisp` (focus/windows between outputs), `lisp/layouts.lisp`
+  (`define-layout`, per-group tiling layouts), `lisp/default-bindings.lisp`
+  (SUPER keys, `*autostart*`), `lisp/xwayland.lisp` (xwayland-satellite),
+  `lisp/lid.lisp` (lid switch: lock, internal screen off/on). Each has a
+  manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

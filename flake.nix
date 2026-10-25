@@ -318,6 +318,7 @@
                 slurp
                 wl-clipboard
                 satty # screenshot editing
+                xwayland-satellite # X11 programs
               ])
               ++ heartBuildInputs pkgs;
 

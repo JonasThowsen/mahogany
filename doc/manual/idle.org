@@ -41,3 +41,22 @@ keybinding:
 #+BEGIN_SRC lisp
   (mh::define-key mh::*root-map* (mh::kbd "L") #'mh::lock-session)
 #+END_SRC
+
+* The lid
+
+Closing the laptop's lid locks the session (=*lid-close-action*=:
+=:lock=, =:nothing=, or a function), and with an external monitor
+connected it switches the built-in screen off, moving its windows to
+the external one; opening the lid switches it on again and the
+windows come back (=*lid-switch-outputs*=). Built-in screens are
+those whose names start with =eDP=, =LVDS= or =DSI=
+(=*internal-output-names*=). Suspending stays with systemd-logind
+(=HandleLidSwitch=), which does not suspend while docked.
+
+#+BEGIN_SRC lisp
+  (setf *lid-close-action* :nothing)
+  (push (lambda (what) (when (eq what :opened) (brightness-change 0))) *lid-hooks*)
+#+END_SRC
+
+=lid-close= and =lid-open= are commands that do the same, to try it
+without touching the lid.

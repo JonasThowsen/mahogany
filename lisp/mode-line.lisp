@@ -375,7 +375,9 @@ say), otherwise it goes through the groups."
     (remhash (hrt:output-full-name output) *mode-lines*)
     (unless (hrt:canvas-destroyed-p (mode-line-canvas mode-line))
       (hrt:canvas-destroy (mode-line-canvas mode-line))
-      (hrt:output-set-reserved output))))
+      ;; An output switched off has no layers to arrange:
+      (when (hrt:output-enabled output)
+        (hrt:output-set-reserved output)))))
 
 (defun mode-line-update ()
   "Redraw the mode-lines of the outputs in use, making those that are

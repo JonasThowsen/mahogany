@@ -143,11 +143,13 @@
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree"))
                (:file "outputs"
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree" "scratchpad"))
+               (:file "xwayland" :depends-on ("system" "config" "log"))
                (:file "default-bindings"
-                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs"))
+                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "xwayland"))
                (:file "layouts"
                 :depends-on ("group" "state" "launcher" "key-bindings" "default-bindings" "tree"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts"))))
+               (:file "lid" :depends-on ("state" "idle" "command" "themes" "mode-line" "heart"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "xwayland" "lid"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op
