@@ -1,0 +1,92 @@
+* The Launcher and Menus
+
+Mahogany's menus are drawn by Mahogany itself: a prompt, what you
+type, and the items that match it. Matching is fuzzy: the characters
+you type must appear in order in an item, so =nvi= finds =Neovim= and
+=gnb= finds =gnewbg=. While a menu is open it has the keyboard:
+
+| Key                      | Does                                   |
+|--------------------------+----------------------------------------|
+| typing                   | narrows the list                       |
+| =Down= / =Tab= / =C-n= / =C-j= | next item                        |
+| =Up= / =C-p= / =C-k=     | previous item                          |
+| =PageDown= / =PageUp=    | a page of items                        |
+| =Return=                 | choose the selected item               |
+| =BackSpace=, =C-w=, =C-u= | delete a character, a word, everything |
+| =Escape=                 | cancel                                 |
+
+The pointer works too: hovering selects, a click chooses, the wheel
+moves the selection.
+
+** The launcher
+
+The launcher is a set of menus, called modes. The commands:
+
+- =launcher-apps= :: start an application, from the =.desktop= files of
+  the installed programs (=XDG_DATA_DIRS= and =~/.local/share/applications=).
+  Applications that were started before come first.
+- =launcher-commands= :: run any Mahogany command, with its keybinding shown.
+- =launcher-windows= :: go to a window, in any group.
+- =launcher-groups= :: go to a group.
+- =move-window-to-group-menu= :: move the focused window to a group.
+- =launcher-run= :: run a shell command, with the commands run before to choose from.
+- =launcher-menu= :: a menu of all the modes.
+
+In Lisp, =(mh::launcher :apps)= opens a mode by name.
+
+*** Adding a mode
+
+A mode is a few lines in =init.lisp=: what it lists, and what to do
+with the choice. The items are rebuilt every time the menu opens.
+
+#+BEGIN_SRC lisp
+  (mh::define-launcher-mode :projects (:prompt "Project" :description "Open a project")
+    :items (mapcar (lambda (dir)
+                     (mh::make-menu-item (car (last (pathname-directory dir)))
+                                         :data dir
+                                         :detail "coding"))
+                   (directory "~/coding/*/"))
+    :action (lambda (dir)
+              (uiop:launch-program (list "foot" "-D" (namestring dir)))))
+
+  (mh::define-launcher-mode :web (:prompt "Search" :description "Search the web")
+    :items '()
+    :text-action (lambda (query)
+                   (uiop:launch-program
+                    (list "xdg-open" (format nil "https://duckduckgo.com/?q=~A" query)))))
+#+END_SRC
+
+=make-menu-item= takes the label shown, =:data= handed to the action,
+=:detail= shown dimmer at the right, and =:keywords= matched as well as
+the label. A mode with a =:text-action= accepts what was typed when no
+item matches. Modes appear in =launcher-menu= in the order they were
+defined; redefining a mode replaces it.
+
+*** Matching
+
+=mh::*menu-match-function*= is the function that scores an item
+against what was typed; replace it to match differently, for instance
+by prefix only:
+
+#+BEGIN_SRC lisp
+  (config-system:set-config
+   mh::*menu-match-function*
+   (lambda (filter text)
+     (when (alexandria:starts-with-subseq filter text :test #'char-equal)
+       (- (length text)))))
+#+END_SRC
+
+** Appearance
+
+=mh::*menu-theme*= (font and colors; the border color marks the
+selection), =mh::*menu-width*= (a fraction of the output's width, 0.4),
+=mh::*menu-rows*= (12) and =mh::*menu-padding*= (10).
+
+** Interactive commands
+
+Commands that ask for something — =colon=, =gmove=, =grename= — read
+through the same menu. To read through rofi or a terminal instead:
+
+#+BEGIN_SRC lisp
+  (setf cl-interactive:*default-input-method* (make-instance 'mh::rofi-input-method))
+#+END_SRC

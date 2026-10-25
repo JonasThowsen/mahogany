@@ -1,7 +1,7 @@
 (in-package #:mahogany)
 
 ;; In mode-line.lisp, which loads after this file:
-(declaim (ftype function mode-line-update mode-line-reset stop-idle))
+(declaim (ftype function mode-line-update mode-line-reset stop-idle menu-cancel))
 
 (defvar *default-group-name* "DEFAULT")
 
@@ -84,6 +84,8 @@ or HRT-OUTPUT is NIL or a null pointer."
     (setf (state-%current-frame state) nil)
     (mode-line-reset)
     (stop-idle)
+    ;; A menu open at shutdown: its thread must not wait forever.
+    (menu-cancel)
     ;; This kicks off the destruction sequence, which
     ;; calls the various output and seat removal callbacks. At the end, we
     ;; are left in a state where all hrt and wlroots based objects
@@ -629,6 +631,14 @@ token): give it the focus when *focus-on-activation* says so."
   (declare (type mahogany-state state)
            (type hrt:view view))
   (when *focus-on-activation*
+    (mahogany-state-show-view state view)))
+
+(defun mahogany-state-show-view (state view)
+  "Make VIEW the focused window: its group becomes current, its frame
+focused; hidden behind another window, it is shown in the current frame."
+  (declare (type mahogany-state state)
+           (type hrt:view view))
+  (progn
     (%with-found-group state (group view)
       (unless (eq group (state-current-group state))
         (setf (state-current-group state) group))
