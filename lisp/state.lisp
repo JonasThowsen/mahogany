@@ -2,7 +2,7 @@
 
 ;; In mode-line.lisp, which loads after this file:
 (declaim (ftype function mode-line-update mode-line-reset stop-idle menu-cancel
-                        wallpaper-update wallpaper-reset))
+                        wallpaper-update wallpaper-reset notifications-stop))
 
 (defvar *default-group-name* "DEFAULT")
 
@@ -85,6 +85,7 @@ or HRT-OUTPUT is NIL or a null pointer."
     (setf (state-%current-frame state) nil)
     (mode-line-reset)
     (wallpaper-reset)
+    (notifications-stop)
     (stop-idle)
     ;; A menu open at shutdown: its thread must not wait forever.
     (menu-cancel)

@@ -127,6 +127,7 @@ further up. "
         (let ((*initializing* t))
           (load-config-file (not (gethash 'enable-debugger args)))))
     (theme-start)
+    (notifications-start)
     (when *mode-line-enabled*
       (mode-line-start))
     (start-idle)

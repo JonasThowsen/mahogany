@@ -44,6 +44,11 @@
 
 ;; (setf *xwayland* nil)
 
+;;; Notifications: Mahogany is the notification service (no mako needed)
+
+;; (setf *notification-position* :bottom-right)
+;; (setf *notification-timeout* 8000)
+
 ;;; Locking and idle: lock after 5 minutes, screen off after 10
 
 ;; (setf *idle-timeouts* '((300 :lock) (600 :screen-off)))

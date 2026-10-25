@@ -138,6 +138,7 @@ mahogany, remote»):
   `lisp/outputs.lisp` (focus/windows between outputs), `lisp/layouts.lisp`
   (`define-layout`, per-group tiling layouts), `lisp/default-bindings.lisp`
   (SUPER keys, `*autostart*`), `lisp/xwayland.lisp` (xwayland-satellite),
-  `lisp/lid.lisp` (lid switch: lock, internal screen off/on). Each has a
-  manual page in `doc/manual/`.
+  `lisp/lid.lisp` (lid switch: lock, internal screen off/on),
+  `lisp/notifications.lisp` (the org.freedesktop.Notifications service
+  over sd-bus, cards on a canvas). Each has a manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

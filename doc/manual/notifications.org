@@ -1,0 +1,36 @@
+* Notifications
+
+Mahogany is the notification service of the session
+(=org.freedesktop.Notifications= on the session bus, through
+libsystemd's sd-bus, read from the compositor's own event loop), so
+=notify-send= and every program that notifies works without mako or
+dunst. A notification is a card at a corner of the current output,
+with the summary, the body and the program's name; critical ones have
+a red edge and stay until dismissed, the others go after their time
+or =*notification-timeout*=. A click dismisses a card.
+
+- =notification-dismiss= (=s-n=): the newest one goes.
+- =notification-dismiss-all= (=s-S-n=).
+- =notifications-toggle= (=s-C-n=): do not disturb; notifications go to
+  the history only.
+- =notification-history= (=s-M-n=): the launcher lists what came in;
+  choosing one shows it again until dismissed.
+
+#+BEGIN_SRC lisp
+  (setf *notification-position* :bottom-right)   ; :top-right by default
+  (setf *notification-timeout* 8000)
+  (setf *notification-width* 420)
+  (setf *notification-max-shown* 3)
+#+END_SRC
+
+=*notification-hooks*= holds functions called with each notification
+as it comes in; one returning =:hide= keeps it off the screen:
+
+#+BEGIN_SRC lisp
+  (push (lambda (n) (when (string= (notification-app n) "Spotify") :hide))
+        *notification-hooks*)
+#+END_SRC
+
+Markup in bodies is stripped; actions are received but not shown yet.
+Another notification daemon running when Mahogany starts keeps the
+name, and Mahogany says so in its log.

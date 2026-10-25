@@ -149,7 +149,9 @@
                (:file "layouts"
                 :depends-on ("group" "state" "launcher" "key-bindings" "default-bindings" "tree"))
                (:file "lid" :depends-on ("state" "idle" "command" "themes" "mode-line" "heart"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "xwayland" "lid"))))
+               (:file "notifications"
+                :depends-on ("state" "command" "themes" "menu" "launcher" "default-bindings" "mode-line" "heart" "draw"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "xwayland" "lid" "notifications"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

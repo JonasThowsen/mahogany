@@ -35,6 +35,8 @@ and =lisp/key-bindings.lisp=; init.lisp changes them with
 | =s-]= / =s-[=    | =gnext= / =gprev=             | the next or previous group                   |
 | =s-.= / =s-,=    | =focus-next-output= / =focus-previous-output= | the next output              |
 | =s-S-.= / =s-S-,= | =move-window-to-next-output= / =-previous-output= | the window along     |
+| =s-n= / =s-S-n=  | =notification-dismiss= / =-all= | notifications, see [[file:notifications.org][Notifications]] |
+| =s-C-n= / =s-M-n= | =notifications-toggle= / =notification-history= | do not disturb; the history |
 | =s-b=            | =mode-line=                   | the bar on and off                           |
 | =s-C-SPC=        | =theme-menu=                  | choose a theme                               |
 | =s-C-S-SPC=      | =next-theme=                  | the next theme                               |
