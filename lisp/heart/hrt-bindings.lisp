@@ -565,6 +565,13 @@ Returns the view that was in the node."
   (theme (:pointer (:struct hrt-message-theme)))
   (ms-delay :int))
 
+#-HRT-DEBUG
+(declaim (inline hrt-toast-message-close))
+(cffi:defcfun ("hrt_toast_message_close" hrt-toast-message-close) :void
+  "Take down the message hrt_toast_message shows, if there is one, before
+its time is up."
+  (server (:pointer (:struct hrt-server))))
+
 ;; next section imported from file heart/include/hrt/hrt_event_loop.h
 
 (cffi:defcenum hrt-event-mask

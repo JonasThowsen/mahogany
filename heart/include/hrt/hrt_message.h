@@ -35,4 +35,10 @@ bool hrt_toast_message(struct hrt_server *server, struct hrt_output *output,
                        const char *text, enum window_gravity gravity,
                        struct hrt_message_theme *theme, int ms_delay);
 
+/**
+ * Take down the message hrt_toast_message shows, if there is one, before
+ * its time is up.
+ **/
+void hrt_toast_message_close(struct hrt_server *server);
+
 #endif

@@ -324,6 +324,13 @@ static int close_message_callback(void *data) {
     return 0;
 }
 
+void hrt_toast_message_close(struct hrt_server *server) {
+    if (server->message_timer_source) {
+        wl_event_source_timer_update(server->message_timer_source, 0);
+    }
+    close_message_callback(server);
+}
+
 bool hrt_message_init(struct hrt_server *server) {
     server->message_buffer = NULL;
 

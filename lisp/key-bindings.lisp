@@ -104,7 +104,8 @@ possible with at most MAX-ROWS rows, and return the text."
                                 (format nil "~vA  ~A" key-width (car b) (cdr b)))
                               bindings)
                       20)
-                     :ms-delay 15000))))
+                     :ms-delay 15000
+                     :close-on-key t))))
 
 (defcommand split-frame-h ()
   (:documentation "Split the current frame horizontally")

@@ -20,15 +20,30 @@
   mh/theme:theme
   "Theme data for error messages")
 
+(defglobal *close-message-on-key* nil
+  "True while the message shown should go away at the next key press.")
+
 (defun toast-message (state text &key (gravity *message-gravity*)
                                    (ms-delay *message-delay*)
-                                   (theme *message-theme*))
+                                   (theme *message-theme*)
+                                   close-on-key)
+  "Show TEXT in a message on the current output for MS-DELAY
+milliseconds, in place of the message shown before. When CLOSE-ON-KEY is
+true, the next key press takes it down earlier; the key still does
+what it does."
   (declare (type mahogany-state state))
   (with-accessors ((cur-group state-current-group)
                    (hrt-server state-server))
       state
     (let* ((cur-output (group-current-output cur-group)))
+      (setf *close-message-on-key* close-on-key)
       (hrt:toast-message hrt-server cur-output text
                          gravity
                          theme
                          ms-delay))))
+
+(defun close-message (state)
+  "Take down the message being shown, if there is one."
+  (declare (type mahogany-state state))
+  (setf *close-message-on-key* nil)
+  (hrt:hrt-toast-message-close (state-server state)))

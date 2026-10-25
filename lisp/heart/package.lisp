@@ -155,6 +155,7 @@
            ;; Toast messages:
            #:toast-message
            #:toast-message-gravity
+           #:hrt-toast-message-close
            ;; keypress info slots:
            #:keysyms
            #:modifiers

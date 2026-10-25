@@ -239,6 +239,8 @@ NIL goes back to libinput's default, which is the same as 0."
            (sb-ext:muffle-conditions sb-ext:compiler-note))
   (cffi:with-foreign-slots ((hrt:keysyms hrt:modifiers hrt:keysyms-len hrt:wl-key-state)
                             info (:struct hrt:hrt-keypress-info))
+    (when *close-message-on-key*
+      (close-message *compositor-state*))
     ;; don't check for key commands if we are collecting args:
     (when *collecting-args-p*
       (log-string :trace "Not checking keybinding due to interactive command")
