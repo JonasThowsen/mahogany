@@ -23,7 +23,7 @@ struct hrt_session_lock_output {
     struct wlr_scene_rect *background;
     struct hrt_output *output;
     struct hrt_session_lock *lock;
-    struct wl_list link;  // hrt_session_lock.outputs
+    struct wl_list link; // hrt_session_lock.outputs
 
     struct wl_listener tree_destroy;
 
@@ -38,7 +38,7 @@ struct hrt_session_lock {
     // NULL once the client went away without unlocking:
     struct wlr_session_lock_v1 *lock;
     bool abandoned;
-    struct wl_list outputs;  // hrt_session_lock_output.link
+    struct wl_list outputs; // hrt_session_lock_output.link
     // The lock surface with keyboard focus, if any:
     struct wlr_surface *focused;
 
@@ -106,7 +106,8 @@ static void handle_surface_destroy(struct wl_listener *listener, void *data) {
 }
 
 static void handle_new_surface(struct wl_listener *listener, void *data) {
-    struct hrt_session_lock *lock = wl_container_of(listener, lock, new_surface);
+    struct hrt_session_lock *lock =
+        wl_container_of(listener, lock, new_surface);
     struct wlr_session_lock_surface_v1 *lock_surface = data;
 
     struct hrt_session_lock_output *lo = nullptr, *candidate;
@@ -219,8 +220,9 @@ static void handle_lock_destroy(struct wl_listener *listener, void *data) {
     // The client went away without unlocking: stay locked, and show that
     // something is wrong, until another client locks the session.
     struct hrt_session_lock *lock = wl_container_of(listener, lock, destroy);
-    wlr_log(WLR_ERROR, "The session lock client went away without unlocking; "
-                       "the session stays locked");
+    wlr_log(WLR_ERROR,
+            "The session lock client went away without unlocking; "
+            "the session stays locked");
     wl_list_remove(&lock->new_surface.link);
     wl_list_remove(&lock->unlock.link);
     wl_list_remove(&lock->destroy.link);
