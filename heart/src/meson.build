@@ -1,5 +1,6 @@
 hrt_source_files += files(
   'border_box.c',
+  'canvas.c',
   'cursor.c',
   'event_loop.c',
   'idle.c',

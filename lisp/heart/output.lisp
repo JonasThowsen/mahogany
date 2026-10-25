@@ -151,6 +151,13 @@
   (with-return-by-value ((x :int) (y :int))
     (hrt-output-position (output-hrt-output output) x y)))
 
+(defun output-set-reserved (output &key (top 0) (right 0) (bottom 0) (left 0))
+  "Keep space free at the edges of OUTPUT, in layout coordinates, for
+something the compositor draws itself, such as a bar. Tiling and layer
+surfaces then use what is left."
+  (declare (type output output))
+  (hrt-output-set-reserved (output-hrt-output output) top right bottom left))
+
 (defun output-usable-area (output)
   (declare (type output output))
   (let* ((hrt-output (output-hrt-output output))

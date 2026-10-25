@@ -175,6 +175,19 @@ void hrt_layer_shell_arrange_layers(struct hrt_output *output,
                                     &usable_area.height);
     const struct wlr_box full_area = usable_area;
 
+    // What the compositor reserved for itself is taken first, so layer
+    // surfaces with an exclusive zone go inside it:
+    usable_area.x += output->reserved_left;
+    usable_area.y += output->reserved_top;
+    usable_area.width -= output->reserved_left + output->reserved_right;
+    usable_area.height -= output->reserved_top + output->reserved_bottom;
+    if (usable_area.width < 0) {
+        usable_area.width = 0;
+    }
+    if (usable_area.height < 0) {
+        usable_area.height = 0;
+    }
+
     arrange_surface(&full_area, &usable_area, scene_output->overlay, true);
     arrange_surface(&full_area, &usable_area, scene_output->top, true);
     arrange_surface(&full_area, &usable_area, scene_output->bottom, true);

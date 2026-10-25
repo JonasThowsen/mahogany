@@ -32,6 +32,9 @@ struct hrt_output {
     struct wlr_scene_output *wlr_scene;
 
     struct wlr_box usable_area;
+    // Space kept free at each edge, in layout coordinates, for what the
+    // compositor draws itself, such as a bar. See hrt_output_set_reserved.
+    int reserved_top, reserved_right, reserved_bottom, reserved_left;
 
     struct wl_list layer_surfaces;
 
@@ -60,6 +63,16 @@ bool hrt_output_configure_atomic(struct hrt_output *outputs[],
 void hrt_output_resolution(struct hrt_output *output, int *width, int *height);
 
 void hrt_output_position(struct hrt_output *output, int *x, int *y);
+
+/**
+ * Keep space free at the edges of the output, in layout coordinates, the
+ * way a layer surface's exclusive zone does: the usable area shrinks by
+ * it, layer surfaces are arranged inside what is left, and the
+ * layers_reconfigured callback runs if the usable area changed.
+ * Negative values count as 0.
+ **/
+void hrt_output_set_reserved(struct hrt_output *output, int top, int right,
+                             int bottom, int left);
 
 bool hrt_output_enabled(struct hrt_output *output);
 

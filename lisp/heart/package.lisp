@@ -65,6 +65,13 @@
            #:hrt-border-box-set-enabled
            #:hrt-border-box-raise-to-top
            #:hrt-border-box-lower-to-bottom
+           ;; canvas
+           #:hrt-canvas-create
+           #:hrt-canvas-destroy
+           #:hrt-canvas-begin
+           #:hrt-canvas-commit
+           #:hrt-canvas-set-position
+           #:hrt-canvas-set-enabled
            ;; Seat
            #:hrt-seat
            #:hrt-seat-reset-view-under
@@ -106,6 +113,7 @@
            #:output-resolution
            #:output-position
            #:output-usable-area
+           #:output-set-reserved
            #:output-full-name
            #:output-enabled
            #:output-name

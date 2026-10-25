@@ -314,6 +314,10 @@ well behaved ones should."
   (scene (:pointer (:struct hrt-scene-output)))
   (wlr-scene :pointer #| (:struct wlr-scene-output) |#)
   (usable-area (:struct wlr-box))
+  (reserved-top :int)
+  (reserved-right :int)
+  (reserved-bottom :int)
+  (reserved-left :int)
   (layer-surfaces (:struct wl-list))
   (request-state (:struct wl-listener))
   (frame (:struct wl-listener))
@@ -352,6 +356,20 @@ set the width and height of views."
   (output (:pointer (:struct hrt-output)))
   (x (:pointer :int))
   (y (:pointer :int)))
+
+#-HRT-DEBUG
+(declaim (inline hrt-output-set-reserved))
+(cffi:defcfun ("hrt_output_set_reserved" hrt-output-set-reserved) :void
+  "Keep space free at the edges of the output, in layout coordinates, the
+way a layer surface's exclusive zone does: the usable area shrinks by
+it, layer surfaces are arranged inside what is left, and the
+layers_reconfigured callback runs if the usable area changed.
+Negative values count as 0."
+  (output (:pointer (:struct hrt-output)))
+  (top :int)
+  (right :int)
+  (bottom :int)
+  (left :int))
 
 #-HRT-DEBUG
 (declaim (inline hrt-output-enabled))
@@ -912,3 +930,58 @@ intial placement."
 (declaim (inline hrt-border-box-lower-to-bottom))
 (cffi:defcfun ("hrt_border_box_lower_to_bottom" hrt-border-box-lower-to-bottom) :void
   (box (:pointer (:struct hrt-border-box))))
+
+;; next section imported from file heart/include/hrt/hrt_canvas.h
+
+(cffi:defcstruct hrt-canvas)
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-create))
+(cffi:defcfun ("hrt_canvas_create" hrt-canvas-create) (:pointer (:struct hrt-canvas))
+  "Create a canvas as a child of PARENT. It shows nothing until the first
+hrt_canvas_commit.
+
+If PARENT is destroyed, the canvas stays valid but shows nothing, and
+the other functions do nothing; it still has to be destroyed."
+  (parent :pointer #| (:struct wlr-scene-tree) |#))
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-destroy))
+(cffi:defcfun ("hrt_canvas_destroy" hrt-canvas-destroy) :void
+  (canvas (:pointer (:struct hrt-canvas))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-begin))
+(cffi:defcfun ("hrt_canvas_begin" hrt-canvas-begin) :pointer #| cairo-surface-t |#
+  "Start a new frame of WIDTH x HEIGHT, in layout coordinates, for an
+output with the given SCALE. Return the cairo surface to draw it on:
+its device scale is set, so draw in layout coordinates. The surface
+belongs to the canvas; don't destroy it.
+
+Return NULL if the frame could not be made. Starting a frame drops one
+that was started and not committed."
+  (canvas (:pointer (:struct hrt-canvas)))
+  (width :int)
+  (height :int)
+  (scale :double))
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-commit))
+(cffi:defcfun ("hrt_canvas_commit" hrt-canvas-commit) :bool
+  "Show the frame started by hrt_canvas_begin in place of the previous
+one. Return false if there is no frame to show."
+  (canvas (:pointer (:struct hrt-canvas))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-set-position))
+(cffi:defcfun ("hrt_canvas_set_position" hrt-canvas-set-position) :void
+  "Place the canvas at X,Y relative to its parent."
+  (canvas (:pointer (:struct hrt-canvas)))
+  (x :int)
+  (y :int))
+
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-set-enabled))
+(cffi:defcfun ("hrt_canvas_set_enabled" hrt-canvas-set-enabled) :void
+  (canvas (:pointer (:struct hrt-canvas)))
+  (enabled :bool))
