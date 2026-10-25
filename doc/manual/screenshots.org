@@ -1,0 +1,47 @@
+* Screenshots
+
+Mahogany takes screenshots with =grim= and saves them as PNG files in
+=*screenshot-directory*= (=~/Pictures/Screenshots/= by default), named
+after the time they were taken. Each is copied to the clipboard as
+well (=*screenshot-copy-command*=, =wl-copy= by default).
+
+- =screenshot-area= (=Print=): a translucent overlay covers the
+  screen; drag with the pointer to choose the area. =Escape=, a click
+  without a drag or another button cancels.
+- =screenshot-window= (=Shift-Print=): the focused window, without its
+  border.
+- =screenshot-screen= (=Control-Print=): the whole current output.
+- =screenshot-menu= lists them, each with and without editing.
+
+** Editing
+
+With =satty= installed, the screenshot opens in it right after it is
+taken, to crop, draw arrows, blur, and save or copy again.
+=*screenshot-editor*= is the command, with =:file= in place of the
+file; =*screenshot-edit*= says whether the commands open the editor:
+=:auto= (when the program is installed), =t= or =nil=. The menu always
+offers both.
+
+#+BEGIN_SRC lisp
+  ;; Edit in swappy instead of satty:
+  (setf *screenshot-editor* '("swappy" "-f" :file))
+  ;; Never edit, just save and copy:
+  (setf *screenshot-edit* nil)
+#+END_SRC
+
+** Other keys
+
+The bindings are in =*top-map*=; rebind them as any command:
+
+#+BEGIN_SRC lisp
+  (define-key *top-map* (kbd "s-S-s") #'screenshot-area)
+#+END_SRC
+
+** From Lisp
+
+=(take-screenshot :area :edit nil)= does what the commands do, with a
+say in editing. =(screenshot-capture '(x y width height))= takes a screenshot of a
+rectangle in layout pixels, =(screenshot-capture nil)= of the current
+output. =(select-area function)= runs the area overlay alone and calls
+=function= with the chosen rectangle, or =nil= when cancelled, for
+tools of your own.

@@ -54,6 +54,11 @@ its log. Without a display, export the headless variables above before
   code.
 - `lisp compile FILE:LINE` — recompile one form (as `C-c C-c`); safe from
   any thread, the next event uses the new definition.
+- A new file in `mahogany.asd`: `lisp eval '(load (compile-file "lisp/x.lisp"))'`
+  gets it into the running image. `(asdf:load-system "mahogany")` works
+  too, but when the load errors (a `defcommand` whose name a `defun`
+  already has, say) the image is left half-loaded and every `--main`
+  eval fails: fix the file, then `lisp stop` / `lisp start`.
 - An error on the main thread (inside a wlroots callback) pauses the
   compositor and shows up in `lisp status` as a paused evaluation "in
   the main thread": `frame`, `eval --in`, `backtrace`, `restart-frame`,

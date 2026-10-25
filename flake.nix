@@ -315,6 +315,9 @@
                 wlr-randr
                 wayland-utils
                 grim # screenshots, also of a headless compositor
+                slurp
+                wl-clipboard
+                satty # screenshot editing
               ])
               ++ heartBuildInputs pkgs;
 
