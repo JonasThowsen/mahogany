@@ -26,31 +26,41 @@ dependencies/cl-interactive`); the wlroots submodule is not needed.
   `WLR_BACKENDS=headless WLR_RENDERER=pixman ./build/mahogany -q -l debug`
   (set `XDG_RUNTIME_DIR` to a writable directory).
 - `ninja -C build/heart` — rebuild only the C side. C changes need a
-  restart of the compositor; Lisp changes do not.
+  restart of the compositor (`lisp stop` / `lisp start`); Lisp changes do not.
 
 ## Working in a running image
 
-Use slynk-cli: `lisp start` loads the `mahogany` system into an image,
-then `lisp eval`, `lisp compile FILE:LINE` (one form, as `C-c C-c`), and
-its debugger (`frame`, `eval --in`, `restart-frame`). Read
-https://github.com/JonasThowsen/slynk-cli/blob/main/docs/guide.md first. `.slynk-cli.sexp` configures it.
+Use slynk-cli (`lisp`). Read its guide first, in particular the section
+"The main thread":
+https://github.com/JonasThowsen/slynk-cli/blob/main/docs/guide.md
 
-Rules that are specific to a compositor:
+`.slynk-cli.sexp` configures it: `lisp start` loads the `mahogany`
+system and then runs the compositor, `mahogany::main`, in the image's
+main thread (`:main`); `lisp stop` ends it; `.slynk-cli/image.log` is
+its log. Without a display, export the headless variables above before
+`lisp start`. Then:
 
-- **wlroots is single-threaded.** Everything that touches compositor
-  state or calls into heart (`hrt:` functions, anything holding a
-  foreign pointer, the frame tree, groups, outputs, views) must run on
-  the main thread. `lisp eval` runs in its own thread, so wrap such
-  forms: `(hrt:with-main-thread () ...)` (`lisp/heart/server.lisp`).
-  Redefining a function with `lisp compile` is safe from any thread; the
-  next event uses the new definition.
-- **Never `abort` an evaluation paused inside the main thread**, and
-  never unwind through a C callback: use `restart-frame`, `return`, or
-  the `continue` restart that the work queue offers. Aborting unwinds
-  wlroots' stack and leaves it inconsistent.
-- The compositor keeps rendering only while the main thread runs. A
-  main-thread debugger pause freezes input and output until it is
-  resumed, so when the compositor is the user's session, be quick.
+- `lisp eval --main FORM` — evaluate on the main thread, through
+  `hrt:run-in-main-thread` (`:main-thread-dispatcher`). **Use `--main`
+  for anything that touches compositor state or calls into heart**
+  (`hrt:` functions, foreign pointers, the frame tree, groups, outputs,
+  views): wlroots is single-threaded, and a plain `lisp eval` runs in a
+  thread of its own. `(hrt:with-main-thread () ...)` does the same from
+  code.
+- `lisp compile FILE:LINE` — recompile one form (as `C-c C-c`); safe from
+  any thread, the next event uses the new definition.
+- An error on the main thread (inside a wlroots callback) pauses the
+  compositor and shows up in `lisp status` as a paused evaluation "in
+  the main thread": `frame`, `eval --in`, `backtrace`, `restart-frame`,
+  `return` and `restart` work on it.
+- **Never `abort` a main-thread pause**, never unwind through a C
+  callback: `lisp abort` refuses it. Use `restart-frame` after fixing the
+  function, `return`, or a restart the code offers (the work queue
+  offers `continue`, callbacks offer `callback-exit`).
+- The compositor renders and takes input only while the main thread
+  runs: a main-thread pause freezes the session until it is resumed, so
+  when the compositor is the user's session, be quick. Long `--main`
+  forms also stall it.
 - The Lisp side is compiled with `(debug 3)` by `lisp start`; heart is
   built `-O0 -g -Werror`.
 
