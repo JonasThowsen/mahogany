@@ -147,6 +147,17 @@
            #:canvas-commit
            #:with-canvas-frame
            #:output-canvases
+           #:canvas-on-motion
+           #:canvas-on-leave
+           #:canvas-on-button
+           #:canvas-on-axis
+           #:+button-left+
+           #:+button-right+
+           #:+button-middle+
+           #:canvas-callbacks-init
+           #:hrt-canvas-callbacks
+           #:hrt-debug-pointer-warp
+           #:hrt-debug-pointer-button
            #:output-full-name
            #:output-enabled
            #:output-name

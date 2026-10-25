@@ -48,7 +48,10 @@ window titles. Group and focus changes redraw it at once.")
 
 (defstruct (mode-line (:constructor %make-mode-line (output canvas)))
   (output nil :type hrt:output :read-only t)
-  (canvas nil :type hrt:canvas :read-only t))
+  (canvas nil :type hrt:canvas :read-only t)
+  ;; What a click does where: a list of (X0 X1 FUNCTION), from the last
+  ;; draw.
+  (hits '() :type list))
 
 (defglobal *mode-lines* (make-hash-table :test 'equal)
   "The mode-line of each output, by the output's full name.")
@@ -82,10 +85,10 @@ window titles. Group and focus changes redraw it at once.")
           (and title (plusp (length title)) title))))))
 
 (defun %mode-line-groups ()
-  "The groups in order of their numbers, as (name . current-p)."
+  "The groups in order of their numbers, as (name current-p group)."
   (let ((current (state-current-group *compositor-state*)))
     (map 'list (lambda (group)
-                 (cons (mahogany-group-name group) (eq group current)))
+                 (list (mahogany-group-name group) (eq group current) group))
          (sort (copy-seq (state-groups *compositor-state*)) #'<
                :key #'mahogany-group-number))))
 
@@ -98,8 +101,12 @@ marked flexible) and :fill."
                (when (and text (plusp (length text)))
                  (push (list* :text text options) items))))
         (case segment
-          (:groups (loop for (name . current) in (%mode-line-groups)
-                         do (add name :marked current)))
+          (:groups (loop for (name current group) in (%mode-line-groups)
+                         do (add name :marked current
+                                 :on-click (let ((group group))
+                                             (lambda ()
+                                               (setf (state-current-group *compositor-state*)
+                                                     group))))))
           (:title (add (mode-line-title) :flexible t))
           (:clock (add (mode-line-clock)))
           (:date (add (mode-line-date)))
@@ -115,13 +122,15 @@ marked flexible) and :fill."
 (defun %draw-mode-line-items (cr items width height theme)
   "Lay ITEMS out on a WIDTH x HEIGHT bar and draw them: the items before
 :fill from the left, the rest from the right, and a :flexible item
-taking the room that is left, shortened to it."
+taking the room that is left, shortened to it. Returns the clickable
+places as a list of (X0 X1 FUNCTION)."
   (let* ((font (mh/theme:theme-font theme))
          (pad *mode-line-padding*)
          (chip-pad (round pad 2))
          (fill (position :fill items))
          (left (subseq items 0 (or fill (length items))))
-         (right (if fill (subseq items (1+ fill)) '())))
+         (right (if fill (subseq items (1+ fill)) '()))
+         (hits '()))
     (labels ((text-width (item)
                (multiple-value-bind (w h) (draw:text-size cr (getf item :text) :font font)
                  (declare (ignore h))
@@ -132,7 +141,7 @@ taking the room that is left, shortened to it."
                        sum (+ (text-width item) pad)))
              (draw-item (item x available)
                "Draw ITEM at X in at most AVAILABLE pixels; return its width."
-               (destructuring-bind (&key text marked flexible) item
+               (destructuring-bind (&key text marked flexible on-click) item
                  (let* ((room (if flexible (max 0 (- available pad)) nil))
                         (chip (if marked chip-pad 0)))
                    (draw:with-layout (layout cr :text text :font font
@@ -146,6 +155,8 @@ taking the room that is left, shortened to it."
                             (mh/theme:theme-border-color theme)))
                          (draw:show-layout cr layout (+ x chip) y
                                            (mh/theme:theme-font-color theme))
+                         (when on-click
+                           (push (list x (+ x w (* 2 chip)) on-click) hits))
                          (+ w (* 2 chip)))))))))
       ;; From the right end first, so the left side knows its room:
       (let ((x (- width pad)))
@@ -159,7 +170,8 @@ taking the room that is left, shortened to it."
           (dolist (item left)
             (let ((available (- right-edge x
                                 (fixed-width (cdr (member item left))))))
-              (incf x (+ (draw-item item x available) pad)))))))))
+              (incf x (+ (draw-item item x available) pad))))))
+      hits)))
 
 (defun mode-line-draw (mode-line)
   "Draw MODE-LINE for its output as it is now."
@@ -173,7 +185,25 @@ taking the room that is left, shortened to it."
                                             0))
       (hrt:with-canvas-frame (cr canvas width height)
         (draw:clear cr (mh/theme:theme-background-color theme))
-        (%draw-mode-line-items cr (%mode-line-items output) width height theme)))))
+        (setf (mode-line-hits mode-line)
+              (%draw-mode-line-items cr (%mode-line-items output) width height theme))))))
+
+(defun %mode-line-click (mode-line x y button pressed)
+  "A click on MODE-LINE: run what is under X."
+  (declare (ignore y))
+  (when (and pressed (= button hrt:+button-left+))
+    (loop for (x0 x1 function) in (mode-line-hits mode-line)
+          when (<= x0 x x1)
+            do (funcall function)
+               (mode-line-update)
+               (return))))
+
+(defun %mode-line-scroll (vertical delta)
+  "The wheel over a mode-line goes through the groups."
+  (when vertical
+    (if (plusp delta)
+        (state-next-hidden-group *compositor-state*)
+        (state-prev-hidden-group *compositor-state*))))
 
 ;;; Mode-lines of the outputs
 
@@ -186,7 +216,16 @@ taking the room that is left, shortened to it."
   "The mode-line of OUTPUT, made if it has none."
   (let ((name (hrt:output-full-name output)))
     (or (gethash name *mode-lines*)
-        (let ((mode-line (%make-mode-line output (hrt:make-canvas output :layer :layer-top))))
+        (let* ((canvas (hrt:make-canvas output :layer :layer-top))
+               (mode-line (%make-mode-line output canvas)))
+          (setf (hrt:canvas-on-button canvas)
+                (lambda (canvas x y button pressed)
+                  (declare (ignore canvas))
+                  (%mode-line-click mode-line x y button pressed))
+                (hrt:canvas-on-axis canvas)
+                (lambda (canvas x y vertical delta)
+                  (declare (ignore canvas x y))
+                  (%mode-line-scroll vertical delta)))
           (%mode-line-reserve output *mode-line-height*)
           (setf (gethash name *mode-lines*) mode-line)))))
 

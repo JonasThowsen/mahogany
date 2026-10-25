@@ -26,6 +26,7 @@ struct wlr_cursor_shape_manager_v1;
 struct wlr_session_lock_manager_v1;
 struct hrt_session_lock;
 struct hrt_session_lock_callbacks;
+struct hrt_canvas_callbacks;
 
 struct hrt_server {
     struct wl_display *wl_display;
@@ -97,6 +98,8 @@ struct hrt_server {
     struct wl_list idle_timeouts;
     int64_t idle_last_activity_msec;
     bool idle_inhibited;
+    // Pointer input over canvases, see hrt_canvas.h:
+    const struct hrt_canvas_callbacks *canvas_callbacks;
 };
 
 bool hrt_server_init(

@@ -177,9 +177,20 @@ or HRT-OUTPUT is NIL or a null pointer."
       state
     (when (not (find group (state-groups state) :test #'equalp))
       (error (format nil "Group ~S is not part of this state" group)))
-    (when (state-%current-group state)
-      (group-suspend (state-current-group state) (hrt:hrt-server-seat server)))
-    (setf (state-%current-group state) group)
+    (let ((previous (state-%current-group state)))
+      (when previous
+        (group-suspend previous (hrt:hrt-server-seat server)))
+      (setf (state-%current-group state) group)
+      ;; Keep the ring of hidden groups right however the current group
+      ;; was chosen (gnext swaps in the ring itself; a click on the
+      ;; mode-line or grouplist does not): the new one is not hidden, the
+      ;; previous one is, unless it is being removed.
+      (ring-list:remove-item hidden-groups group :test #'eq)
+      (when (and previous
+                 (not (eq previous group))
+                 (find previous (state-groups state) :test #'eq)
+                 (not (ring-list:contains-item hidden-groups previous :test #'eq)))
+        (ring-list:add-item hidden-groups previous)))
     (group-wakeup group (hrt:hrt-server-seat server))
     (alexandria:when-let ((group-frame (mahogany-group-current-frame group)))
       (state-focus-frame state group-frame (server-seat state))
@@ -506,15 +517,16 @@ the current group or a layer shell frame"
         (let* ((server (state-server state))
                (scene-tree (hrt:hrt-server-scene-tree server))
                (seat (hrt:hrt-server-seat server)))
+          ;; Out of the groups first, so that making another one current
+          ;; does not put this one among the hidden ones:
+          (setf groups (delete group groups :test #'eq))
           (cond
-            ((equal group current-group)
+            ((eq group current-group)
              (let ((new-current (ring-list:pop-item hidden-groups)))
                (setf current-group new-current)
                (group-wakeup new-current seat)))
             (t
-             (ring-list:remove-item hidden-groups group)))
-          (setf groups (delete group groups
-                               :test #'equalp))
+             (ring-list:remove-item hidden-groups group :test #'eq)))
           (group-transfer-views current-group group)
           (destroy-mahogany-group group scene-tree seat)
           (log-string :trace "Hidden groups: ~S" hidden-groups))

@@ -28,3 +28,15 @@ void hrt_keyboard_destroy(struct hrt_seat *seat);
 
 bool hrt_cursor_init(struct hrt_seat *seat, struct hrt_server *server);
 void hrt_cursor_destroy(struct hrt_seat *seat);
+
+/**
+ * Route the pointer's position and buttons: to the canvas or the client
+ * under it. For the cursor's own events, and for debug tools that move
+ * the pointer.
+ **/
+void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time_msec);
+void hrt_cursor_handle_button(struct hrt_seat *seat,
+                              struct wlr_pointer_button_event *event);
+
+struct hrt_canvas;
+struct wlr_scene_node *hrt_canvas_node(struct hrt_canvas *canvas);

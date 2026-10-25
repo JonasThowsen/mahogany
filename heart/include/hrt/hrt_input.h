@@ -13,6 +13,7 @@
 
 struct hrt_server;
 struct hrt_seat_callbacks;
+struct hrt_canvas;
 
 enum hrt_touchpad_state {
     HRT_TOUCHPAD_DEFAULT  = 0,
@@ -61,6 +62,10 @@ struct hrt_seat {
         struct wl_listener seat;
         struct wl_listener keyboard;
     } destroy;
+
+    // The canvas under the pointer, if any, and how we hear it go away:
+    struct hrt_canvas *canvas_under;
+    struct wl_listener canvas_under_destroy;
 
     struct {
         enum hrt_touchpad_state tap;

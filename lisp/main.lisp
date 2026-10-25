@@ -96,6 +96,7 @@ further up. "
 		              (view-callbacks '(:struct hrt:hrt-view-callbacks))
 		              (layer-shell-callbacks '(:struct hrt:hrt-layer-shell-callbacks))
 		              (session-lock-callbacks '(:struct hrt:hrt-session-lock-callbacks))
+		              (canvas-callbacks '(:struct hrt:hrt-canvas-callbacks))
 		              (server '(:struct hrt:hrt-server)))
     (init-callback-struct output-callbacks (:struct hrt:hrt-output-callbacks)
       (hrt:output-added handle-new-output)
@@ -118,6 +119,7 @@ further up. "
                        layer-shell-callbacks
                        :debug-level log-level)
     (hrt:hrt-session-lock-set-callbacks server session-lock-callbacks)
+    (hrt:canvas-callbacks-init server canvas-callbacks)
     (log-string :debug "Initialized mahogany state")
     (if (gethash 'no-init-file args)
         (log-string :info "Init file loading skipped")

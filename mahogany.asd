@@ -58,7 +58,7 @@
                              (:file "output"
                               :depends-on ("cffi-util" "hrt-bindings"))
                              (:file "canvas"
-                              :depends-on ("cffi-util" "hrt-bindings" "output"))
+                              :depends-on ("cffi-util" "hrt-bindings" "output" "callback"))
                              (:file "idle"
                               :depends-on ("hrt-bindings" "callback"))
                              (:file "subprocess"

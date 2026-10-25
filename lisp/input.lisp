@@ -230,6 +230,36 @@ NIL goes back to libinput's default, which is the same as 0."
     (%focus-frame-under-cursor seat))
   (hrt:hrt-seat-notify-button seat event))
 
+;;; A key grab: while a Lisp widget (a menu, a prompt) has it, every key
+;;; press goes to its function and to nothing else, keybindings included.
+
+(defglobal *key-grab* nil
+  "A function of (key text) taking every key press while a widget has the
+keyboard, or NIL. TEXT is what the key types, a string, or NIL.")
+
+(defun grab-keys (function)
+  "Send every key press to FUNCTION, called with the key and the text it
+types (a string or NIL), until ungrab-keys. Returns the previous grab."
+  (declare (type function function))
+  (prog1 *key-grab*
+    (setf *key-grab* function)))
+
+(defun ungrab-keys (&optional previous)
+  "End the key grab, or go back to PREVIOUS, the grab there was before."
+  (setf *key-grab* previous))
+
+(defun key-text (key)
+  "What KEY types: a string of one character (or more for some keysyms),
+or NIL for keys that type nothing, such as Shift or F1."
+  (cffi:with-foreign-object (buffer :char 8)
+    (let ((length (xkb:keysym-to-utf8 (key-keysym key) buffer 8)))
+      (when (> length 1)                ; the length counts the NUL
+        (let ((text (cffi:foreign-string-to-lisp buffer :count (1- length))))
+          ;; Control characters type nothing readable:
+          (if (and (= (length text) 1) (< (char-code (char text 0)) 32))
+              nil
+              text))))))
+
 (hrt:define-hrt-callback keyboard-callback :bool
     ((seat (:pointer (:struct hrt:hrt-seat)))
      (info (:pointer (:struct hrt:hrt-keypress-info))))
@@ -241,6 +271,16 @@ NIL goes back to libinput's default, which is the same as 0."
                             info (:struct hrt:hrt-keypress-info))
     (when *close-message-on-key*
       (close-message *compositor-state*))
+    ;; A widget has the keyboard: it gets the key, nothing else does.
+    (when (and *key-grab* (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
+      (when (plusp hrt:keysyms-len)
+        (let ((key (make-key (cffi:mem-aref hrt:keysyms :uint32 0) hrt:modifiers)))
+          (unless (key-modifier-key-p key)
+            (handler-case (funcall *key-grab* key (key-text key))
+              (error (c)
+                (log-string :error "Key grab ~S: ~A" *key-grab* c)
+                (ungrab-keys))))))
+      (return-from keyboard-callback t))
     ;; don't check for key commands if we are collecting args:
     (when *collecting-args-p*
       (log-string :trace "Not checking keybinding due to interactive command")

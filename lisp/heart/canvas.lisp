@@ -8,11 +8,31 @@
 (defstruct (canvas (:constructor %make-canvas (pointer output)))
   "A canvas in the scene of OUTPUT. POINTER is the hrt_canvas, null once
 destroyed. WIDTH and HEIGHT are those of the last frame committed, in
-layout coordinates."
+layout coordinates. The ON- slots hold functions called with the canvas
+for pointer input over it (see canvas-pointer-handlers), or NIL."
   (pointer (cffi:null-pointer) :type cffi:foreign-pointer)
   (output nil :type output :read-only t)
   (width 0 :type fixnum)
-  (height 0 :type fixnum))
+  (height 0 :type fixnum)
+  ;; (canvas x y): the pointer entered or moved, X,Y in layout pixels
+  ;; from the canvas's top left corner
+  (on-motion nil :type (or null function))
+  ;; (canvas): the pointer left
+  (on-leave nil :type (or null function))
+  ;; (canvas x y button pressed-p): BUTTON is a linux input code, 272 for
+  ;; the left button, 273 right, 274 middle
+  (on-button nil :type (or null function))
+  ;; (canvas x y vertical-p delta): the wheel, DELTA in pixels
+  (on-axis nil :type (or null function)))
+
+(declaim (type hash-table *canvases*))
+(mahogany/util::defglobal *canvases* (make-hash-table)
+  "Every live canvas, by the address of its hrt_canvas, for the pointer
+callbacks from heart.")
+
+(defconstant +button-left+ 272)
+(defconstant +button-right+ 273)
+(defconstant +button-middle+ 274)
 
 (declaim (type hash-table *output-canvases*))
 (mahogany/util::defglobal *output-canvases* (make-hash-table)
@@ -37,6 +57,7 @@ with the output, or earlier with canvas-destroy."
                            (output-full-name output))))
     (let ((canvas (%make-canvas pointer output)))
       (push canvas (gethash (%output-key output) *output-canvases*))
+      (setf (gethash (cffi:pointer-address pointer) *canvases*) canvas)
       canvas)))
 
 (defun canvas-destroyed-p (canvas)
@@ -48,6 +69,7 @@ with the output, or earlier with canvas-destroy."
 harmless."
   (declare (type canvas canvas))
   (unless (canvas-destroyed-p canvas)
+    (remhash (cffi:pointer-address (canvas-pointer canvas)) *canvases*)
     (hrt-canvas-destroy (canvas-pointer canvas))
     (setf (canvas-pointer canvas) (cffi:null-pointer))
     (let ((key (%output-key (canvas-output canvas))))
@@ -112,3 +134,48 @@ only when BODY finishes. Returns true when the frame was shown."
            ,@body
            (setf ,shown t))
          (and ,shown (canvas-commit ,canvas-var ,width-var ,height-var))))))
+
+;;; Pointer input, from heart
+
+(defmacro %with-canvas-of ((var pointer) &body body)
+  `(alexandria:when-let ((,var (gethash (cffi:pointer-address ,pointer) *canvases*)))
+     ,@body))
+
+(define-hrt-callback %canvas-pointer-motion :void
+    ((pointer :pointer) (x :double) (y :double))
+    ()
+  (%with-canvas-of (canvas pointer)
+    (alexandria:when-let ((handler (canvas-on-motion canvas)))
+      (funcall handler canvas x y))))
+
+(define-hrt-callback %canvas-pointer-leave :void
+    ((pointer :pointer))
+    ()
+  (%with-canvas-of (canvas pointer)
+    (alexandria:when-let ((handler (canvas-on-leave canvas)))
+      (funcall handler canvas))))
+
+(define-hrt-callback %canvas-pointer-button :void
+    ((pointer :pointer) (x :double) (y :double) (button :uint32) (pressed :bool))
+    ()
+  (%with-canvas-of (canvas pointer)
+    (alexandria:when-let ((handler (canvas-on-button canvas)))
+      (funcall handler canvas x y button pressed))))
+
+(define-hrt-callback %canvas-pointer-axis :void
+    ((pointer :pointer) (x :double) (y :double) (vertical :bool) (delta :double))
+    ()
+  (%with-canvas-of (canvas pointer)
+    (alexandria:when-let ((handler (canvas-on-axis canvas)))
+      (funcall handler canvas x y vertical delta))))
+
+(defun canvas-callbacks-init (server callbacks)
+  "Fill the hrt_canvas_callbacks struct CALLBACKS, which must outlive the
+server, and hand it to SERVER."
+  (cffi:with-foreign-slots ((pointer-motion pointer-leave pointer-button pointer-axis)
+                            callbacks (:struct hrt-canvas-callbacks))
+    (setf pointer-motion (cffi:callback %canvas-pointer-motion)
+          pointer-leave (cffi:callback %canvas-pointer-leave)
+          pointer-button (cffi:callback %canvas-pointer-button)
+          pointer-axis (cffi:callback %canvas-pointer-axis)))
+  (hrt-canvas-set-callbacks server callbacks))

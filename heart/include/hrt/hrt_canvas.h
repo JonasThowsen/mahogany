@@ -2,6 +2,7 @@
 #define HRT_HRT_CANVAS_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <cairo.h>
 #include <wlr/types/wlr_scene.h>
 
@@ -14,6 +15,32 @@
  * buffer, so a frame being drawn never shows half finished.
  **/
 struct hrt_canvas;
+struct hrt_server;
+
+/**
+ * Pointer input over canvases. X and Y are in the canvas's coordinates,
+ * layout pixels from its top left corner. While the pointer is over a
+ * canvas, no client has pointer focus. May be NULL, each of them.
+ **/
+struct hrt_canvas_callbacks {
+    //! The pointer entered the canvas, or moved over it.
+    void (*pointer_motion)(struct hrt_canvas *canvas, double x, double y);
+    //! The pointer left the canvas (or the canvas went away under it).
+    void (*pointer_leave)(struct hrt_canvas *canvas);
+    //! A button (a linux input code, BTN_LEFT...) went down or up.
+    void (*pointer_button)(struct hrt_canvas *canvas, double x, double y,
+                           uint32_t button, bool pressed);
+    //! The wheel moved: DELTA pixels, vertically or horizontally.
+    void (*pointer_axis)(struct hrt_canvas *canvas, double x, double y,
+                         bool vertical, double delta);
+};
+
+/**
+ * Set the callbacks for pointer input over every canvas. The struct must
+ * outlive the server.
+ **/
+void hrt_canvas_set_callbacks(struct hrt_server *server,
+                              const struct hrt_canvas_callbacks *callbacks);
 
 /**
  * Create a canvas as a child of PARENT. It shows nothing until the first

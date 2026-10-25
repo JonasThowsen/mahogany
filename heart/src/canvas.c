@@ -6,6 +6,8 @@
 #include <hrt/hrt_canvas.h>
 #include "render/cairo_buffer.h"
 #include "render/scale_util.h"
+#include "scene_descriptor.h"
+#include <hrt/hrt_server.h>
 
 struct hrt_canvas {
     // NULL once the node has been destroyed along with its parent:
@@ -48,7 +50,21 @@ struct hrt_canvas *hrt_canvas_create(struct wlr_scene_tree *parent) {
     canvas->node_destroy.notify = handle_node_destroy;
     wl_signal_add(&canvas->scene_buffer->node.events.destroy,
                   &canvas->node_destroy);
+    // So the cursor code knows a canvas when the pointer is over one:
+    if (!scene_descriptor_assign(&canvas->scene_buffer->node,
+                                 HRT_SCENE_DESC_CANVAS, canvas)) {
+        wlr_log(WLR_ERROR, "Could not describe the canvas node");
+    }
     return canvas;
+}
+
+struct wlr_scene_node *hrt_canvas_node(struct hrt_canvas *canvas) {
+    return canvas->scene_buffer ? &canvas->scene_buffer->node : nullptr;
+}
+
+void hrt_canvas_set_callbacks(struct hrt_server *server,
+                              const struct hrt_canvas_callbacks *callbacks) {
+    server->canvas_callbacks = callbacks;
 }
 
 void hrt_canvas_destroy(struct hrt_canvas *canvas) {

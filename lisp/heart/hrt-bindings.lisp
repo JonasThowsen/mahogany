@@ -6,6 +6,8 @@
 
 (cffi:defcstruct hrt-seat-callbacks)
 
+(cffi:defcstruct hrt-canvas)
+
 (cffi:defcenum hrt-touchpad-state
   (:hrt-touchpad-default 0)
   (:hrt-touchpad-enabled 1)
@@ -48,6 +50,8 @@
   (cursor-img-buf-len :size)
   (grabbed :bool)
   (destroy (:struct hrt-seat-destroy))
+  (canvas-under (:pointer (:struct hrt-canvas)))
+  (canvas-under-destroy (:struct wl-listener))
   (touchpad (:struct hrt-seat-touchpad)))
 
 (cffi:defcstruct hrt-keypress-info
@@ -808,6 +812,8 @@ intial placement."
 
 (cffi:defcstruct hrt-session-lock-callbacks)
 
+(cffi:defcstruct hrt-canvas-callbacks)
+
 (cffi:defcstruct hrt-server-destroy-listener
   (backend (:struct wl-listener))
   (headless (:struct wl-listener))
@@ -861,7 +867,8 @@ intial placement."
   (session-lock-callbacks (:pointer (:struct hrt-session-lock-callbacks)))
   (idle-timeouts (:struct wl-list))
   (idle-last-activity-msec :int64)
-  (idle-inhibited :bool))
+  (idle-inhibited :bool)
+  (canvas-callbacks (:pointer (:struct hrt-canvas-callbacks))))
 
 #-HRT-DEBUG
 (declaim (inline hrt-server-init))
@@ -997,13 +1004,22 @@ intial placement."
 
 ;; next section imported from file heart/include/hrt/hrt_canvas.h
 
-(cffi:defcstruct hrt-canvas
-  "A rectangle in the scene graph that the compositor draws into itself,
-with cairo: a bar, a menu, an on-screen display.
+(cffi:defcstruct hrt-canvas-callbacks
+  "Pointer input over canvases. X and Y are in the canvas's coordinates,
+layout pixels from its top left corner. While the pointer is over a
+canvas, no client has pointer focus. May be NULL, each of them."
+  (pointer-motion :pointer #| function ptr void (struct hrt_canvas *, double, double) |#)
+  (pointer-leave :pointer #| function ptr void (struct hrt_canvas *) |#)
+  (pointer-button :pointer #| function ptr void (struct hrt_canvas *, double, double, uint32_t, _Bool) |#)
+  (pointer-axis :pointer #| function ptr void (struct hrt_canvas *, double, double, _Bool, double) |#))
 
-Draw a frame by calling hrt_canvas_begin, drawing on the surface it
-returns, and calling hrt_canvas_commit to show it. Each frame is a new
-buffer, so a frame being drawn never shows half finished.")
+#-HRT-DEBUG
+(declaim (inline hrt-canvas-set-callbacks))
+(cffi:defcfun ("hrt_canvas_set_callbacks" hrt-canvas-set-callbacks) :void
+  "Set the callbacks for pointer input over every canvas. The struct must
+outlive the server."
+  (server (:pointer (:struct hrt-server)))
+  (callbacks (:pointer (:struct hrt-canvas-callbacks))))
 
 #-HRT-DEBUG
 (declaim (inline hrt-canvas-create))
