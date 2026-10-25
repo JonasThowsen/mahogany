@@ -1,0 +1,268 @@
+#+TITLE: Roadmap: from Mahogany to a hackable Common Lisp desktop
+#+DATE: 2026-10-25
+
+This is a gap analysis and plan for turning this fork into a complete
+desktop in the spirit of Omarchy — bar, launcher, lock screen, idle,
+wifi, bluetooth, audio, brightness, battery, monitors — written in
+Common Lisp (and C in =heart= where unavoidable), developed and fixed
+live in the running image. It is grounded in three inventories made on
+2026-10-25: Omarchy's scripts and bindings (=~/coding/omarchy=,
+159a4d1d), this repository, and what nixpkgs 26.05 and Jonas's laptop
+(=~/nixos/configuration.nix=) provide.
+
+* Vision and principles
+
+- Everything a user sees that is not an application window — bar, menus,
+  launcher, OSDs, notifications, lock screen — lives *inside the
+  compositor image*, StumpWM style, drawn by Lisp. That is what makes it
+  hackable: a bug in the bar is a =lisp compile= away from fixed, no
+  IPC, no second process.
+- =heart= stays a thin wlroots wrapper: it provides mechanisms (protocol
+  objects, scene nodes, a drawing surface, input events) and Lisp holds
+  all policy.
+- Omarchy's value is its curation, not its code. Its features are bash
+  scripts around =nmcli=, =bluetoothctl=, =wpctl=, =brightnessctl=,
+  =powerprofilesctl=, =hypridle=, =hyprlock=, =walker=, =waybar=,
+  =mako=, =swayosd=. The same CLIs are the first integration layer here
+  (=hrt:subprocess-collect= exists); D-Bus-native clients come second,
+  for live updates instead of polling.
+- Use external programs where they are the right tool and gain nothing
+  from being Lisp: terminal, browser, =grim=/=slurp=, =wf-recorder=,
+  =xdg-desktop-portal-wlr=, polkit agent, PipeWire, =swaybg=.
+- Each step is verified in the running image and committed small.
+  Work that does not need a GPU or input devices is done and tested
+  headless (=WLR_BACKENDS=headless WLR_RENDERER=pixman=, screenshots via
+  =grim=) on the VPS; everything else on the laptop under niri (nested)
+  or on a TTY.
+
+* Where we are
+
+** Compositor (=heart=, wlroots 0.20)
+
+Implemented protocols: xdg-shell, layer-shell v5, output-management,
+xdg-output, screencopy, ext-image-copy-capture, export-dmabuf,
+gamma-control, data-control, primary-selection, idle-notify,
+idle-inhibit, viewporter, linux-dmabuf and wl_shm (via
+=wlr_renderer_init_wl_display=). Scene graph with per-output layers,
+fullscreen nodes, cairo/pango toast messages (=hrt_message=), border
+boxes, a cairo buffer type (=src/render/cairo_buffer.c=), an event-loop
+work queue (eventfd semaphore) and timers.
+
+Not implemented (each is a C task; sizes are rough):
+| Protocol / feature             | Why it matters                                           | Size |
+|--------------------------------+----------------------------------------------------------+------|
+| xdg-decoration (SSD)           | GTK/Qt apps draw their own title bars without it        | S    |
+| ext-session-lock               | no =swaylock=, no Lisp lock screen without it            | M    |
+| Floating + pointer move/resize | dialogs, pop-outs, Omarchy's SUPER+T / SUPER+mouse      | M    |
+| pointer-constraints, relative-pointer | games, VMs, remote desktops                        | S    |
+| cursor-shape                   | correct cursors in modern GTK/Qt/Chromium                | S    |
+| xdg-activation                 | focus requests ("open link in browser" raises it)        | S    |
+| fractional-scale               | crisp HiDPI with non-integer scale (laptop is dpi 192)   | S    |
+| presentation-time              | smooth video, =wlr_scene= supports it, just create it    | XS   |
+| keyboard-shortcuts-inhibit     | VMs / VNC taking all keys                                | XS   |
+| virtual-keyboard/pointer       | =wtype=, =ydotool=, on-screen keyboards                  | S    |
+| Switch events (lid)            | laptop lid → monitor off / suspend                       | S    |
+| Canvas node (see below)        | the primitive every Lisp UI builds on                    | M    |
+| Pointer events on scene nodes  | clickable bar and menus                                  | S    |
+| Output gamma from Lisp         | nightlight without =wlsunset=                            | S    |
+| text-input / input-method      | fcitx5, CJK, Omarchy's voxtype dictation                 | M    |
+| foreign-toplevel-list          | external taskbars; not needed for an in-image bar        | S    |
+| Xwayland                       | =xwayland-satellite= works today as under niri; native later | L |
+| tablet, drm-lease, tearing     | later / never                                            | —    |
+
+** Window manager (Lisp)
+
+Frame tree with binary and poly splits, groups (StumpWM's), commands
+(=defcommand=, ~45 today: splits, focus, groups, outputs, terminal,
+=colon= prompt via rofi, =loadrc=, shutdown), kmaps and kmap modes with
+a =C-t= prefix, output configuration (=output-configure-atomic=),
+fullscreen views, toasts, a theme file, a config system and
+=~/.config/mahogany/init.lisp=. No floating windows, no mouse-driven
+window management, no window rules, no resize-frame command, no menus.
+
+** Development loop
+
+Done: Nix flake and dev shell, =make=/=make test=, slynk-cli with
+=:main= (=lisp start= boots the compositor), =lisp eval --main=,
+main-thread debugger pauses with =restart-frame=, SLY from Emacs,
+=CLAUDE.md=.
+
+* Gap analysis by area
+
+** A. Compositor fundamentals (daily-driver blockers)
+
+Needed before Mahogany can be the login session:
+1. *xdg-decoration*: tell clients to use server-side decorations (we
+   draw borders, no title bars). =wlr_xdg_decoration_manager_v1=, one
+   listener. Lisp: nothing.
+2. *Floating windows* + =SUPER+mouse= move/resize + toggle command.
+   Heart: a floating scene layer per group exists conceptually
+   (=hrt_scene_layer_*=); needs pointer grab mode for move/resize.
+   Lisp: a =floating= flag on views, =toggle-float=, placement, and
+   window rules (app-id/title → float, size, group).
+3. *ext-session-lock* in heart, so =swaylock= works at once, and the
+   Lisp lock screen later has a correct protocol-level foundation
+   (lock surfaces, input routing, output hotplug while locked).
+4. *Idle policy in Lisp*: timers on =ext-idle-notify= (already in heart)
+   → dim/lock/DPMS off/suspend, inhibited by idle-inhibit (also in
+   heart). Needs =output-enable= from Lisp for DPMS. Replaces
+   =hypridle=/=swayidle=.
+5. *Session plumbing*: =XDG_CURRENT_DESKTOP=mahogany=, =systemctl --user
+   import-environment=, =dbus-update-activation-environment=, an
+   autostart list (polkit agent, =swaybg=, =mako= until replaced, portal
+   config for =xdg-desktop-portal-wlr=), a =mahogany.desktop= session
+   file and a NixOS module in the flake.
+6. cursor-shape, xdg-activation, fractional-scale, presentation-time,
+   keyboard-shortcuts-inhibit: small, independent, do early.
+
+** B. The UI primitive: a canvas node
+
+One mechanism underlies bar, menus, launcher, OSD, notifications, lock
+screen, and keybinding cheat sheet: a rectangle on an output layer that
+Lisp draws into with cairo/pango and that receives pointer input.
+
+Design (heart, building on =hrt_message= and =cairo_buffer.c=):
+- =hrt_canvas_create(server, output, layer, w, h)= → a scene buffer
+  backed by a cairo image surface; =hrt_canvas_cairo(c)= returns the
+  =cairo_t*=; =hrt_canvas_commit(c, damage)= swaps/damages the buffer;
+  =set_position=, =set_size=, =set_enabled=, =raise=, =destroy=.
+- Exclusive zones: =hrt_canvas_set_exclusive(c, edge, size)= reserves
+  usable area exactly as layer-shell surfaces do (=layer_shell.c=
+  arrange logic), so a Lisp bar shrinks the tiling area.
+- Input: pointer enter/leave/motion/button events on canvases, delivered
+  to Lisp callbacks like view events; keyboard focus for a canvas (menus
+  and the lock screen need it).
+- Lisp: =cl-cairo2= and =cl-pango= (both in nixpkgs) wrap the =cairo_t=
+  from heart; a =define-widget=-style layer on top handles layout,
+  redraw-on-change, and theming. Rendering code is ordinary Lisp,
+  recompiled live.
+
+Testable headless: =grim= screenshots through screencopy show the
+pixels.
+
+** C. Shell components in Lisp (built on B)
+
+| Component            | Omarchy equivalent | Notes                                                        |
+|----------------------+--------------------+--------------------------------------------------------------|
+| Mode-line / bar      | waybar             | groups, window title, clock, battery, net, bt, volume, idle-inhibit; tray later (SNI is D-Bus) |
+| Menu                 | walker menus       | =select-from-menu= with fuzzy filter; Omarchy's menu tree ("Go → Apps/Trigger/Style/Setup/System") maps 1:1 to nested Lisp menus |
+| App launcher         | walker             | parse =.desktop= files (XDG dirs), frequency sort, icons later |
+| Command prompt       | rofi (today)       | replace =colon=/input methods with the menu                  |
+| OSD                  | swayosd            | volume/brightness/caps-lock pop-ups; =toast-message= is almost it |
+| Notifications        | mako               | a D-Bus =org.freedesktop.Notifications= server in the image; history, do-not-disturb, =SUPER+,= dismiss |
+| Lock screen          | hyprlock           | canvas on the lock surface + PAM via a small CFFI binding to =libpam= (no CL library packaged); until then =swaylock= |
+| Keybinding cheat sheet | =SUPER+K=        | generated from the kmaps, zero maintenance                   |
+| Clipboard history    | cliphist           | heart already has data-control; keep history in Lisp         |
+| Screenshot / record menu | capture menu   | =grim=/=slurp=/=wf-recorder= via =subprocess-collect=        |
+| Wallpaper            | swaybg             | later: a canvas on the background layer                       |
+
+** D. System integration ("the OS features")
+
+Jonas's laptop stack (=~/nixos/configuration.nix=): *iwd* (not
+NetworkManager), BlueZ, PipeWire/WirePlumber, UPower,
+power-profiles-daemon, brightnessctl, logind, blueman/impala TUIs.
+
+| Area        | Phase 1: CLI via =subprocess-collect=        | Phase 2: native                                        |
+|-------------+----------------------------------------------+--------------------------------------------------------|
+| Wifi        | =iwctl= (station scan/list/connect; =nmcli= where NM is used) | D-Bus =net.connman.iwd= (and =org.freedesktop.NetworkManager=) signals for live bar state |
+| Bluetooth   | =bluetoothctl= (devices, pair, connect)       | D-Bus =org.bluez= ObjectManager                         |
+| Audio       | =wpctl= (volume, mute, default sink/source)   | =pactl subscribe= stream, or PipeWire native later       |
+| Brightness  | =brightnessctl=                               | logind =SetBrightness= over D-Bus (no root), sysfs read |
+| Battery     | =upower -i=                                   | UPower D-Bus properties                                 |
+| Power profile | =powerprofilesctl=                          | D-Bus =net.hadess.PowerProfiles=                        |
+| Media keys  | =playerctl=                                   | MPRIS D-Bus                                             |
+| Nightlight  | =wlsunset= (gamma-control exists)             | gamma ramps from Lisp (heart addition)                  |
+| Monitors    | Lisp =output-config= exists; =wlr-randr=/=kanshi= work | monitor menu + profiles in Lisp                |
+| Lid switch  | logind handles suspend today                  | switch events from heart → monitor on/off policy        |
+| Idle/DPMS   | —                                             | Lisp (see A.4)                                           |
+
+D-Bus from Lisp: the =dbus= library (nixpkgs) is built on iolib and runs
+its own event loop, so it lives on a dedicated thread; every state
+change is pushed to the compositor with =hrt:run-in-main-thread=, and
+requests from the main thread are queued to it. One small "bridge"
+module, then per-service clients.
+
+** E. Session, defaults, theming, packaging
+
+- A shipped default configuration that is usable without editing:
+  Omarchy-like =SUPER= chords as the top-level kmap (=SUPER+Return=
+  terminal, =SUPER+Space= launcher, =SUPER+W= close, =SUPER+F=
+  fullscreen, =SUPER+T= float, =SUPER+1..9= groups, =SUPER+arrows=
+  focus, =SUPER+Shift+arrows= swap, XF86 media/brightness keys), with
+  the =C-t= prefix map kept for StumpWM users. Mahogany's kmap modes
+  make both possible.
+- Themes: a theme is Lisp data (colors, font, border, gaps, wallpaper)
+  applied to everything in the image at once; optionally written out to
+  external apps' configs the way Omarchy does (terminal, mako) while
+  those are still external.
+- Flake: =packages.mahogany=, a NixOS module (session file for =ly=,
+  autostart, portal config), =nix flake check= running the tests
+  headless.
+
+** F. Window management parity
+
+Omarchy/Hyprland habits to cover with StumpWM concepts: focus/swap by
+direction (frame tree neighbours), resize frames interactively
+(StumpWM =iresize=), floating toggle and pop-out, scratchpad (a hidden
+group with a toggle), fullscreen (exists), window rules, gaps and
+border styles (theme), focus-follows-mouse options, =ALT+Tab= across
+groups, a group-per-output model that matches "workspace on monitor",
+and the keybinding cheat sheet.
+
+** G. Development experience
+
+Headless CI in =nix flake check=; =cl-bindgen= in the dev shell so
+binding regeneration is one command; an Emacs command that connects SLY
+from =.slynk-cli/port=; more tests around the frame tree and the new
+Lisp UI layer (render to an image surface, assert pixels).
+
+* Milestones
+
+- *M0 — dev loop* (done): flake, =lisp start= boots the compositor,
+  main-thread eval and debugging, SLY.
+- *M1 — log into it*: A.1–A.6 + E's default config + NixOS session.
+  External tools fill the UI: waybar, fuzzel (or rofi), mako, swaylock,
+  swaybg. Exit criterion: Jonas uses Mahogany as his session for a day.
+- *M2 — Lisp UI*: canvas node (B), then bar, menu, launcher, OSD,
+  keybinding cheat sheet (C). Replaces waybar/fuzzel/swayosd.
+- *M3 — system menus and live state*: D phase 1 for wifi, bluetooth,
+  audio, brightness, battery, power profile, monitors; notifications
+  server; clipboard history; then D phase 2 (D-Bus bridge) for live
+  bar updates. Replaces mako/cliphist/the TUIs.
+- *M4 — lock and polish*: Lisp lock screen with PAM, nightlight, theme
+  system with switching, capture menu, portals verified, Xwayland
+  decision.
+- Later: text-input/input-method, tablets, native Xwayland, SNI tray.
+
+* What can start now, headless on the VPS
+
+In order of value, each independently testable without a GPU:
+1. Canvas node in heart + =cl-cairo2=/=cl-pango= in the flake + a first
+   Lisp "draw a bar with the clock" — verified with =grim= screenshots.
+2. xdg-decoration, presentation-time, cursor-shape, xdg-activation,
+   keyboard-shortcuts-inhibit, fractional-scale: small, protocol-level,
+   verified with =wayland-info= and simple clients.
+3. ext-session-lock in heart, verified by =swaylock= locking a headless
+   output.
+4. The D-Bus bridge thread and a first client (logind is present on the
+   VPS; UPower/iwd/BlueZ clients written against the spec and tested on
+   the laptop).
+5. =subprocess-collect= wrappers for =iwctl=, =bluetoothctl=, =wpctl=,
+   =brightnessctl=, =upower=, =powerprofilesctl= returning Lisp data.
+6. Headless test CI.
+
+Needs the laptop: floating/mouse interaction, idle/DPMS/lock-unlock,
+real monitors and hotplug, input devices, GPU/Nvidia behaviour,
+everything in M1's exit criterion.
+
+* Decisions to make
+
+- Keybinding scheme: SUPER chords as the primary map (Omarchy habit) with
+  =C-t= prefix kept, or the reverse.
+- Groups vs. workspaces: keep StumpWM groups (global, with outputs
+  showing one group each) or model Hyprland's per-monitor workspaces.
+  Recommendation: groups, with =SUPER+1..9= bound to them.
+- Launcher: build the in-image launcher first (M2) or keep fuzzel
+  through M3.
+- Lock screen: in-image with PAM (recommended; simpler protocol story,
+  fully themeable) vs. =swaylock= forever.
