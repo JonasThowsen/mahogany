@@ -27,6 +27,11 @@ dependencies/cl-interactive`); the wlroots submodule is not needed.
   (set `XDG_RUNTIME_DIR` to a writable directory).
 - `ninja -C build/heart` — rebuild only the C side. C changes need a
   restart of the compositor (`lisp stop` / `lisp start`); Lisp changes do not.
+- `nix flake check` — what CI runs: the test suite, a headless smoke test
+  of the built compositor, and `clang-format --dry-run`. `nix build`
+  gives `result/bin/mahogany`, the compositor wrapped with its libraries
+  (`.#heart` builds the C backend alone). The two vendored Lisp libraries
+  are pinned flake inputs there, since a flake does not see submodules.
 
 ## Working in a running image
 
