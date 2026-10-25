@@ -51,10 +51,10 @@ void hrt_scene_root_destroy(struct hrt_scene_root *scene_root) {
 
 struct hrt_scene_output *hrt_scene_output_create(struct hrt_scene_root *scene) {
     struct hrt_scene_output *scene_output = calloc(1, sizeof(*scene_output));
-    scene_output->background = wlr_scene_tree_create(scene->background);
-    scene_output->bottom     = wlr_scene_tree_create(scene->bottom);
-    scene_output->top        = wlr_scene_tree_create(scene->top);
-    scene_output->overlay    = wlr_scene_tree_create(scene->overlay);
+    scene_output->background   = wlr_scene_tree_create(scene->background);
+    scene_output->bottom       = wlr_scene_tree_create(scene->bottom);
+    scene_output->top          = wlr_scene_tree_create(scene->top);
+    scene_output->overlay      = wlr_scene_tree_create(scene->overlay);
     scene_output->session_lock = wlr_scene_tree_create(scene->session_lock);
     return scene_output;
 }
