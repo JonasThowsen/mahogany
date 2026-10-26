@@ -266,7 +266,7 @@
                 socket=$(grep -oE "wayland-[0-9]+" mahogany.log | head -1)
                 # Give the first frame and the mode-line a moment:
                 sleep 2
-                WAYLAND_DISPLAY=$socket wayland-info > globals
+                WAYLAND_DISPLAY=$socket wayland-info > globals || { echo "no client could connect"; cat mahogany.log; exit 1; }
                 for global in wl_compositor xdg_wm_base zwlr_layer_shell_v1 \
                     zwlr_output_manager_v1 zxdg_decoration_manager_v1 \
                     xdg_activation_v1 wp_cursor_shape_manager_v1 \

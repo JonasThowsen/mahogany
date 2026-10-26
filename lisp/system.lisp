@@ -10,12 +10,26 @@ Mahogany is running under")
 (in-package #:mahogany/system)
 
 (defun find-program (name)
+  "The path of the program NAME on PATH, as a string, or NIL when it is
+not installed. NAME with a slash in it is taken as a path and checked
+as it is. No subprocess is run: this is called on the main thread."
   (declare (type string name))
-  (handler-case
-      (string-trim '(#\Newline #\Space)
-                   (with-output-to-string (stream)
-                     (uiop:run-program (list "which" name) :output stream)))
-    (UIOP/RUN-PROGRAM:SUBPROCESS-ERROR nil)))
+  (flet ((executable-p (path)
+           (let ((truename (probe-file path)))
+             (and truename
+                  (pathname-name truename) ; not a directory
+                  #+sbcl (handler-case (plusp (logand (sb-posix:stat-mode (sb-posix:stat truename))
+                                                      #o111))
+                           (error () nil))
+                  #-sbcl t
+                  (namestring truename)))))
+    (if (find #\/ name)
+        (executable-p name)
+        (loop for dir in (uiop:split-string (or (uiop:getenv "PATH") "") :separator ":")
+              for path = (and (plusp (length dir))
+                              (concatenate 'string dir "/" name))
+              for found = (and path (executable-p path))
+              when found return found))))
 
 (defun open-program (candidates)
   (loop :for name :in candidates
