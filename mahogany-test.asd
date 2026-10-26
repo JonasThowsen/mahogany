@@ -16,6 +16,7 @@ This file is a part of mahogany.
                (:file "themes-tests")
                (:file "screenshot-tests")
                (:file "layouts-tests")
+               (:file "directions-tests")
 	           (:file "tree-tests" :depends-on ("util"))
 	           (:file "keyboard-tests")
                (:file "output-config-tests" :depends-on ("util"))

@@ -78,34 +78,11 @@ keymap is listed once, with the binding that wins."
                                (string-lessp (second a) (second b))
                                (< (first a) (first b))))))))
 
-(defun %format-in-columns (entries max-rows)
-  "Lay out the strings ENTRIES top to bottom in as few columns as
-possible with at most MAX-ROWS rows, and return the text."
-  (let* ((count (length entries))
-         (rows (ceiling count (max 1 (ceiling count max-rows))))
-         (width (+ 3 (reduce #'max entries :key #'length :initial-value 0)))
-         (entries (coerce entries 'vector)))
-    (with-output-to-string (s)
-      (dotimes (row (min rows count))
-        (unless (zerop row)
-          (terpri s))
-        (loop for i from row below count by rows
-              do (format s "~vA" width (aref entries i)))))))
-
+(declaim (ftype function show-key-help))
 (defcommand describe-bindings ()
-  (:documentation "Show every key binding that is active now")
+  (:documentation "Show every key binding that is active now, until a key is pressed")
   (:method ()
-    (let* ((bindings (%active-bindings))
-           (key-width (reduce #'max bindings :key (lambda (b) (length (car b)))
-                                             :initial-value 0)))
-      (toast-message *compositor-state*
-                     (%format-in-columns
-                      (mapcar (lambda (b)
-                                (format nil "~vA  ~A" key-width (car b) (cdr b)))
-                              bindings)
-                      20)
-                     :ms-delay 15000
-                     :close-on-key t))))
+    (show-key-help)))
 
 (defcommand split-frame-h ()
   (:documentation "Split the current frame horizontally")

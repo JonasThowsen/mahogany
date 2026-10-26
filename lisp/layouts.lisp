@@ -272,8 +272,10 @@ negative STEP), :manual included."
   :action #'layout-set)
 
 (define-keys *top-map*
-  "s-l" #'layout-next
-  "s-S-l" #'layout-menu
+  "s-r" #'layout-next
+  "s-C-r" #'layout-menu
+  "s-M-r" #'layout-manual
+  "s-plus" #'layout-main-ratio-increase
   "s-equal" #'layout-main-ratio-increase
   "s-minus" #'layout-main-ratio-decrease)
 

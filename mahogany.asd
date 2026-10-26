@@ -143,9 +143,11 @@
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree"))
                (:file "outputs"
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree" "scratchpad"))
+               (:file "directions"
+               (:file "key-help"
                (:file "xwayland" :depends-on ("system" "config" "log"))
                (:file "default-bindings"
-                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "xwayland"))
+                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
                (:file "layouts"
                 :depends-on ("group" "state" "launcher" "key-bindings" "default-bindings" "tree"))
                (:file "lid" :depends-on ("state" "idle" "command" "themes" "mode-line" "heart"))

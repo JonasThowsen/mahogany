@@ -1,9 +1,10 @@
 (in-package #:mahogany)
 
-;;; The default keys: SUPER chords on *top-map*, the way Omarchy and
-;;; most Wayland desktops have them, next to the C-t prefix map of
-;;; StumpWM (*root-map*). init.lisp changes any of them with define-key
-;;; and undefine-key on *top-map*; describe-bindings (s-k) lists what
+;;; The default keys: SUPER chords on *top-map*, laid out as niri has
+;;; them (h j k l and the arrows for directions, Control moves the
+;;; window, Shift the output), next to the C-t prefix map of StumpWM
+;;; (*root-map*). init.lisp changes any of them with define-key and
+;;; undefine-key on *top-map*; describe-bindings (s-S-SPC) lists what
 ;;; is bound. Also here: *autostart*, the programs started with the
 ;;; session.
 
@@ -54,51 +55,68 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   ;; Programs and menus
   "s-RET" #'open-terminal
   "s-SPC" #'launcher-apps
+  "s-S-SPC" #'describe-bindings
   "s-M-SPC" #'launcher-menu
   "s-x" #'launcher-commands
   "s-semicolon" #'colon
-  "s-k" #'describe-bindings
-  ;; Windows and frames
-  "s-w" #'close-current-view
+  "s-o" #'launcher-windows
+  "s-M-l" #'lock-session
+  "s-S-e" #'shutdown-confirm
+  ;; Windows and frames: h j k l and the arrows are left, down, up,
+  ;; right; Control moves the window, Shift goes to the output beside
+  "s-q" #'close-current-view
+  "s-h" #'focus-left "s-j" #'focus-down "s-k" #'focus-up "s-l" #'focus-right
+  "s-Left" #'focus-left "s-Down" #'focus-down "s-Up" #'focus-up "s-Right" #'focus-right
+  "s-C-h" #'move-window-left "s-C-j" #'move-window-down
+  "s-C-k" #'move-window-up "s-C-l" #'move-window-right
+  "s-C-Left" #'move-window-left "s-C-Down" #'move-window-down
+  "s-C-Up" #'move-window-up "s-C-Right" #'move-window-right
+  "s-S-h" #'focus-output-left "s-S-j" #'focus-output-down
+  "s-S-k" #'focus-output-up "s-S-l" #'focus-output-right
+  "s-S-Left" #'focus-output-left "s-S-Down" #'focus-output-down
+  "s-S-Up" #'focus-output-up "s-S-Right" #'focus-output-right
+  "s-S-C-h" #'move-window-to-output-left "s-S-C-j" #'move-window-to-output-down
+  "s-S-C-k" #'move-window-to-output-up "s-S-C-l" #'move-window-to-output-right
+  "s-S-C-Left" #'move-window-to-output-left "s-S-C-Down" #'move-window-to-output-down
+  "s-S-C-Up" #'move-window-to-output-up "s-S-C-Right" #'move-window-to-output-right
   "s-Tab" #'next-view
   "s-S-Tab" #'previous-view
-  "s-Up" #'previous-view
-  "s-Down" #'next-view
-  "s-o" #'next-frame
-  "s-Right" #'next-frame
-  "s-S-o" #'prev-frame
-  "s-Left" #'prev-frame
-  "s-s" #'split-frame-v
-  "s-S-s" #'split-frame-h
   "s-f" #'maximize-current-frame
-  "s-r" #'remove-current-frame
-  "s-S-w" #'launcher-windows
+  "s-S-f" #'fullscreen-toggle
+  "s-s" #'split-frame-h
+  "s-S-s" #'split-frame-v
+  "s-S-r" #'remove-current-frame
   "s-grave" #'scratchpad-toggle
   "s-S-grave" #'scratchpad-send
-  ;; Groups
+  ;; Groups (workspaces): d and u, or Page Down and Up, go down and up
+  ;; the list; with Control the window comes along
+  "s-d" #'gnext "s-Page_Down" #'gnext
+  "s-u" #'gprev "s-Page_Up" #'gprev
+  "s-C-d" #'gnext-with-window "s-C-Page_Down" #'gnext-with-window
+  "s-C-u" #'gprev-with-window "s-C-Page_Up" #'gprev-with-window
   "s-g" #'launcher-groups
   "s-S-g" #'move-window-to-group-menu
-  "s-bracketright" #'gnext
-  "s-bracketleft" #'gprev
   "s-1" #'select-group-1 "s-2" #'select-group-2 "s-3" #'select-group-3
   "s-4" #'select-group-4 "s-5" #'select-group-5 "s-6" #'select-group-6
   "s-7" #'select-group-7 "s-8" #'select-group-8 "s-9" #'select-group-9
+  "s-C-1" #'move-window-to-group-1 "s-C-2" #'move-window-to-group-2
+  "s-C-3" #'move-window-to-group-3 "s-C-4" #'move-window-to-group-4
+  "s-C-5" #'move-window-to-group-5 "s-C-6" #'move-window-to-group-6
+  "s-C-7" #'move-window-to-group-7 "s-C-8" #'move-window-to-group-8
+  "s-C-9" #'move-window-to-group-9
   "s-S-1" #'move-window-to-group-1 "s-S-2" #'move-window-to-group-2
   "s-S-3" #'move-window-to-group-3 "s-S-4" #'move-window-to-group-4
   "s-S-5" #'move-window-to-group-5 "s-S-6" #'move-window-to-group-6
   "s-S-7" #'move-window-to-group-7 "s-S-8" #'move-window-to-group-8
   "s-S-9" #'move-window-to-group-9
-  ;; Outputs
-  "s-period" #'focus-next-output
-  "s-comma" #'focus-previous-output
-  "s-S-period" #'move-window-to-next-output
-  "s-S-comma" #'move-window-to-previous-output
+  ;; Screenshots, as niri: Control an area, Shift the screen, Alt the window
+  "s-C-p" #'screenshot-area
+  "s-S-p" #'screenshot-screen
+  "s-M-p" #'screenshot-window
   ;; The desktop
   "s-b" #'mode-line
   "s-C-SPC" #'theme-menu
-  "s-C-S-SPC" #'next-theme
-  "s-ESC" #'lock-session
-  "s-S-e" #'shutdown-confirm)
+  "s-C-S-SPC" #'next-theme)
 
 ;;; Autostart
 

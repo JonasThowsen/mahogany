@@ -28,9 +28,9 @@
                                    (theme *message-theme*)
                                    close-on-key)
   "Show TEXT in a message on the current output for MS-DELAY
-milliseconds, in place of the message shown before. When CLOSE-ON-KEY is
-true, the next key press takes it down earlier; the key still does
-what it does."
+milliseconds (0: until close-message, or a key when CLOSE-ON-KEY), in
+place of the message shown before. When CLOSE-ON-KEY is true, the next
+key press takes it down; the key still does what it does."
   (declare (type mahogany-state state))
   (with-accessors ((cur-group state-current-group)
                    (hrt-server state-server))
