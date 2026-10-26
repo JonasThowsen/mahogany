@@ -1,0 +1,26 @@
+* Wifi
+
+Mahogany connects to wifi through iwd's =iwctl=, from a menu drawn by
+Lisp. It opens with a click on the network module of the
+[[file:mode-line.org][mode-line]], with the =wifi= command, or as the
+=:wifi= mode of the [[file:launcher.org][launcher]] (=s-M-SPC=).
+
+The menu lists the networks around, strongest first, with the signal
+as bars, a lock on the ones that need a passphrase, and a check on the
+one connected. Choosing a network connects to it. One that needs a
+passphrase iwd does not have yet asks for it in a prompt that shows
+dots; iwd remembers it. The menu also offers =Disconnect= and
+=Rescan=. The outcome comes as a notification.
+
+Everything runs =iwctl= without waiting, so the compositor never stalls
+on the network.
+
+  + =*wifi-interface*= :: The wireless interface, such as ="wlan0"=.
+    =NIL= (the default) takes the first one there is.
+
+From Lisp: =(wifi-menu)=, =(wifi-connect "Name")= or
+=(wifi-connect "Name" :passphrase "…")=, =(wifi-disconnect)=,
+=(wifi-refresh)= (the networks seen land in =*wifi-networks*=).
+
+Only iwd is spoken to; NetworkManager users can bind their own command
+(=nmtui= in a terminal, say) to a key or add a launcher mode.

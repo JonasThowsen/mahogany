@@ -141,10 +141,16 @@ mahogany, remote»):
   (battery, network, volume, brightness via subprocesses),
   `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
   canvas), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,
-  `lisp/outputs.lisp` (focus/windows between outputs), `lisp/layouts.lisp`
-  (`define-layout`, per-group tiling layouts), `lisp/default-bindings.lisp`
-  (SUPER keys, `*autostart*`), `lisp/xwayland.lisp` (xwayland-satellite),
+  `lisp/outputs.lisp` (focus/windows between outputs),
+  `lisp/directions.lisp` (focus, windows and outputs by direction:
+  left/right/up/down, fullscreen toggle), `lisp/key-help.lisp` (the key
+  list overlay), `lisp/layouts.lisp` (`define-layout`, per-group tiling
+  layouts), `lisp/default-bindings.lisp` (SUPER keys laid out as niri,
+  `*autostart*`), `lisp/xwayland.lisp` (xwayland-satellite),
   `lisp/lid.lisp` (lid switch: lock, internal screen off/on),
   `lisp/notifications.lisp` (the org.freedesktop.Notifications service
-  over sd-bus, cards on a canvas). Each has a manual page in `doc/manual/`.
+  over sd-bus, cards on a canvas), `lisp/wifi.lisp` (iwctl menu, from
+  the bar's network module). `lisp/input.lisp` holds the input settings
+  (touchpad, mouse, numlock, cursor theme) and pushes them to heart at
+  startup. Each has a manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

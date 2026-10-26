@@ -497,8 +497,10 @@ missing and dropping those of outputs that have gone."
         "muted"
         (format nil "~D%" (getf status :percent)))))
 
+(declaim (ftype function wifi-menu))
 (define-mode-line-module :network (:icon :offline
                                    :interval 10
+                                   :on-click (lambda () (wifi-menu))
                                    :refresh (lambda () (network-refresh (lambda (status)
                                                                           (declare (ignore status))
                                                                           (mode-line-update)))))

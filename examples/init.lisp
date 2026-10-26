@@ -15,10 +15,26 @@
 
 ;;; Tiling: by hand (:manual, as StumpWM) or a layout per group
 
-;; (setf *default-layout* :master-stack)   ; s-l cycles, s-S-l chooses
-;; (setf *group-layout-defaults* '(("DEFAULT" . :master-stack)))
+;; (setf *default-layout* :master-stack)   ; s-r cycles, s-C-r chooses
+;; (setf *group-layout-defaults* '(("1" . :master-stack)))
 
-;;; Keys: SUPER chords on *top-map*, C-t prefix map in *root-map*
+;;; Input: the touchpad, the mouse, Num Lock, the cursor
+
+;; (config:set-config touchpad-tap-to-click t          ; the default
+;;                    touchpad-natural-scroll t
+;;                    mouse-accel-speed -0.4
+;;                    numlock t
+;;                    cursor-theme "Adwaita"
+;;                    cursor-size 24)
+
+;;; Outputs: the scale is picked from the screen's DPI (2 on a HiDPI
+;;; laptop screen); set it by hand with an output configuration
+
+;; (define-output-config "laptop" "eDP-1" (:scale 2))
+;; (define-output-config "monitor" "DP-1" (:scale 1.5) (:position 0 0))
+
+;;; Keys: SUPER chords on *top-map* (laid out as niri), C-t prefix map
+;;; in *root-map*; s-S-SPC lists what is bound
 
 ;; (define-key *top-map* (kbd "s-e") #'launcher-apps)
 ;; (undefine-key *top-map* (kbd "s-b"))

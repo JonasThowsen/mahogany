@@ -95,6 +95,8 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
   (selected 0 :type fixnum)
   (scroll 0 :type fixnum)
   (allow-text nil)
+  ;; Draw the filter as dots (a passphrase):
+  (secret nil)
   (on-choose nil :type (or null function))
   (on-cancel nil :type (or null function))
   (canvas nil)
@@ -106,12 +108,13 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
 (defglobal *menu* nil
   "The open menu, or NIL.")
 
-(defun menu-open (prompt items &key on-choose on-cancel allow-text (initial-filter ""))
+(defun menu-open (prompt items &key on-choose on-cancel allow-text secret (initial-filter ""))
   "Show a menu with PROMPT and ITEMS (menu-items, or strings) on the
 current output, and return at once. When the user chooses, ON-CHOOSE is
 called with the menu-item, or with the typed string when ALLOW-TEXT is
 true and nothing matched; when they cancel, ON-CANCEL is called. Both
-run on the main thread. An open menu is replaced."
+run on the main thread. SECRET draws what is typed as dots, for a
+passphrase. An open menu is replaced."
   (menu-close)
   (let* ((output (group-current-output (state-current-group *compositor-state*)))
          (menu (%make-menu :prompt prompt
@@ -120,6 +123,7 @@ run on the main thread. An open menu is replaced."
                                           items)
                            :filter initial-filter
                            :allow-text allow-text
+                           :secret secret
                            :on-choose on-choose
                            :on-cancel on-cancel
                            :output output)))
@@ -286,9 +290,14 @@ run on the main thread. An open menu is replaced."
             (draw:stroke-rectangle cr 0 0 width height
                                    :color (mh/theme:theme-border-color theme) :line-width 2)
             ;; The prompt line: PROMPT filter▏ and how many match:
-            (let* ((count (format nil "~D/~D" (length matches) (length (menu-items menu))))
+            (let* ((count (if (menu-items menu)
+                              (format nil "~D/~D" (length matches) (length (menu-items menu)))
+                              ""))
                    (count-width (draw:text-size cr count :font font))
-                   (line (format nil "~A ~A▏" (menu-prompt menu) (menu-filter menu))))
+                   (line (format nil "~A ~A▏" (menu-prompt menu)
+                                 (if (menu-secret menu)
+                                     (make-string (length (menu-filter menu)) :initial-element #\•)
+                                     (menu-filter menu)))))
               (draw:draw-text cr line pad pad :font font
                                               :color (mh/theme:theme-font-color theme)
                                               :width (- width (* 3 pad) count-width)
@@ -304,8 +313,10 @@ run on the main thread. An open menu is replaced."
                        (draw:fill-rounded-rectangle cr pad row-y (- width (* 2 pad)) row-height 4
                                                     (mh/theme:theme-border-color theme)))
                      (let* ((detail (menu-item-detail item))
+                            ;; A detail takes at most half the row:
                             (detail-width (if detail
-                                              (+ pad (draw:text-size cr detail :font font))
+                                              (min (+ pad (draw:text-size cr detail :font font))
+                                                   (floor width 2))
                                               0)))
                        (draw:draw-text cr (menu-item-label item) (* 2 pad) (+ row-y (round pad 4))
                                        :font font :color (mh/theme:theme-font-color theme)
@@ -314,6 +325,7 @@ run on the main thread. An open menu is replaced."
                          (draw:draw-text cr detail (- width (* 2 pad) detail-width (- pad))
                                          (+ row-y (round pad 4))
                                          :font font
+                                         :width (- detail-width pad) :ellipsize :end
                                          :color (%dim (mh/theme:theme-font-color theme) 0.6))))
                      (push (list row-y (+ row-y row-height) index) hits))
             (setf (menu-row-hits menu) hits)))))))

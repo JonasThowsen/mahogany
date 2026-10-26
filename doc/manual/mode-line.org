@@ -22,6 +22,7 @@ segments from left to right; each is the name of a module:
 - =:title= :: the focused window's title, shortened to the room left.
 - =:network= :: the SSID when on wifi (through =iwctl= or =iw=), the
   interface when wired, "offline" otherwise.
+  A click opens the [[file:wifi.org][wifi menu]].
 - =:volume= :: the default sink's volume, through =wpctl=; a click mutes,
   the wheel changes it. Hidden without =wpctl=.
 - =:brightness= :: the backlight, from =/sys/class/backlight=; the wheel
