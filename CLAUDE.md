@@ -23,8 +23,11 @@ dependencies/cl-interactive`); the wlroots submodule is not needed.
 - `make test` — the fiasco test suite (`test/`, `mahogany-test.asd`).
 - `make run` — run the compositor with the debugger enabled. Under a
   Wayland or X11 session it opens nested in a window. Without one:
-  `WLR_BACKENDS=headless WLR_RENDERER=pixman ./build/mahogany -q -l debug`
-  (set `XDG_RUNTIME_DIR` to a writable directory).
+  `WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_SCENE_DISABLE_DIRECT_SCANOUT=1 ./build/mahogany -q -l debug`
+  (set `XDG_RUNTIME_DIR` to a writable directory). Without
+  `WLR_SCENE_DISABLE_DIRECT_SCANOUT=1` the headless backend scans a
+  full-screen canvas (the wallpaper) out directly and `grim` then hangs;
+  real outputs refuse to scan out such buffers, so this is headless-only.
 - `ninja -C build/heart` — rebuild only the C side. C changes need a
   restart of the compositor (`lisp stop` / `lisp start`); Lisp changes do not.
 - `nix flake check` — what CI runs: the test suite, a headless smoke test

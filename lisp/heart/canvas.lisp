@@ -91,9 +91,13 @@ the rest."
     (canvas-destroy canvas)))
 
 (defun canvas-set-position (canvas x y)
-  "Place CANVAS at X,Y of its output, in layout coordinates."
+  "Place CANVAS at X,Y from the top left corner of its output, in
+layout pixels. (The scene node is placed in layout coordinates; the
+output's position is added here, so a canvas is drawn on its output
+wherever that sits in the layout.)"
   (declare (type canvas canvas))
-  (hrt-canvas-set-position (canvas-pointer canvas) x y))
+  (multiple-value-bind (ox oy) (output-position (canvas-output canvas))
+    (hrt-canvas-set-position (canvas-pointer canvas) (+ ox x) (+ oy y))))
 
 (defun canvas-set-enabled (canvas enabled)
   "Show CANVAS, or hide it without destroying it."

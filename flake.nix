@@ -255,7 +255,7 @@
                 export HOME=$TMPDIR
                 export XDG_RUNTIME_DIR=$TMPDIR/run
                 mkdir -p $XDG_RUNTIME_DIR
-                export WLR_BACKENDS=headless WLR_RENDERER=pixman
+                export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_SCENE_DISABLE_DIRECT_SCANOUT=1
                 mahogany -q -l debug > mahogany.log 2>&1 &
                 pid=$!
                 for i in $(seq 1 100); do
