@@ -1,12 +1,13 @@
-* Touchpad
+* Touchpad, Mouse and Keyboard Locks
 
-Mahogany can configure touchpads through libinput.
+Mahogany configures touchpads and mice through libinput, and keeps the
+settings for devices plugged in later. Tap-to-click is on by default.
 
   + =(config-system:set-config touchpad-tap-to-click value)= :: Whether
     tapping the touchpad is a click: one finger left, two right, three
-    middle. Many touchpads ship with this disabled.
-    - =:default= :: /Default/ Use libinput default for each device.
-    - =t= :: Enable tap-to-click.
+    middle.
+    - =t= :: /Default/ Enable tap-to-click.
+    - =:default= :: Use libinput default for each device (off on most).
     - =nil= :: Disable tap-to-click.
   + =(config-system:set-config touchpad-disable-while-typing value)= :: Whether
     the touchpad stops responding while you are typing. Touchpads that
@@ -14,9 +15,26 @@ Mahogany can configure touchpads through libinput.
     - =:default= :: /Default/ Use libinput default for each device.
     - =t= :: Ignore the touchpad while typing.
     - =nil= :: Always respond to the touchpad.
+  + =(config-system:set-config touchpad-natural-scroll value)= :: Whether
+    the touchpad scrolls the content the way the fingers move, as a
+    phone does: =t=, =nil=, or =:default= (libinput's default, off).
   + =(config-system:set-config touchpad-accel-speed speed)= :: Pointer
     speed, from =-1= (slowest) through =0= to =1= (fastest). Defaults
     to =nil=, which leaves libinput's own default, the same as =0=.
+  + =(config-system:set-config mouse-natural-scroll value)= :: The same
+    for the wheel of a mouse, a trackpoint, or any pointer that is not
+    a touchpad.
+  + =(config-system:set-config mouse-accel-speed speed)= :: Pointer
+    speed for mice and other pointers that are not touchpads.
+  + =(config-system:set-config numlock value)= :: Whether Num Lock is
+    on when the session starts (and on keyboards plugged in later).
+    Defaults to =nil=.
+  + =(config-system:set-config cursor-theme name)= and
+    =(config-system:set-config cursor-size pixels)= :: The xcursor
+    theme (="Adwaita"=, ="Nordzy-cursors"=, …; =nil= for the default)
+    and size, for Mahogany's own cursor and, through =XCURSOR_THEME=
+    and =XCURSOR_SIZE=, for the programs it starts. The cursor scales
+    with the output.
 
   Setting a value back to =:default= (or =nil= for accel-speed) restores
   libinput default for each device, so a setting can be undone
@@ -25,5 +43,9 @@ Mahogany can configure touchpads through libinput.
 #+BEGIN_SRC lisp
   (config-system:set-config touchpad-tap-to-click t
                             touchpad-disable-while-typing t
-                            touchpad-accel-speed 0.3)
+                            touchpad-natural-scroll t
+                            mouse-accel-speed -0.4
+                            numlock t
+                            cursor-theme "Adwaita"
+                            cursor-size 24)
 #+END_SRC

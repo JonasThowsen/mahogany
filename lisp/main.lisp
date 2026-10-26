@@ -126,6 +126,7 @@ further up. "
         (log-string :info "Init file loading skipped")
         (let ((*initializing* t))
           (load-config-file (not (gethash 'enable-debugger args)))))
+    (apply-input-settings)
     (theme-start)
     (notifications-start)
     (when *mode-line-enabled*

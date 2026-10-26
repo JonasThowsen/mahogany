@@ -81,9 +81,13 @@ Values:
            val)
   (:getter () *keyboard-repeat-delay*))
 
-(defglobal *touchpad-tap-to-click* :default)
+(defglobal *touchpad-tap-to-click* t)
 (defglobal *touchpad-disable-while-typing* :default)
 (defglobal *touchpad-accel-speed* nil)
+(defglobal *touchpad-natural-scroll* :default)
+(defglobal *mouse-natural-scroll* :default)
+(defglobal *mouse-accel-speed* nil)
+(defglobal *numlock* nil)
 
 (deftype touchpad-state () '(member :default t nil))
 
@@ -95,7 +99,7 @@ Values:
     ((nil) :hrt-touchpad-disabled)))
 
 (config-system:define-setf-config
-    (touchpad-tap-to-click :default :type touchpad-state)
+    (touchpad-tap-to-click t :type touchpad-state)
     "Whether tapping the touchpad is a click: one finger left, two right,
 three middle.
 
@@ -136,6 +140,73 @@ NIL goes back to libinput's default, which is the same as 0."
                    (hrt:hrt-seat-reset-touchpad-accel seat))))
            val)
   (:getter () *touchpad-accel-speed*))
+
+(config-system:define-setf-config
+    (touchpad-natural-scroll :default :type touchpad-state)
+    "Whether the touchpad scrolls the content the way the fingers move,
+as a phone does: T, NIL, or :default for libinput's default (off)."
+  (:setter (val)
+           (setf *touchpad-natural-scroll* val)
+           (when (state-server *compositor-state*)
+             (hrt:hrt-seat-set-touchpad-natural-scroll (server-seat *compositor-state*)
+                                                       (%touchpad-state val)))
+           val)
+  (:getter () *touchpad-natural-scroll*))
+
+(config-system:define-setf-config
+    (mouse-natural-scroll :default :type touchpad-state)
+    "Whether the wheel of a mouse (or any pointer that is not a touchpad)
+scrolls reversed: T, NIL, or :default for libinput's default (off)."
+  (:setter (val)
+           (setf *mouse-natural-scroll* val)
+           (when (state-server *compositor-state*)
+             (hrt:hrt-seat-set-mouse-natural-scroll (server-seat *compositor-state*)
+                                                    (%touchpad-state val)))
+           val)
+  (:getter () *mouse-natural-scroll*))
+
+(config-system:define-setf-config
+    (mouse-accel-speed nil :type (or null (real -1 1)))
+    "Pointer speed for mice and other pointers that are not touchpads,
+from -1 (slowest) through 0 to 1 (fastest). NIL is libinput's default."
+  (:setter (val)
+           (setf *mouse-accel-speed* val)
+           (when (state-server *compositor-state*)
+             (let ((seat (server-seat *compositor-state*)))
+               (if val
+                   (hrt:hrt-seat-set-mouse-accel seat (float val 1.0d0))
+                   (hrt:hrt-seat-reset-mouse-accel seat))))
+           val)
+  (:getter () *mouse-accel-speed*))
+
+(config-system:define-setf-config
+    (numlock nil :type boolean)
+    "Whether Num Lock is on when the session starts, and on every keyboard
+plugged in later."
+  (:setter (val)
+           (setf *numlock* val)
+           (when (state-server *compositor-state*)
+             (hrt:hrt-seat-set-numlock (server-seat *compositor-state*) val))
+           val)
+  (:getter () *numlock*))
+
+(defun apply-input-settings ()
+  "Push the input settings to heart: called once the server is up, as
+the settings set before then only remember the values."
+  (let ((seat (server-seat *compositor-state*)))
+    (hrt:hrt-seat-set-touchpad-tap seat (%touchpad-state *touchpad-tap-to-click*))
+    (hrt:hrt-seat-set-touchpad-dwt seat (%touchpad-state *touchpad-disable-while-typing*))
+    (hrt:hrt-seat-set-touchpad-natural-scroll seat (%touchpad-state *touchpad-natural-scroll*))
+    (hrt:hrt-seat-set-mouse-natural-scroll seat (%touchpad-state *mouse-natural-scroll*))
+    (if *touchpad-accel-speed*
+        (hrt:hrt-seat-set-touchpad-accel seat (float *touchpad-accel-speed* 1.0d0))
+        (hrt:hrt-seat-reset-touchpad-accel seat))
+    (if *mouse-accel-speed*
+        (hrt:hrt-seat-set-mouse-accel seat (float *mouse-accel-speed* 1.0d0))
+        (hrt:hrt-seat-reset-mouse-accel seat))
+    (hrt:hrt-seat-set-numlock seat *numlock*)
+    (%apply-keyboard-repeat)
+    (%apply-cursor-theme)))
 
 (defun %unkown-keybinding-message (key-state last)
   (declare (optimize (speed 3) (safety 0))
@@ -290,3 +361,39 @@ or NIL for keys that type nothing, such as Shift or F1."
       (let ((key (make-key (cffi:mem-aref hrt:keysyms :uint32 i) hrt:modifiers)))
         (when (handle-key-event *compositor-state* key seat hrt:wl-key-state)
           (return t))))))
+
+;;; The pointer's look: an xcursor theme and size, for Mahogany's own
+;;; cursor and, through XCURSOR_THEME and XCURSOR_SIZE, for the programs
+;;; it starts.
+
+(defglobal *cursor-theme* nil)
+(defglobal *cursor-size* 24)
+
+(declaim (ftype function %setenv %update-activation-environment))
+(defun %apply-cursor-theme ()
+  (when (state-server *compositor-state*)
+    (state-set-cursor-theme *compositor-state* *cursor-theme* *cursor-size*))
+  (when *cursor-theme*
+    (%setenv "XCURSOR_THEME" *cursor-theme*))
+  (%setenv "XCURSOR_SIZE" (princ-to-string *cursor-size*))
+  (%update-activation-environment "XCURSOR_THEME" "XCURSOR_SIZE"))
+
+(config-system:define-setf-config
+    (cursor-theme nil :type (or null string))
+    "The xcursor theme, such as \"Adwaita\" or \"Nordzy-cursors\", for
+Mahogany's cursor and the programs it starts; NIL for the default."
+  (:setter (val)
+           (setf *cursor-theme* val)
+           (%apply-cursor-theme)
+           val)
+  (:getter () *cursor-theme*))
+
+(config-system:define-setf-config
+    (cursor-size 24 :type (integer 1 512))
+    "The cursor's size in logical pixels (it is scaled with the output)."
+  (:setter (val)
+           (setf *cursor-size* val)
+           (%apply-cursor-theme)
+           val)
+  (:getter () *cursor-size*))
+

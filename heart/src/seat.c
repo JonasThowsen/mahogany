@@ -7,6 +7,8 @@
 #include <wlr/types/wlr_session_lock_v1.h>
 #include <hrt/hrt_session_lock.h>
 #include <wlr/types/wlr_pointer.h>
+#include <wlr/interfaces/wlr_keyboard.h>
+#include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
@@ -31,9 +33,35 @@ bool hrt_seat_set_keymap(struct hrt_seat *seat, struct xkb_rule_names *rules,
     if (keymap) {
         wlr_keyboard_set_keymap(&seat->keyboard_group->keyboard, keymap);
         xkb_keymap_unref(keymap);
+        // A new keymap starts with every lock off:
+        hrt_seat_set_numlock(seat, seat->numlock);
         return true;
     } else {
         return false;
+    }
+}
+
+void hrt_seat_set_numlock(struct hrt_seat *seat, bool on) {
+    seat->numlock           = on;
+    struct wlr_keyboard *kb = &seat->keyboard_group->keyboard;
+    if (!kb->keymap) {
+        return;
+    }
+    xkb_mod_index_t index =
+        xkb_keymap_mod_get_index(kb->keymap, XKB_MOD_NAME_NUM);
+    if (index == XKB_MOD_INVALID) {
+        return;
+    }
+    uint32_t locked = kb->modifiers.locked;
+    if (on) {
+        locked |= (1u << index);
+    } else {
+        locked &= ~(1u << index);
+    }
+    if (locked != kb->modifiers.locked) {
+        wlr_keyboard_notify_modifiers(kb, kb->modifiers.depressed,
+                                      kb->modifiers.latched, locked,
+                                      kb->modifiers.group);
     }
 }
 

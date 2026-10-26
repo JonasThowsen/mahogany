@@ -97,6 +97,11 @@
            #:hrt-seat-set-touchpad-dwt
            #:hrt-seat-set-touchpad-accel
            #:hrt-seat-reset-touchpad-accel
+           #:hrt-seat-set-touchpad-natural-scroll
+           #:hrt-seat-set-mouse-natural-scroll
+           #:hrt-seat-set-mouse-accel
+           #:hrt-seat-reset-mouse-accel
+           #:hrt-seat-set-numlock
            ;; output symbols:
            #:output
            #:hrt-output

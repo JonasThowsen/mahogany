@@ -351,13 +351,22 @@
         { config, lib, pkgs, ... }:
         let
           cfg = config.programs.mahogany;
+          # The session keeps a log in $XDG_STATE_HOME/mahogany/session.log
+          # (the last run; the one before it in session.log.old), since
+          # a display manager shows nothing of what the compositor says.
+          start = pkgs.writeShellScript "mahogany-session" ''
+            dir="\''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
+            mkdir -p "$dir"
+            [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
+            exec ${lib.getExe cfg.package} -l ${cfg.logLevel} >> "$dir/session.log" 2>&1
+          '';
           session = pkgs.runCommand "mahogany-session" { passthru.providedSessions = [ "mahogany" ]; } ''
             mkdir -p $out/share/wayland-sessions
             cat > $out/share/wayland-sessions/mahogany.desktop <<DESKTOP
             [Desktop Entry]
             Name=Mahogany
             Comment=A tiling Wayland compositor in Common Lisp
-            Exec=${lib.getExe cfg.package}
+            Exec=${start}
             Type=Application
             DesktopNames=Mahogany
             DESKTOP
@@ -371,6 +380,11 @@
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.mahogany;
               defaultText = lib.literalExpression "mahogany.packages.\${system}.mahogany";
               description = "The Mahogany package the session runs.";
+            };
+            logLevel = lib.mkOption {
+              type = lib.types.enum [ "trace" "debug" "info" "warn" "error" ];
+              default = "info";
+              description = "How much the session logs to $XDG_STATE_HOME/mahogany/session.log.";
             };
             extraPackages = lib.mkOption {
               type = lib.types.listOf lib.types.package;

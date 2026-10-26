@@ -70,9 +70,18 @@ struct hrt_seat {
     struct {
         enum hrt_touchpad_state tap;
         enum hrt_touchpad_state dwt;
+        enum hrt_touchpad_state natural_scroll;
         bool accel_set;
         double accel;
     } touchpad;
+    // Mice, trackpoints and other pointers that are not touchpads:
+    struct {
+        enum hrt_touchpad_state natural_scroll;
+        bool accel_set;
+        double accel;
+    } mouse;
+    // Whether Num Lock is held on for every keyboard:
+    bool numlock;
 };
 
 struct hrt_keypress_info {
@@ -172,6 +181,30 @@ void hrt_seat_set_touchpad_accel(struct hrt_seat *seat, double speed);
  * Return the pointer acceleration to libinput's default for each device.
  **/
 void hrt_seat_reset_touchpad_accel(struct hrt_seat *seat);
+
+/**
+ * Natural (reversed) scrolling on touchpads, or on mice and other
+ * pointers that are not touchpads.
+ **/
+void hrt_seat_set_touchpad_natural_scroll(struct hrt_seat *seat,
+                                          enum hrt_touchpad_state state);
+
+void hrt_seat_set_mouse_natural_scroll(struct hrt_seat *seat,
+                                       enum hrt_touchpad_state state);
+
+/**
+ * Pointer acceleration for mice and other pointers that are not
+ * touchpads, from -1.0 through 0.0 (libinput's default) to 1.0.
+ **/
+void hrt_seat_set_mouse_accel(struct hrt_seat *seat, double speed);
+
+void hrt_seat_reset_mouse_accel(struct hrt_seat *seat);
+
+/**
+ * Hold Num Lock on (or let it go) on every keyboard, now and as
+ * keyboards and keymaps come.
+ **/
+void hrt_seat_set_numlock(struct hrt_seat *seat, bool on);
 
 double hrt_seat_cursor_lx(struct hrt_seat *seat);
 

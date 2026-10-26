@@ -20,6 +20,12 @@
 (cffi:defcstruct hrt-seat-touchpad
   (tap hrt-touchpad-state)
   (dwt hrt-touchpad-state)
+  (natural-scroll hrt-touchpad-state)
+  (accel-set :bool)
+  (accel :double))
+
+(cffi:defcstruct hrt-seat-mouse
+  (natural-scroll hrt-touchpad-state)
   (accel-set :bool)
   (accel :double))
 
@@ -52,7 +58,9 @@
   (destroy (:struct hrt-seat-destroy))
   (canvas-under (:pointer (:struct hrt-canvas)))
   (canvas-under-destroy (:struct wl-listener))
-  (touchpad (:struct hrt-seat-touchpad)))
+  (touchpad (:struct hrt-seat-touchpad))
+  (mouse (:struct hrt-seat-mouse))
+  (numlock :bool))
 
 (cffi:defcstruct hrt-keypress-info
   (keysyms :pointer #| xkb-keysym-t |#)
@@ -156,6 +164,41 @@ to 1.0 (fastest)."
 (cffi:defcfun ("hrt_seat_reset_touchpad_accel" hrt-seat-reset-touchpad-accel) :void
   "Return the pointer acceleration to libinput's default for each device."
   (seat (:pointer (:struct hrt-seat))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-seat-set-touchpad-natural-scroll))
+(cffi:defcfun ("hrt_seat_set_touchpad_natural_scroll" hrt-seat-set-touchpad-natural-scroll) :void
+  "Natural (reversed) scrolling on touchpads, or on mice and other
+pointers that are not touchpads."
+  (seat (:pointer (:struct hrt-seat)))
+  (state hrt-touchpad-state))
+
+#-HRT-DEBUG
+(declaim (inline hrt-seat-set-mouse-natural-scroll))
+(cffi:defcfun ("hrt_seat_set_mouse_natural_scroll" hrt-seat-set-mouse-natural-scroll) :void
+  (seat (:pointer (:struct hrt-seat)))
+  (state hrt-touchpad-state))
+
+#-HRT-DEBUG
+(declaim (inline hrt-seat-set-mouse-accel))
+(cffi:defcfun ("hrt_seat_set_mouse_accel" hrt-seat-set-mouse-accel) :void
+  "Pointer acceleration for mice and other pointers that are not
+touchpads, from -1.0 through 0.0 (libinput's default) to 1.0."
+  (seat (:pointer (:struct hrt-seat)))
+  (speed :double))
+
+#-HRT-DEBUG
+(declaim (inline hrt-seat-reset-mouse-accel))
+(cffi:defcfun ("hrt_seat_reset_mouse_accel" hrt-seat-reset-mouse-accel) :void
+  (seat (:pointer (:struct hrt-seat))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-seat-set-numlock))
+(cffi:defcfun ("hrt_seat_set_numlock" hrt-seat-set-numlock) :void
+  "Hold Num Lock on (or let it go) on every keyboard, now and as
+keyboards and keymaps come."
+  (seat (:pointer (:struct hrt-seat)))
+  (on :bool))
 
 #-HRT-DEBUG
 (declaim (inline hrt-seat-cursor-lx))
