@@ -29,7 +29,7 @@ init.lisp:
 #+BEGIN_SRC lisp
   (setf *default-layout* :master-stack)       ; new groups
   (setf *group-layout-defaults*               ; by group name
-        '(("DEFAULT" . :master-stack) ("GROUP-2" . :manual)))
+        '(("1" . :master-stack) ("2" . :manual)))
   (setf *layout-main-ratio* 0.55)
 #+END_SRC
 

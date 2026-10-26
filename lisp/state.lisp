@@ -4,7 +4,9 @@
 (declaim (ftype function mode-line-update mode-line-reset stop-idle menu-cancel
                         wallpaper-update wallpaper-reset notifications-stop))
 
-(defvar *default-group-name* "DEFAULT")
+(defvar *default-group-name* "1"
+  "The name of the first group. Groups are named by their number unless
+given a name (grename), as workspaces are.")
 
 ;; If there turns out to be more choices than
 ;; minimize and maximize, make this a bitmask or separate them out:
@@ -490,7 +492,8 @@ the current group or a layer shell frame"
               :added (list)))))))
 
 (defun %next-group-name (index)
-  (concatenate 'string "GROUP-" (write-to-string index)))
+  "The name of a group made with INDEX and no name: the number itself."
+  (princ-to-string index))
 
 (defun state-next-group-name (state)
   (let ((index (%next-group-index state)))
