@@ -6,6 +6,12 @@ configured through the use of /output configurations/ and /output
 layouts/. Output configurations apply to individual outputs, while
 output layouts can apply to one or more outputs at the same time.
 
+Without a configuration an output runs at its preferred mode, and at
+scale 2 when it is a HiDPI screen (more than 192 DPI and 1200 pixels
+tall, a 3200×2000 laptop screen say), else at 1; outputs are placed
+side by side in the order they appear. Set =:scale= to choose
+otherwise, fractional scales such as =1.5= included.
+
 ** Configuring Individual Outputs
 
 To configure the position, scale, resolution and refresh rate of an

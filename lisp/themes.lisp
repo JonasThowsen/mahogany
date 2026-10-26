@@ -298,7 +298,7 @@ STEP). Returns it."
         (canvas (wallpaper-canvas wallpaper))
         (file (wallpaper-file))
         (color (wallpaper-color)))
-    (multiple-value-bind (width height) (hrt:output-resolution output)
+    (multiple-value-bind (width height) (hrt:output-logical-size output)
       (let ((key (list file color width height
                        (multiple-value-list (hrt:output-position output)))))
         (unless (equal key (wallpaper-drawn wallpaper))

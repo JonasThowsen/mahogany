@@ -312,7 +312,7 @@ places as a list of (X0 X1 FUNCTION)."
          (canvas (mode-line-canvas mode-line))
          (theme *mode-line-theme*)
          (height *mode-line-height*))
-    (multiple-value-bind (width output-height) (hrt:output-resolution output)
+    (multiple-value-bind (width output-height) (hrt:output-logical-size output)
       (hrt:canvas-set-position canvas 0 (if (eq *mode-line-position* :bottom)
                                             (- output-height height)
                                             0))

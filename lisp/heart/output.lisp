@@ -12,7 +12,9 @@
    (output-hrt-output output2)))
 
 (defstruct output-config
-  (scale 1 :type (or number null) :read-only t)
+  ;; NIL leaves the scale to heart, which picks 2 for HiDPI screens
+  ;; (over 192 DPI, 1200 pixels tall) and 1 otherwise:
+  (scale nil :type (or number null) :read-only t)
   (refresh-rate nil :type (or number null) :read-only t)
   (custom-mode nil :type boolean :read-only t)
   ;; a cons of (width . height)
@@ -149,6 +151,14 @@ removed, before its hrt_output is freed."
   (declare (type output output))
   (with-return-by-value ((width :int) (height :int))
     (hrt-output-resolution (output-hrt-output output) width height)))
+
+(defun output-logical-size (output)
+  "OUTPUT's size in layout coordinates, the pixels divided by the scale:
+what frames, canvases and the pointer are measured in."
+  (declare (type output output))
+  (multiple-value-bind (width height) (output-resolution output)
+    (let ((scale (output-scale output)))
+      (values (floor width scale) (floor height scale)))))
 
 (defun output-position (output)
   (declare (type output output))

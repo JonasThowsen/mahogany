@@ -436,7 +436,7 @@ canvas down when there are none."
            (pad 12) (gap 8) (margin 12)
            (text-width (- width (* 2 pad)))
            (heights '()))
-      (multiple-value-bind (output-width output-height) (hrt:output-resolution output)
+      (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
         ;; Measure each card:
         (hrt:with-canvas-frame (cr canvas width 1)
           (dolist (n shown)

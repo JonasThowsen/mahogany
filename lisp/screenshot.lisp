@@ -139,7 +139,7 @@ NIL without one."
                     (and *theme* (theme-accent *theme*))
                     (colors:rgb 0.8 0.3 0.2)))
         (font (mh/theme:theme-font *menu-theme*)))
-    (multiple-value-bind (width height) (hrt:output-resolution (selection-output selection))
+    (multiple-value-bind (width height) (hrt:output-logical-size (selection-output selection))
       (hrt:with-canvas-frame (cr canvas width height)
         (draw:clear cr (colors:rgb 0 0 0) 0.35)
         (if (selection-dragging selection)

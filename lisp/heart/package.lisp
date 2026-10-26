@@ -118,6 +118,7 @@
            #:output-scene
            #:output-scene-layer
            #:output-resolution
+           #:output-logical-size
            #:output-scale
            #:output-set-power
            #:output-powered-off-p

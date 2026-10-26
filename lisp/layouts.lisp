@@ -185,7 +185,7 @@ or under a fullscreen window."
           (setf (tree:frame-surface first-leaf) nil)
           (%add-hidden hidden view))
         ;; The layout's frames, and the windows into them:
-        (multiple-value-bind (width height) (hrt:output-resolution output)
+        (multiple-value-bind (width height) (hrt:output-logical-size output)
           (let* ((spec (funcall (layout-function layout) (length views)
                                 (group-main-ratio group) width height))
                  (slots (%layout-build first-leaf spec))

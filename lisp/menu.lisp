@@ -267,8 +267,9 @@ run on the main thread. An open menu is replaced."
          (canvas (menu-canvas menu))
          (matches (menu-matches menu))
          (rows (min *menu-rows* (length matches))))
-    (multiple-value-bind (output-width output-height) (hrt:output-resolution output)
-      (let* ((width (round (* output-width *menu-width*)))
+    (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
+      (let* ((width (min output-width
+                         (max (round (* output-width *menu-width*)) 480)))
              (row-height 0)
              (hits '()))
         ;; Measure a line of text once:

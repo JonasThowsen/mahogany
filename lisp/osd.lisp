@@ -51,7 +51,7 @@ shown is replaced."
            (pad 14)
            (canvas (or *osd-canvas*
                        (setf *osd-canvas* (hrt:make-canvas output :layer :layer-overlay)))))
-      (multiple-value-bind (output-width output-height) (hrt:output-resolution output)
+      (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
         (let* ((width (max 220 (round output-width 5)))
                (text (if icon (format nil "~A  ~A" icon label) label))
                (text-height 0)
