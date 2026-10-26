@@ -76,7 +76,10 @@ its log. Without a display, export the headless variables above before
 - **Never `abort` a main-thread pause**, never unwind through a C
   callback: `lisp abort` refuses it. Use `restart-frame` after fixing the
   function, `return`, or a restart the code offers (the work queue
-  offers `continue`, callbacks offer `callback-exit`).
+  offers `continue`, callbacks offer `callback-exit`). `return` and
+  `restart-frame` work only on frames of Mahogany's own files (compiled
+  with `(debug 3)`), not on SBCL's `EVAL` frames or the FFI's: for those,
+  use a restart (`lisp wait N` lists them).
 - The compositor renders and takes input only while the main thread
   runs: a main-thread pause freezes the session until it is resumed, so
   when the compositor is the user's session, be quick. Long `--main`
