@@ -631,14 +631,15 @@ windows came back to, else its first group by number."
   (let ((config-map
           (mh/output-config:get-configuration-map
            output-layout
-           (map 'list #'tree:output-container-output (state-cur-outputs state)))))
+           (state-outputs state))))
     (if config-map
         (if (hrt::output-configure-atomic config-map)
             ;; Every output, so the ones the layout disables go out of
             ;; use and the ones it enables come into it:
             (progn (%update-output-containers state) t)
-            (error 'mahogany/util:recoverable-error
-                   :text "Could not apply output configuration"))
+            (let ((config-name (mh/output-config:output-layout-config-name output-layout)))
+              (error 'mahogany/util:recoverable-error
+                     :text (format nil "Could not apply output configuration: ~S" config-name))))
         (let ((config-name (mh/output-config:output-layout-config-name output-layout)))
           (error 'mahogany/util:invalid-operation
                  :text (format nil
@@ -729,8 +730,6 @@ put the outputs to use, or out of it, as it says."
              state
              (make-pending-output-changes
               :added (list mh-output)))))))
-
-
 
 (declaim (inline %find-output))
 (defun %find-output (hrt-output state)

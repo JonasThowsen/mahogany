@@ -382,8 +382,7 @@ missing), and switch to it when FOLLOW is true."
 
 (defun interactively-read-valid-output-layout (com im arg prompt)
   (declare (ignore com arg))
-  (let* ((outputs (map 'list #'tree:output-container-output
-                       (state-cur-outputs *compositor-state*)))
+  (let* ((outputs (state-outputs *compositor-state*))
          (configs (mh/output-config:find-valid-output-layouts outputs)))
     (if configs
         (let ((idx-list (cl-interactive:input-method-read-index
@@ -400,14 +399,7 @@ missing), and switch to it when FOLLOW is true."
    "Select an output layout to use from a list of the currently
 valid output layouts")
   (:method ((config mh/output-config:output-layout-config))
-    (let ((success (state-use-output-layout *compositor-state* config)))
-      (unless success
-        (let ((config-name (mh/output-config:output-layout-config-name config)))
-          (toast-message *compositor-state*
-                         (format nil "Failed to apply configuration ~S"
-                                 config-name)
-                         :theme *message-error-theme*)))
-      success))
+    (state-use-output-layout *compositor-state* config))
   (:method ((config null))
     (toast-message *compositor-state*
                    (format nil "No valid output layouts available.")
