@@ -308,7 +308,9 @@ to match."
                    (hidden mahogany-group-hidden-views))
       group
     (log-string :trace "unmapping view ~S" view)
-    (alexandria:if-let ((f (hrt::view-container view)))
+    (ring-list:remove-item hidden view)
+    (remhash view (mahogany-group-hidden-view-map group))
+    (alexandria:when-let ((f (hrt::view-container view)))
       (hrt:with-view-transaction ()
         (etypecase f
           (tree:output-node
@@ -337,8 +339,11 @@ to match."
            ;; frame at once: out of the hidden list first, or it would
            ;; be popped right back into its frame.
            (ring-list:remove-item hidden view)
-           (when (> (ring-list:ring-list-size hidden) 0)
-             (%swap-view-into-frame group f (%pop-hidden-item hidden)))
+           ;; A frame under a fullscreen window stays empty: a hidden
+           ;; view put there would be in a frame and covered at once.
+           (unless (tree:frame-surface (tree:find-root-frame f))
+             (when (> (ring-list:ring-list-size hidden) 0)
+               (%swap-view-into-frame group f (%pop-hidden-item hidden))))
            (group-views-changed group (tree:find-root-frame f))))
         (hrt:dirty-view-transaction)))
     ;; Whether it had a frame or not: a destroyed view left in the
