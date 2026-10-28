@@ -17,7 +17,8 @@
 
 (defstruct output-config
   ;; NIL leaves the scale to heart, which picks 2 for HiDPI screens
-  ;; (over 192 DPI, 1200 pixels tall) and 1 otherwise:
+  ;; (over 192 DPI, 1200 pixels tall) and for large ones (over a meter
+  ;; across, a TV), and 1 otherwise:
   (scale nil :type (or number null) :read-only t)
   (refresh-rate nil :type (or number null) :read-only t)
   (custom-mode nil :type boolean :read-only t)
