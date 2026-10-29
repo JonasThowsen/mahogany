@@ -384,8 +384,11 @@ say), otherwise it goes through the groups."
 missing and dropping those of outputs that have gone."
   (when (and *mode-line-enabled* (state-server *compositor-state*))
     (%refresh-modules)
-    (let ((outputs (map 'list #'tree:output-container-output
-                        (state-cur-outputs *compositor-state*))))
+    ;; Not on an output just turned off, still in use until its removal
+    ;; is processed:
+    (let ((outputs (remove-if-not #'hrt:output-enabled
+                                  (map 'list #'tree:output-container-output
+                                       (state-cur-outputs *compositor-state*)))))
       (maphash (lambda (name mode-line)
                  (declare (ignore name))
                  (when (or (hrt:canvas-destroyed-p (mode-line-canvas mode-line))

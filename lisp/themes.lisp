@@ -314,8 +314,11 @@ STEP). Returns it."
   "Draw the wallpaper on the outputs in use, where it is not drawn as
 it should be, dropping those of outputs that have gone."
   (when (and *theme* (state-server *compositor-state*))
-    (let ((outputs (map 'list #'tree:output-container-output
-                        (state-cur-outputs *compositor-state*))))
+    ;; An output just turned off is still among those in use until its
+    ;; removal is processed; drawing on it faults in heart.
+    (let ((outputs (remove-if-not #'hrt:output-enabled
+                                  (map 'list #'tree:output-container-output
+                                       (state-cur-outputs *compositor-state*)))))
       (maphash (lambda (name wallpaper)
                  (when (or (hrt:canvas-destroyed-p (wallpaper-canvas wallpaper))
                            (not (member (wallpaper-output wallpaper) outputs
