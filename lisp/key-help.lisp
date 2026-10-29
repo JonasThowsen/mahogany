@@ -39,13 +39,14 @@
       (let* ((canvas (hrt:make-canvas output :layer :layer-overlay))
              (row-height 0) (key-width 0) (command-width 0))
         ;; Measure once: a line's height, the widest key and command.
-        (hrt:with-canvas-frame (cr canvas 1 1)
-          (multiple-value-bind (w h) (draw:text-size cr "Xg" :font font)
-            (declare (ignore w))
-            (setf row-height (+ h 4)))
-          (loop for (key . command) in entries
-                do (setf key-width (max key-width (draw:text-size cr key :font font))
-                         command-width (max command-width (draw:text-size cr command :font font)))))
+        (draw:with-image-surface (surface 1 1)
+          (draw:with-context (cr surface)
+            (multiple-value-bind (w h) (draw:text-size cr "Xg" :font font)
+              (declare (ignore w))
+              (setf row-height (+ h 4)))
+            (loop for (key . command) in entries
+                  do (setf key-width (max key-width (draw:text-size cr key :font font))
+                           command-width (max command-width (draw:text-size cr command :font font))))))
         (let* ((max-rows (max 1 (floor (- output-height (* 4 pad) row-height) row-height)))
                ;; As few columns as the height allows, each as wide as
                ;; its text, or narrower when they would not fit the
@@ -63,9 +64,11 @@
                (y (round (- output-height height) 2)))
           (hrt:canvas-set-position canvas (max 0 x) (max 0 y))
           (hrt:with-canvas-frame (cr canvas width height)
-            (draw:clear cr (mh/theme:theme-background-color theme))
-            (draw:stroke-rectangle cr 0 0 width height
-                                   :color (mh/theme:theme-border-color theme) :line-width 2)
+            (draw:clear cr '(0 0 0 0))
+            (draw:fill-rounded-rectangle cr 0 0 width height *menu-radius*
+                                         (mh/theme:theme-background-color theme))
+            (draw:stroke-rounded-rectangle cr 0 0 width height *menu-radius*
+                                           :color (mh/theme:theme-border-color theme) :line-width 2)
             (draw:draw-text cr (format nil "Keys (~D) — any key closes this" (length entries))
                             pad pad :font font :color (mh/theme:theme-font-color theme))
             (loop for column in (%key-help-columns entries rows)

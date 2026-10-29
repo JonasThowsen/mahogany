@@ -4,6 +4,10 @@
   (declare (type output-node node)
            (type hrt:output output))
   (multiple-value-bind (x y width height) (hrt:output-usable-area output)
+    ;; The windows keep *output-gap* from the edge of the usable area:
+    (let ((margin (min (output-gap-margin) (floor width 4) (floor height 4))))
+      (incf x margin) (incf y margin)
+      (decf width (* 2 margin)) (decf height (* 2 margin)))
     (log-string :trace "Reconfiguring output node ~S to (~S,~S) width: ~S height: ~S"
                 (hrt:output-full-name output) x y width height)
     (set-position (first (tree-children node)) x y)

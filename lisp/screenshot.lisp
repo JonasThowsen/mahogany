@@ -107,11 +107,11 @@ says so, open it in the editor."
 NIL without one."
   (let ((frame (state-current-frame *compositor-state*)))
     (when (and frame (typep frame 'tree:frame) (tree:frame-surface frame))
-      (let ((border tree::*frame-border-width*))
-        (list (+ (tree:frame-x frame) border)
-              (+ (tree:frame-y frame) border)
-              (max 1 (- (tree:frame-width frame) (* 2 border)))
-              (max 1 (- (tree:frame-height frame) (* 2 border))))))))
+      (let ((inset (+ tree:*frame-border-width* (floor tree:*window-gap* 2))))
+        (list (+ (tree:frame-x frame) inset)
+              (+ (tree:frame-y frame) inset)
+              (max 1 (- (tree:frame-width frame) (* 2 inset)))
+              (max 1 (- (tree:frame-height frame) (* 2 inset))))))))
 
 ;;; Choosing an area: a translucent canvas over the current output. A
 ;;; drag with the left button chooses, Escape or a click with no drag

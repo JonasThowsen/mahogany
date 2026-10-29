@@ -156,6 +156,27 @@ register its types again and hangs. So a loaded library is left alone."
 (cffi:defcfun ("cairo_get_source" cairo-get-source) :pointer
   (cr :pointer))
 
+(cffi:defcfun ("cairo_set_source" cairo-set-source) :void
+  (cr :pointer)
+  (source :pointer))
+
+(cffi:defcfun ("cairo_pattern_create_linear" cairo-pattern-create-linear) :pointer
+  (x0 :double)
+  (y0 :double)
+  (x1 :double)
+  (y1 :double))
+
+(cffi:defcfun ("cairo_pattern_add_color_stop_rgba" cairo-pattern-add-color-stop-rgba) :void
+  (pattern :pointer)
+  (offset :double)
+  (red :double)
+  (green :double)
+  (blue :double)
+  (alpha :double))
+
+(cffi:defcfun ("cairo_pattern_destroy" cairo-pattern-destroy) :void
+  (pattern :pointer))
+
 (cffi:defcfun ("cairo_pattern_set_filter" cairo-pattern-set-filter) :void
   (pattern :pointer)
   (filter :int))

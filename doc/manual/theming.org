@@ -89,6 +89,50 @@ The colors are =cl-colors2= rgb values with components from 0 to 1:
   (push 'theme-foot *theme-hooks*)
 #+END_SRC
 
+*** Fonts
+
+A theme's font (=:font= in =define-theme=, a Pango description) is
+the mode-line's; menus, the launcher, messages and the on-screen
+display use it two points larger. The default,
+="JetBrainsMono Nerd Font,sans-serif 10"=, is a family list: a machine
+without JetBrainsMono falls back to its sans-serif. The icons of the
+mode-line need a Nerd Font either way, see [[file:mode-line.org][The Mode-Line]].
+
+** Gaps and borders
+
+Windows keep a gap from each other and from the edge of the screen,
+and each has a border of its own, in the focused or unfocused border
+color of the theme (the look of Omarchy and Hyprland). The widths are
+layout pixels:
+
+#+BEGIN_SRC lisp
+  (set-gaps :window 10 :output 10 :border 2)   ; the defaults
+  (set-gaps :window 0 :output 0 :border 1)     ; the look before gaps
+#+END_SRC
+
+=:window= is the whole gap between two windows, =:output= the gap to
+the edge of the usable area (the mode-line excluded), =:border= the
+border width. Without a window gap neighbouring frames share one
+border, as StumpWM's do. =set-gaps= lays the windows out again at
+once; the values are =tree:*window-gap*=, =tree:*output-gap*= and
+=tree:*frame-border-width*=.
+
+** Messages
+
+A message (=toast-message=, and what commands say) is a rounded card
+at the top right of the screen, as mako shows notifications, with the
+theme's accent as its edge; an error message has the error color
+there. =*message-gravity*= places it (=:gravity-top-right=,
+=:gravity-center=, =:gravity-bottom=, …), =*message-margin*= is its
+distance from the edge, =*message-width*= its width (long text
+wraps), =*message-delay*= how long it stays in milliseconds.
+
+** The wallpaper
+
+A theme with no =:wallpaper= file shows a gradient of its wallpaper
+color: a touch of the accent at the top left, darker at the bottom
+right. =set-wallpaper= and =*wallpaper*= show a PNG file instead.
+
 *** Themes of single components
 
 =set-theme= fills =*mode-line-theme*=, =*menu-theme*=, =*osd-theme*=,

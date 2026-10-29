@@ -61,7 +61,25 @@ program, and so on.")
     (colors:rgb designator)
     (string (colors:as-rgb (string-left-trim "#" designator)))))
 
-(defun define-theme (name &key (description "") (font "monospace 12")
+(defparameter *default-font* "JetBrainsMono Nerd Font,sans-serif 10"
+  "The font of themes that name none: the mode-line's; menus, messages
+and the on-screen display use it two points larger. A family list, so
+a machine without the first falls back to the next.")
+
+(defun font-at-size (font size)
+  "FONT (a Pango description such as \"sans-serif 10\") at SIZE points."
+  (let ((end (position #\Space font :from-end t)))
+    (if (and end (every #'digit-char-p (subseq font (1+ end))))
+        (format nil "~A ~D" (subseq font 0 end) size)
+        (format nil "~A ~D" font size))))
+
+(defun font-size (font &optional (default 10))
+  "The size in points FONT names, or DEFAULT."
+  (let ((end (position #\Space font :from-end t)))
+    (or (and end (parse-integer font :start (1+ end) :junk-allowed t))
+        default)))
+
+(defun define-theme (name &key (description "") (font *default-font*)
                             (foreground "#ffffff") (background "#000000")
                             surface accent muted error
                             border-focus border-unfocus
@@ -127,8 +145,14 @@ logged and skipped."
 ;;; Applying a theme
 
 (defun %widget-theme (theme &key (font-color (theme-foreground theme))
-                                 (border-color (theme-accent theme)))
-  (mh/theme:make-theme :font (theme-font theme)
+                                 (border-color (theme-accent theme))
+                                 (larger 0))
+  "The widget theme (font and colors) of THEME; LARGER points are added
+to the font's size."
+  (mh/theme:make-theme :font (if (plusp larger)
+                                 (font-at-size (theme-font theme)
+                                               (+ (font-size (theme-font theme)) larger))
+                                 (theme-font theme))
                        :font-color font-color
                        :background-color (theme-background theme)
                        :border-color border-color))
@@ -142,9 +166,34 @@ logged and skipped."
       (hrt:border-box-style-update tree::*frame-focus-border-style*
                                    :hrt-border-solid (theme-border-focus theme) width)
       (hrt:border-box-style-update tree::*frame-unfocus-border-style*
-                                   :hrt-border-solid (theme-border-unfocus theme) (* width 2))
+                                   :hrt-border-solid (theme-border-unfocus theme)
+                                   (coerce (tree:unfocused-border-width tree:*frame-border-width*)
+                                           'double-float))
       (hrt:border-box-style-update tree::*frame-unfocus-empty-border-style*
                                    :hrt-border-dotted (theme-muted theme) width))))
+
+(defun set-gaps (&key window output border)
+  "Set the gap between windows, the gap to the edge of the output and
+the border width, in layout pixels (those not given stay), and lay the
+windows out again. (set-gaps :window 0 :output 0 :border 1) is the
+look Mahogany had before gaps."
+  (when window (setf tree:*window-gap* window))
+  (when output (setf tree:*output-gap* output))
+  (when border (setf tree:*frame-border-width* border))
+  (when *theme*
+    (%apply-frame-borders *theme*))
+  (when (state-server *compositor-state*)
+    (hrt:with-view-transaction ()
+      (mahogany-state-output-reconfigure *compositor-state*)
+      ;; The frames whose place did not change keep their windows
+      ;; where they were, so place every window anew:
+      (loop for group across (state-groups *compositor-state*)
+            do (alexandria:when-let ((node (group-output-node group)))
+                 (dolist (frame (tree:get-populated-frames node))
+                   (tree::set-position frame (tree:frame-x frame) (tree:frame-y frame))
+                   (tree::set-dimensions frame (tree:frame-width frame) (tree:frame-height frame))))))
+    (hrt:dirty-view-transaction))
+  (list tree:*window-gap* tree:*output-gap* tree:*frame-border-width*))
 
 (defun %save-theme-name (name)
   (ignore-errors
@@ -170,12 +219,12 @@ the wallpaper, and remember it for the next start. Returns the theme."
   (let ((theme (if (theme-p designator) designator (find-theme designator))))
     (setf *theme* theme
           *mode-line-theme* (%widget-theme theme)
-          *menu-theme* (%widget-theme theme)
-          *osd-theme* (%widget-theme theme)
-          *message-theme* (%widget-theme theme)
-          *message-error-theme* (%widget-theme theme
-                                               :font-color (theme-error theme)
-                                               :border-color (theme-error theme)))
+          *menu-theme* (%widget-theme theme :larger 2)
+          *osd-theme* (%widget-theme theme :larger 2)
+          *message-theme* (%widget-theme theme :larger 2)
+          ;; An error is told by its edge, the text stays readable:
+          *message-error-theme* (%widget-theme theme :larger 2
+                                                     :border-color (theme-error theme)))
     (%apply-frame-borders theme)
     (when (state-server *compositor-state*)
       (wallpaper-update)
@@ -265,6 +314,21 @@ STEP). Returns it."
       (theme-wallpaper-color *theme*)
       (colors:rgb 0.1 0.1 0.12)))
 
+(defun %mix (color other amount)
+  "COLOR moved AMOUNT (0 to 1) of the way to OTHER."
+  (flet ((mix (a b) (+ (* (- 1 amount) a) (* amount b))))
+    (colors:rgb (mix (colors:rgb-red color) (colors:rgb-red other))
+                (mix (colors:rgb-green color) (colors:rgb-green other))
+                (mix (colors:rgb-blue color) (colors:rgb-blue other)))))
+
+(defun %wallpaper-gradient-stops (color)
+  "The gradient drawn without a wallpaper file: COLOR, a touch of the
+accent at the top left, darker at the bottom right."
+  (let ((accent (if *theme* (theme-accent *theme*) color)))
+    (list (list 0 (%mix color accent 0.12))
+          (list 0.55 color)
+          (list 1 (%mix color (colors:rgb 0 0 0) 0.2)))))
+
 (defun %wallpaper-image (file)
   "The image surface of FILE, loaded once; NIL when it cannot be read."
   (unless (and *wallpaper-image* (equal (car *wallpaper-image*) file))
@@ -299,15 +363,17 @@ STEP). Returns it."
         (file (wallpaper-file))
         (color (wallpaper-color)))
     (multiple-value-bind (width height) (hrt:output-logical-size output)
-      (let ((key (list file color width height
+      (let ((key (list file color (and *theme* (theme-name *theme*)) width height
                        (multiple-value-list (hrt:output-position output)))))
         (unless (equal key (wallpaper-drawn wallpaper))
           (let ((image (%wallpaper-image file)))
             (hrt:canvas-set-position canvas 0 0)
             (hrt:with-canvas-frame (cr canvas width height)
               (draw:clear cr color)
-              (when image
-                (draw:draw-image-cover cr image width height))))
+              (if image
+                  (draw:draw-image-cover cr image width height)
+                  (draw:fill-linear-gradient cr 0 0 width height
+                                             (%wallpaper-gradient-stops color)))))
           (setf (wallpaper-drawn wallpaper) key))))))
 
 (defun wallpaper-update ()

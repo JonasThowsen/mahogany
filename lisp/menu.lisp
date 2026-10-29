@@ -23,9 +23,13 @@
   fixnum
   "How many items a menu shows at once.")
 
-(config:defconfig *menu-padding* 10
+(config:defconfig *menu-padding* 14
   fixnum
   "Space in layout pixels around and between what a menu shows.")
+
+(config:defconfig *menu-radius* 12
+  fixnum
+  "How much a menu's corners are rounded, in layout pixels.")
 
 (config:defconfig *menu-match-function* 'fuzzy-match-score
   (or symbol function)
@@ -273,22 +277,25 @@ passphrase. An open menu is replaced."
          (rows (min *menu-rows* (length matches))))
     (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
       (let* ((width (min output-width
-                         (max (round (* output-width *menu-width*)) 480)))
+                         (max (round (* output-width *menu-width*)) 520)))
              (row-height 0)
              (hits '()))
-        ;; Measure a line of text once:
-        (hrt:with-canvas-frame (cr canvas width 1)
-          (multiple-value-bind (w h) (draw:text-size cr "Xg" :font font)
-            (declare (ignore w))
-            (setf row-height (+ h (round pad 2)))))
+        ;; Measure a line of text once, off screen:
+        (draw:with-image-surface (surface 1 1)
+          (draw:with-context (cr surface)
+            (multiple-value-bind (w h) (draw:text-size cr "Xg" :font font)
+              (declare (ignore w))
+              (setf row-height (+ h (round (* pad 3) 4))))))
         (let* ((height (+ pad row-height pad (* rows row-height) (if (plusp rows) pad 0)))
                (x (round (- output-width width) 2))
                (y (round (- output-height height) 3)))
           (hrt:canvas-set-position canvas (max 0 x) (max 0 y))
           (hrt:with-canvas-frame (cr canvas width height)
-            (draw:clear cr (mh/theme:theme-background-color theme))
-            (draw:stroke-rectangle cr 0 0 width height
-                                   :color (mh/theme:theme-border-color theme) :line-width 2)
+            (draw:clear cr '(0 0 0 0))
+            (draw:fill-rounded-rectangle cr 0 0 width height *menu-radius*
+                                         (mh/theme:theme-background-color theme))
+            (draw:stroke-rounded-rectangle cr 0 0 width height *menu-radius*
+                                           :color (mh/theme:theme-border-color theme) :line-width 2)
             ;; The prompt line: PROMPT filter▏ and how many match:
             (let* ((count (if (menu-items menu)
                               (format nil "~D/~D" (length matches) (length (menu-items menu)))
@@ -309,8 +316,14 @@ passphrase. An open menu is replaced."
                   for index = (+ (menu-scroll menu) row)
                   for item = (aref matches index)
                   for row-y = (+ pad row-height pad (* row row-height))
-                  do (when (= index (menu-selected menu))
-                       (draw:fill-rounded-rectangle cr pad row-y (- width (* 2 pad)) row-height 4
+                  for selected = (= index (menu-selected menu))
+                  ;; The selected row is a block of the accent, its
+                  ;; text in the background color to stand out on it:
+                  for text-color = (if selected
+                                       (mh/theme:theme-background-color theme)
+                                       (mh/theme:theme-font-color theme))
+                  do (when selected
+                       (draw:fill-rounded-rectangle cr pad row-y (- width (* 2 pad)) row-height 6
                                                     (mh/theme:theme-border-color theme)))
                      (let* ((detail (menu-item-detail item))
                             ;; A detail takes at most half the row:
@@ -318,14 +331,14 @@ passphrase. An open menu is replaced."
                                               (min (+ pad (draw:text-size cr detail :font font))
                                                    (floor width 2))
                                               0)))
-                       (draw:draw-text cr (menu-item-label item) (* 2 pad) (+ row-y (round pad 4))
-                                       :font font :color (mh/theme:theme-font-color theme)
+                       (draw:draw-text cr (menu-item-label item) (* 2 pad) (+ row-y (round (* pad 3) 8))
+                                       :font font :color text-color
                                        :width (- width (* 4 pad) detail-width) :ellipsize :end)
                        (when detail
                          (draw:draw-text cr detail (- width (* 2 pad) detail-width (- pad))
-                                         (+ row-y (round pad 4))
+                                         (+ row-y (round (* pad 3) 8))
                                          :font font
                                          :width (- detail-width pad) :ellipsize :end
-                                         :color (%dim (mh/theme:theme-font-color theme) 0.6))))
+                                         :color (%dim text-color 0.6))))
                      (push (list row-y (+ row-y row-height) index) hits))
             (setf (menu-row-hits menu) hits)))))))

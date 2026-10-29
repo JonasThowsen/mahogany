@@ -18,8 +18,33 @@
 
 ;; Let's keep the border width a fixnum
 ;; to avoid half pixels:
-(declaim (type fixnum *frame-border-width*))
-(defglobal *frame-border-width* 1)
+(declaim (type fixnum *frame-border-width* *window-gap* *output-gap*))
+(defglobal *frame-border-width* 2
+  "The width of a frame's border in layout pixels.")
+
+(defglobal *window-gap* 10
+  "Layout pixels between the windows of neighbouring frames: each frame
+keeps half of it around its border. With a gap every frame draws its
+own border; without one, neighbours share theirs.")
+
+(defglobal *output-gap* 10
+  "Layout pixels between the windows and the edge of the output's
+usable area (the mode-line, say).")
+
+(declaim (inline %half-gap))
+(defun %half-gap ()
+  (floor *window-gap* 2))
+
+(defun output-gap-margin ()
+  "What the usable area of an output is shrunk by on each side, so that
+the windows at the edge are *output-gap* from it."
+  (max 0 (- *output-gap* (%half-gap))))
+
+(defun unfocused-border-width (width)
+  "The line width of the unfocused border for a border WIDTH: twice it
+when neighbours share their borders, to hide the gaps rounded corners
+leave; the width itself when every frame has a border of its own."
+  (if (plusp (%half-gap)) width (* width 2)))
 
 (defun init-frame-border-styles ()
   ;; For border collapsing to work, all borders need to be the same
@@ -34,7 +59,7 @@
           *frame-unfocus-border-style*
           (hrt:border-box-style-create
            :hrt-border-solid (cl-colors2:as-rgb "000000") ; 9900a4
-           (* width 2)) ; Add width to hide any gaps from rounded corners
+           (unfocused-border-width width))
           *frame-unfocus-empty-border-style*
           (hrt:border-box-style-create
            :hrt-border-dotted (cl-colors2:as-rgb "cccccc")
@@ -61,41 +86,40 @@
                :type (or null cffi:foreign-pointer))
    (seat :initform nil)))
 
+;;; Where the window and the border box go inside a frame of the given
+;;; place and size. With a gap (*window-gap*), the border box is inset
+;;; by half the gap and the window by that and the border, ADJUST.
+;;; Without one, neighbouring frames share a border: a frame bordered
+;;; on the left or top by its neighbour leaves no room of its own there.
+
 (defun %view-frame-get-dimensions (frame adjust width height)
-  (let* ((w-adjust (- width (if (frame-bordered-left frame)
-								adjust
-								(+ adjust adjust))))
-         (h-adjust (- height (if (frame-bordered-top frame)
-								 adjust
-								 (+ adjust adjust)))))
-    (values w-adjust h-adjust)))
+  (let ((gap (%half-gap)))
+    (if (plusp gap)
+        (values (max 1 (- width (* 2 (+ gap adjust))))
+                (max 1 (- height (* 2 (+ gap adjust)))))
+        (values (- width (if (frame-bordered-left frame) adjust (+ adjust adjust)))
+                (- height (if (frame-bordered-top frame) adjust (+ adjust adjust)))))))
 
 (defun %view-frame-get-position (frame adjust x y)
-  (let* ((x-adjust (+ x (if (frame-bordered-left frame)
-							0
-							adjust)))
-         (y-adjust (+ y (if (frame-bordered-top frame)
-							0
-							adjust))))
-    (values x-adjust y-adjust)))
+  (let ((gap (%half-gap)))
+    (if (plusp gap)
+        (values (+ x gap adjust) (+ y gap adjust))
+        (values (+ x (if (frame-bordered-left frame) 0 adjust))
+                (+ y (if (frame-bordered-top frame) 0 adjust))))))
 
 (defun %border-box-get-dimensions (frame adjust width height)
-  (let ((w-adjust (+ width (if (frame-bordered-left frame)
-							   adjust
-							   0)))
-		(h-adjust (+ height (if (frame-bordered-top frame)
-								adjust
-								0))))
-    (values w-adjust h-adjust)))
+  (let ((gap (%half-gap)))
+    (if (plusp gap)
+        (values (max 1 (- width (* 2 gap))) (max 1 (- height (* 2 gap))))
+        (values (+ width (if (frame-bordered-left frame) adjust 0))
+                (+ height (if (frame-bordered-top frame) adjust 0))))))
 
 (defun %border-box-get-position (frame adjust x y)
-  (let* ((x-adjust (- x (if (frame-bordered-left frame)
-							adjust
-							0)))
-         (y-adjust (- y (if (frame-bordered-top frame)
-							adjust
-							0))))
-	(values x-adjust y-adjust)))
+  (let ((gap (%half-gap)))
+    (if (plusp gap)
+        (values (+ x gap) (+ y gap))
+        (values (- x (if (frame-bordered-left frame) adjust 0))
+                (- y (if (frame-bordered-top frame) adjust 0))))))
 
 (defmethod initialize-instance :after ((frame view-frame)
                                        &key focused view

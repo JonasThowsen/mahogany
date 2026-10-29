@@ -25,6 +25,9 @@ so those coordinates are layout pixels.")
    #:fill-rectangle
    #:stroke-rectangle
    #:fill-rounded-rectangle
+   #:stroke-rounded-rectangle
+   #:fill-linear-gradient
+   #:color-components
    #:translate
    #:clip-rectangle
    ;; text

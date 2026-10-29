@@ -54,12 +54,10 @@ shown is replaced."
       (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
         (let* ((width (max 220 (round output-width 5)))
                (text (if icon (format nil "~A  ~A" icon label) label))
-               (text-height 0)
-               ;; with-canvas-frame returns whether the frame was shown, so
-               ;; the measurement is taken out through the variable:
-               (measured (hrt:with-canvas-frame (cr canvas width 1)
-                           (setf text-height (nth-value 1 (draw:text-size cr text :font font)))))
-               (bar-height (progn measured (if percent 6 0)))
+               (text-height (draw:with-image-surface (surface 1 1)
+                              (draw:with-context (cr surface)
+                                (nth-value 1 (draw:text-size cr text :font font)))))
+               (bar-height (if percent 6 0))
                (height (+ pad text-height (if percent (+ 10 bar-height) 0) pad))
                (x (round (- output-width width) 2))
                (y (ecase *osd-position*

@@ -53,9 +53,9 @@ to the state (color, clip, transform) stay inside."
 each from 0 to 1."
   '(or colors:rgb list))
 
-(defun set-color (cr color &optional alpha)
-  "Make COLOR the source of CR. ALPHA, from 0 to 1, overrides the
-color's own."
+(defun color-components (color &optional alpha)
+  "COLOR's red, green, blue and alpha as doubles from 0 to 1. ALPHA
+overrides the color's own."
   (declare (type color color))
   (multiple-value-bind (red green blue color-alpha)
       (etypecase color
@@ -65,9 +65,14 @@ color's own."
                             1))
         (list (values (first color) (second color) (third color)
                       (or (fourth color) 1))))
-    (cairo-set-source-rgba cr
-                           (float red 1d0) (float green 1d0) (float blue 1d0)
-                           (float (or alpha color-alpha) 1d0))))
+    (values (float red 1d0) (float green 1d0) (float blue 1d0)
+            (float (or alpha color-alpha) 1d0))))
+
+(defun set-color (cr color &optional alpha)
+  "Make COLOR the source of CR. ALPHA, from 0 to 1, overrides the
+color's own."
+  (multiple-value-bind (red green blue alpha) (color-components color alpha)
+    (cairo-set-source-rgba cr red green blue alpha)))
 
 ;;; Shapes
 
@@ -100,22 +105,57 @@ it, LINE-WIDTH wide, with COLOR or the current source."
                      (float (- height line-width) 1d0))
     (cairo-stroke cr)))
 
-(defun fill-rounded-rectangle (cr x y width height radius &optional color)
-  "Fill the rectangle at X,Y of WIDTH x HEIGHT with corners rounded by
-RADIUS, with COLOR or the current source."
-  (when color
-    (set-color cr color))
+(defun %rounded-rectangle-path (cr x y width height radius)
   (let* ((x (float x 1d0)) (y (float y 1d0))
-         (w (float width 1d0)) (h (float height 1d0))
-         (r (float (min radius (/ w 2) (/ h 2)) 1d0))
+         (w (float (max 0 width) 1d0)) (h (float (max 0 height) 1d0))
+         (r (float (max 0 (min radius (/ w 2) (/ h 2))) 1d0))
          (half-pi (/ pi 2)))
     (cairo-new-path cr)
     (cairo-arc cr (+ x w (- r)) (+ y r) r (- half-pi) 0d0)
     (cairo-arc cr (+ x w (- r)) (+ y h (- r)) r 0d0 half-pi)
     (cairo-arc cr (+ x r) (+ y h (- r)) r half-pi pi)
     (cairo-arc cr (+ x r) (+ y r) r pi (* 3 half-pi))
-    (cairo-close-path cr)
-    (cairo-fill cr)))
+    (cairo-close-path cr)))
+
+(defun fill-rounded-rectangle (cr x y width height radius &optional color)
+  "Fill the rectangle at X,Y of WIDTH x HEIGHT with corners rounded by
+RADIUS, with COLOR or the current source."
+  (when color
+    (set-color cr color))
+  (%rounded-rectangle-path cr x y width height radius)
+  (cairo-fill cr))
+
+(defun stroke-rounded-rectangle (cr x y width height radius &key color (line-width 1))
+  "Draw the outline of the rectangle at X,Y of WIDTH x HEIGHT with
+corners rounded by RADIUS, LINE-WIDTH wide and inside the rectangle,
+with COLOR or the current source."
+  (save-restore (cr)
+    (when color
+      (set-color cr color))
+    (cairo-set-line-width cr (float line-width 1d0))
+    (let ((inset (/ line-width 2)))
+      (%rounded-rectangle-path cr (+ x inset) (+ y inset)
+                               (- width line-width) (- height line-width)
+                               (max 0 (- radius inset))))
+    (cairo-stroke cr)))
+
+(defun fill-linear-gradient (cr x0 y0 x1 y1 stops)
+  "Paint the whole surface with a gradient along the line from X0,Y0
+to X1,Y1. STOPS is a list of (OFFSET COLOR &optional ALPHA), OFFSET
+from 0 at the start of the line to 1 at its end."
+  (let ((pattern (cairo-pattern-create-linear (float x0 1d0) (float y0 1d0)
+                                              (float x1 1d0) (float y1 1d0))))
+    (unwind-protect
+         (progn
+           (dolist (stop stops)
+             (destructuring-bind (offset color &optional alpha) stop
+               (multiple-value-bind (red green blue alpha) (color-components color alpha)
+                 (cairo-pattern-add-color-stop-rgba pattern (float offset 1d0)
+                                                    red green blue alpha))))
+           (save-restore (cr)
+             (cairo-set-source cr pattern)
+             (cairo-paint cr)))
+      (cairo-pattern-destroy pattern))))
 
 (defun translate (cr x y)
   "Move the origin of CR by X,Y."

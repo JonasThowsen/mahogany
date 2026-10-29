@@ -22,7 +22,7 @@
   fixnum
   "The height of the mode-line in layout pixels.")
 
-(config:defconfig *mode-line-padding* 8
+(config:defconfig *mode-line-padding* 12
   fixnum
   "Space in layout pixels at the ends of the mode-line and between its
 segments.")
@@ -37,14 +37,14 @@ segments.")
 group.")
 
 (config:defconfig *mode-line-segments*
-    '(:groups :title :fill :network :volume :brightness :battery :date :clock)
+    '(:groups :title :center :date :clock :fill :network :volume :brightness :battery)
   list
   "What the mode-line shows, left to right: the names of modules
 (define-mode-line-module; built in: :groups, :title, :clock, :date,
-:network, :volume, :brightness, :battery), :fill (the rest goes to the
-right end), a function of the output returning a string, or NIL for
-nothing. Modules with nothing to show, such as :battery on a desktop,
-take no room.")
+:network, :volume, :brightness, :battery), :center (what follows is
+centred), :fill (the rest goes to the right end), a function of the
+output returning a string, or NIL for nothing. Modules with nothing to
+show, such as :battery on a desktop, take no room.")
 
 (config:defconfig *mode-line-icons* t
   boolean
@@ -228,12 +228,15 @@ marked flexible) and :fill."
                               (alexandria:remove-from-plist options :icon))
                        items))))
         (case segment
+          ;; The groups: the shown one marked, the empty ones dimmed.
           (:groups (loop for (name current group) in (%mode-line-groups output)
                          do (add name :marked current
+                                 :dim (and (not current) (null (mahogany-group-views group)))
                                  :on-click (let ((group group))
                                              (lambda ()
                                                (setf (state-current-group *compositor-state*)
                                                      group))))))
+          (:center (push :center items))
           (:title (add (mode-line-title) :flexible t))
           (:clock (add (mode-line-clock) :icon (icon :clock)))
           (:date (add (mode-line-date) :icon (icon :calendar)))
@@ -254,14 +257,19 @@ marked flexible) and :fill."
 
 (defun %draw-mode-line-items (cr items width height theme)
   "Lay ITEMS out on a WIDTH x HEIGHT bar and draw them: the items before
-:fill from the left, the rest from the right, and a :flexible item
-taking the room that is left, shortened to it. Returns the clickable
-places as a list of (X0 X1 FUNCTION)."
+:center or :fill from the left, those between :center and :fill in the
+middle, the rest from the right, and a :flexible item taking the room
+that is left, shortened to it. Returns the clickable places as a list
+of (X0 X1 ON-CLICK ON-SCROLL)."
   (let* ((font (mh/theme:theme-font theme))
          (pad *mode-line-padding*)
          (chip-pad (round pad 2))
+         (center-position (position :center items))
          (fill (position :fill items))
-         (left (subseq items 0 (or fill (length items))))
+         (left (subseq items 0 (or center-position fill (length items))))
+         (center (if center-position
+                     (subseq items (1+ center-position) (or fill (length items)))
+                     '()))
          (right (if fill (subseq items (1+ fill)) '()))
          (hits '()))
     (labels ((text-width (item)
@@ -274,9 +282,18 @@ places as a list of (X0 X1 FUNCTION)."
                        sum (+ (text-width item) pad)))
              (draw-item (item x available)
                "Draw ITEM at X in at most AVAILABLE pixels; return its width."
-               (destructuring-bind (&key text marked flexible on-click on-scroll color) item
+               (destructuring-bind (&key text marked dim flexible on-click on-scroll color) item
                  (let* ((room (if flexible (max 0 (- available pad)) nil))
-                        (chip (if marked chip-pad 0)))
+                        (chip (if marked chip-pad 0))
+                        (font-color (mh/theme:theme-font-color theme))
+                        (text-color (cond (color color)
+                                          ;; On the accent chip, the background color stands out:
+                                          (marked (mh/theme:theme-background-color theme))
+                                          (dim (list (colors:rgb-red font-color)
+                                                     (colors:rgb-green font-color)
+                                                     (colors:rgb-blue font-color)
+                                                     0.45))
+                                          (t font-color))))
                    (draw:with-layout (layout cr :text text :font font
                                                 :width (when room (- room (* 2 chip)))
                                                 :ellipsize (when room :end))
@@ -284,10 +301,9 @@ places as a list of (X0 X1 FUNCTION)."
                        (let ((y (round (- height h) 2)))
                          (when marked
                            (draw:fill-rounded-rectangle
-                            cr x (- y chip) (+ w (* 2 chip)) (+ h (* 2 chip)) 4
+                            cr x (- y (round chip 2)) (+ w (* 2 chip)) (+ h chip) 5
                             (mh/theme:theme-border-color theme)))
-                         (draw:show-layout cr layout (+ x chip) y
-                                           (or color (mh/theme:theme-font-color theme)))
+                         (draw:show-layout cr layout (+ x chip) y text-color)
                          (when (or on-click on-scroll)
                            (push (list x (+ x w (* 2 chip)) on-click on-scroll) hits))
                          (+ w (* 2 chip)))))))))
@@ -298,12 +314,22 @@ places as a list of (X0 X1 FUNCTION)."
             (decf x w)
             (draw-item item x w)
             (decf x pad)))
-        (let ((right-edge x)
-              (x pad))
-          (dolist (item left)
-            (let ((available (- right-edge x
-                                (fixed-width (cdr (member item left))))))
-              (incf x (+ (draw-item item x available) pad))))))
+        (let ((right-edge x))
+          ;; The centre block, in the middle of the bar unless the
+          ;; right side reaches there:
+          (when center
+            (let* ((block-width (- (fixed-width center) pad))
+                   (start (min (round (- width block-width) 2)
+                               (- right-edge pad block-width)))
+                   (x (max pad start)))
+              (dolist (item center)
+                (incf x (+ (draw-item item x (text-width item)) pad)))
+              (setf right-edge (- (max pad start) pad))))
+          (let ((x pad))
+            (dolist (item left)
+              (let ((available (- right-edge x
+                                  (fixed-width (cdr (member item left))))))
+                (incf x (+ (draw-item item x available) pad)))))))
       hits)))
 
 (defun mode-line-draw (mode-line)

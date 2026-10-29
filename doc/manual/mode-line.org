@@ -17,9 +17,9 @@ it from the colon prompt (=C-t ;=), or bind it:
 The configuration property =mh::*mode-line-segments*= lists the
 segments from left to right; each is the name of a module:
 
-- =:groups= :: the groups of the bar's output, the one it shows marked.
-  A click on a group goes to it; the wheel over the bar goes through
-  that output's groups.
+- =:groups= :: the groups of the bar's output, the one it shows marked
+  with the accent, the empty ones dimmed. A click on a group goes to
+  it; the wheel over the bar goes through that output's groups.
 - =:title= :: the focused window's title, shortened to the room left.
 - =:network= :: the SSID when on wifi (through =iwctl= or =iw=), the
   interface when wired, "offline" otherwise.
@@ -31,12 +31,15 @@ segments from left to right; each is the name of a module:
 - =:battery= :: the charge, with the icon following the level and red
   under 15%. Hidden without a battery.
 - =:date=, =:clock= :: weekday, day and month; HH:MM.
+- =:center= :: the segments up to =:fill= are centred on the bar.
 - =:fill= :: the rest of the segments go to the right end.
 - a function :: called with the output, returning a string to show,
   or =nil= for nothing.
 
-The default is =(:groups :title :fill :network :volume :brightness
-:battery :date :clock)=. The icons are Nerd Font glyphs; they need a
+The default is =(:groups :title :center :date :clock :fill :network
+:volume :brightness :battery)=: the groups and the window title on
+the left, the date and the clock in the middle, the system on the
+right. =*mode-line-padding*= (12) is the room between segments. The icons are Nerd Font glyphs; they need a
 Nerd Font installed (Symbols Nerd Font is enough), and
 =(config-system:set-config mh::*mode-line-icons* nil)= turns them off.
 =mh::*icons*= maps their names to glyphs, for other glyphs or plain

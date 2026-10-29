@@ -69,7 +69,19 @@ then runs the compositor, `mahogany::main`, in the image's main thread
   gets it into the running image. `(asdf:load-system "mahogany")` works
   too, but when the load errors (a `defcommand` whose name a `defun`
   already has, say) the image is left half-loaded and every `--main`
-  eval fails: fix the file, then `lisp stop` / `lisp start`.
+  eval fails: fix the file, then `lisp stop` / `lisp start`. And a
+  change under `lisp/draw/` or `lisp/heart/` makes it reload heart,
+  whose `defparameter *workqueue-semaphore*` then resets and every
+  `--main` eval fails too: after such a change, restart the image.
+- Never `restart-frame` a frame whose `unwind-protect` cleanup has run
+  (it frees foreign data: a second run double-frees and SBCL dies);
+  use `return` or a restart instead.
+- Verifying something that times out (a message, the OSD): each `lisp`
+  call through `nix develop` costs about two seconds, so give it a long
+  delay (`:ms-delay 30000`) before the screenshot. The idle policy turns
+  the outputs off after 10 minutes without real input (synthetic key
+  presses are not input): screenshots then hang or find no format, so
+  `(setf *idle-enabled* nil) (stop-idle) (%outputs-set-power t)` first.
 - An error on the main thread (inside a wlroots callback) pauses the
   compositor and shows up in `lisp status` as a paused evaluation "in
   the main thread": `frame`, `eval --in`, `backtrace`, `restart-frame`,
@@ -141,7 +153,7 @@ mahogany, remote»):
   and the user's `~/.config/mahogany/init.lisp`.
 - Lisp desktop pieces, one file each: `lisp/mode-line.lisp` (bar and
   its modules), `lisp/menu.lisp` + `lisp/launcher.lisp` (menus, launcher
-  modes), `lisp/osd.lisp`, `lisp/idle.lisp`, `lisp/system-status.lisp`
+  modes), `lisp/message.lisp` (toast cards), `lisp/osd.lisp`, `lisp/idle.lisp`, `lisp/system-status.lisp`
   (battery, network, volume, brightness via subprocesses),
   `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
   canvas), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,

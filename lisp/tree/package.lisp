@@ -5,7 +5,12 @@
         #:mahogany/log
         #:mahogany/util
         #:mahogany/wm-interface)
-  (:export #:*split-frame-hook*
+  (:export #:*frame-border-width*
+           #:*window-gap*
+           #:*output-gap*
+           #:output-gap-margin
+           #:unfocused-border-width
+           #:*split-frame-hook*
            #:*new-frame-hook*
            #:*remove-split-hook*
            #:*new-split-type*
