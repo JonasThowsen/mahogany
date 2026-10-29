@@ -42,10 +42,11 @@ Use slynk-cli (`lisp`). Read its guide first, in particular the section
 "The main thread":
 https://github.com/JonasThowsen/slynk-cli/blob/main/docs/guide.md
 
-`.slynk-cli.sexp` configures it: `lisp start` loads the `mahogany`
-system and then runs the compositor, `mahogany::main`, in the image's
-main thread (`:main`); `lisp stop` ends it; `.slynk-cli/image.log` is
-its log. Without a display, export the headless variables above before
+`.slynk-cli.sexp` configures it: `lisp start` runs `ninja -C build/heart`
+(`init-heart-build.lisp`, so the image never loads a stale libheart;
+`MAHOGANY_NO_HEART_BUILD=1` skips it), loads the `mahogany` system and
+then runs the compositor, `mahogany::main`, in the image's main thread
+(`:main`); `lisp stop` ends it; `.slynk-cli/image.log` is its log. Without a display, export the headless variables above before
 `lisp start`. Then:
 
 - `lisp eval --main FORM` — evaluate on the main thread, through

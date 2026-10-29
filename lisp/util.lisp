@@ -16,7 +16,11 @@
 (in-package #:mahogany/util)
 
 (define-condition mahogany-error (error)
-  ((text :initarg :text :reader condition-text))
+  ((text :initarg :text :initform "" :reader condition-text))
+  (:report (lambda (condition stream)
+             ;; The debugger and log show the text, which says what
+             ;; went wrong, not just the condition's name:
+             (write-string (condition-text condition) stream)))
   (:documentation "Generic error condition for mahogany"))
 
 (define-condition mahogany-panic (mahogany-error)

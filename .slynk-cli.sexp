@@ -7,6 +7,6 @@
 ;; runs FORM there through hrt:run-in-main-thread, which the compositor's
 ;; event loop services.
 (:system "mahogany"
- :init ("init-build-env.lisp")
+ :init ("init-build-env.lisp" "init-heart-build.lisp")
  :main "mahogany::main"
  :main-thread-dispatcher "hrt:run-in-main-thread")
