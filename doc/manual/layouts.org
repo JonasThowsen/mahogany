@@ -1,11 +1,11 @@
 * Tiling Layouts
 
-A group tiles in one of two ways. By hand, the StumpWM way
-(=:manual=, the default): frames are split and removed with =s-s=,
+A group tiles in one of two ways. By a layout, which rebuilds the
+frames of an output whenever a window comes, goes or moves, so every
+window is on screen (=master-stack= is the default). Or by hand, the
+StumpWM way (=:manual=): frames are split and removed with =s-s=,
 =s-S-s=, =s-r=, =s-f=, and windows go into the focused frame, the
-previous one hiding behind it (=s-Tab= cycles). Or by a layout, which
-rebuilds the frames of an output whenever a window comes, goes or
-moves, so every window is on screen:
+previous one hiding behind it (=s-Tab= cycles). The layouts:
 
 | Layout               | What it does                                          |
 |----------------------+-------------------------------------------------------|
@@ -27,7 +27,7 @@ The layout is per group, remembered while the group lives. In
 init.lisp:
 
 #+BEGIN_SRC lisp
-  (setf *default-layout* :master-stack)       ; new groups
+  (setf *default-layout* :manual)             ; new groups tile by hand
   (setf *group-layout-defaults*               ; by group name
         '(("1" . :master-stack) ("2" . :manual)))
   (setf *layout-main-ratio* 0.55)

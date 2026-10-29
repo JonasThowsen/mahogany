@@ -27,11 +27,11 @@
   "The names of the layouts in the order they were defined, which
 layout-next follows.")
 
-(config:defconfig *default-layout* :manual
+(config:defconfig *default-layout* :master-stack
   keyword
-  "The layout of new groups: :manual (tile by hand, as StumpWM), or an
-automatic one: :master-stack, :columns, :rows, :grid, :dwindle,
-:monocle, or one of your own (define-layout).")
+  "The layout of new groups: an automatic one, :master-stack (the
+default), :columns, :rows, :grid, :dwindle, :monocle, or one of your
+own (define-layout), or :manual to tile by hand, as StumpWM.")
 
 (config:defconfig *group-layout-defaults* '()
   list

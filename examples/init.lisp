@@ -13,10 +13,11 @@
 ;; (setf *mode-line-segments*
 ;;       '(:groups :title :fill :network :volume :battery :clock))
 
-;;; Tiling: by hand (:manual, as StumpWM) or a layout per group
+;;; Tiling: a layout per group (:master-stack by default; s-r cycles,
+;;; s-C-r chooses) or by hand (:manual, as StumpWM)
 
-;; (setf *default-layout* :master-stack)   ; s-r cycles, s-C-r chooses
-;; (setf *group-layout-defaults* '(("1" . :master-stack)))
+;; (setf *default-layout* :manual)
+;; (setf *group-layout-defaults* '(("1" . :master-stack) ("2" . :manual)))
 
 ;;; Input: the touchpad, the mouse, Num Lock, the cursor
 
