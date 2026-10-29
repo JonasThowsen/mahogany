@@ -10,7 +10,8 @@
   (pid 0 :type (unsigned-byte 64) :read-only t)
   (stdout-result nil :type string-stream :read-only t)
   (stderr-result nil :type string-stream :read-only t)
-  (callback nil :type (function (collect-output-result) null) :read-only t))
+  ;; Called with the collect-output-result; its value is not used.
+  (callback nil :type (function (collect-output-result)) :read-only t))
 
 (defun collect-app-output-begin (args callback stdin)
   (let* ((process (uiop:launch-program args
@@ -140,6 +141,42 @@
       (hrt-event-loop-remove stderr-source)))
   0)
 
+(defparameter *subprocess-exit-wait-msec* 1000
+  "How long to wait for a subprocess that closed its standard output
+to exit, so its exit code is known, before its output is delivered
+without one.")
+
+(defparameter *subprocess-exit-poll-msec* 5)
+
+;; In server.lisp, which loads after this file:
+(declaim (ftype function server-make-timer timer-handle-update timer-handle-destroy %hrt-server))
+
+(defun %subprocess-finish (info data)
+  "Give INFO's output and exit code to its callback and clean up."
+  (unwind-protect
+       (let ((result (collect-app-output-end info)))
+         (funcall (collect-output-process-callback info) result)
+         nil)
+    (collect-app-output-cleanup info)
+    (cffi:foreign-free data)))
+
+(defun %subprocess-finish-when-exited (info data waited)
+  "Finish INFO once its process has exited. A program such as wpctl
+closes its output and then takes a moment to exit; finishing right
+away would leave the exit code unknown, which looks like a failure. So
+a process still alive is polled every *subprocess-exit-poll-msec* for
+up to *subprocess-exit-wait-msec*, then finished without a code."
+  (if (or (not (uiop:process-alive-p (collect-output-process-process info)))
+          (>= waited *subprocess-exit-wait-msec*))
+      (%subprocess-finish info data)
+      (let ((timer (server-make-timer
+                    (%hrt-server)
+                    (lambda (timer)
+                      (timer-handle-destroy timer)
+                      (%subprocess-finish-when-exited info data
+                                                      (+ waited *subprocess-exit-poll-msec*))))))
+        (timer-handle-update timer *subprocess-exit-poll-msec*))))
+
 (define-hrt-callback handle-app-stdout :int
     ((fd :int)
      (mask :uint32)
@@ -155,11 +192,7 @@
                 (plusp (logand mask +hrt-event-error+)))
         (hrt-event-loop-remove stdout-source)
         (silence-notes (remhash pid *subprocesses*))
-        (unwind-protect
-             (let ((result (collect-app-output-end info)))
-               (funcall (collect-output-process-callback info) result))
-          (collect-app-output-cleanup info)
-          (cffi:foreign-free data)))))
+        (%subprocess-finish-when-exited info data 0))))
   0)
 
 (declaim (inline extract-fd-from-stream))

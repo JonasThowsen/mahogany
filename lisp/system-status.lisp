@@ -147,7 +147,9 @@ asynchronously (iwctl, then iw). CALLBACK, if given, gets the status."
   "The last volume read: a plist (:percent N :muted BOOL), or NIL.")
 
 (defun %parse-wpctl-volume (output)
-  "The plist for wpctl get-volume's \"Volume: 0.55 [MUTED]\", or NIL."
+  "The plist for wpctl get-volume's \"Volume: 0.55 [MUTED]\", or NIL. The
+number ends at the first character that is not a digit or a dot, so the
+newline after it (there without [MUTED]) is not part of it."
   (let ((start (search "Volume:" output)))
     (when start
       (let* ((rest (string-trim " " (subseq output (+ start 7))))
@@ -169,7 +171,10 @@ asynchronously (iwctl, then iw). CALLBACK, if given, gets the status."
                  0))))
 
 (defun volume-refresh (&optional callback)
-  "Read the default sink's volume asynchronously; CALLBACK gets the plist."
+  "Read the default sink's volume asynchronously; CALLBACK gets the
+plist. A reading that fails is logged and the last one kept, so the
+mode-line does not lose the volume over one bad read; it is NIL only
+until the first reading succeeds (no wpctl, no audio)."
   (run-async '("wpctl" "get-volume" "@DEFAULT_AUDIO_SINK@")
              (lambda (output code)
                (let ((status (and output (member code '(nil 0)) (%parse-wpctl-volume output))))
