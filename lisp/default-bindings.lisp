@@ -8,40 +8,8 @@
 ;;; is bound. Also here: *autostart*, the programs started with the
 ;;; session.
 
-;;; Groups by number
-
-(defun select-group-number (n)
-  "Switch to group number N, making the groups up to N when they are
-missing, so s-5 works in a fresh session."
-  (let ((state *compositor-state*))
-    (loop until (%state-select-group state n)
-          do (mahogany-state-group-add state :make-current nil))
-    (state-select-group state n)))
-
-(defun move-window-to-group-number (n &key follow)
-  "Move the focused window to group number N (made when missing), and
-switch to it when FOLLOW is true."
-  (let* ((state *compositor-state*)
-         (group (or (%state-select-group state n)
-                    (progn (loop until (%state-select-group state n)
-                                 do (mahogany-state-group-add state :make-current nil))
-                           (%state-select-group state n)))))
-    (unless (eq group (state-current-group state))
-      (%move-current-surface group)
-      (mode-line-update)
-      (when follow
-        (setf (state-current-group state) group)))))
-
-(macrolet ((define-number-commands ()
-             `(progn
-                ,@(loop for n from 1 to 9
-                        collect `(defcommand ,(alexandria:symbolicate "SELECT-GROUP-" (princ-to-string n)) ()
-                                   (:documentation ,(format nil "Switch to group ~D, making it when missing" n))
-                                   (:method () (select-group-number ,n)))
-                        collect `(defcommand ,(alexandria:symbolicate "MOVE-WINDOW-TO-GROUP-" (princ-to-string n)) ()
-                                   (:documentation ,(format nil "Move the focused window to group ~D" n))
-                                   (:method () (move-window-to-group-number ,n)))))))
-  (define-number-commands))
+;;; The group-number commands, select-group-N and move-window-to-group-N,
+;;; are in key-bindings.lisp with the C-t maps that bind them too.
 
 ;;; The keys
 
@@ -117,6 +85,22 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "s-b" #'mode-line
   "s-C-SPC" #'theme-menu
   "s-C-S-SPC" #'next-theme)
+
+;;; The same on the C-t prefix map, StumpWM style, for a session where
+;;; SUPER is taken: Mahogany nested in another compositor, say. C-t N
+;;; and C-t g N (the groups) are in key-bindings.lisp with the map.
+
+(define-keys *root-map*
+  "SPC" #'launcher-apps
+  "\"" #'launcher-windows
+  "x" #'launcher-commands
+  "m" #'launcher-menu
+  "Left" #'focus-left "Down" #'focus-down "Up" #'focus-up "Right" #'focus-right
+  "M-Left" #'move-window-left "M-Down" #'move-window-down
+  "M-Up" #'move-window-up "M-Right" #'move-window-right
+  "S-Left" #'focus-output-left "S-Down" #'focus-output-down
+  "S-Up" #'focus-output-up "S-Right" #'focus-output-right
+  "f" #'fullscreen-toggle)
 
 ;;; Autostart
 

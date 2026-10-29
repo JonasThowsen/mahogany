@@ -73,6 +73,36 @@ See [[file:groups.org][Groups]].
 | =s-C-SPC= / =s-C-S-SPC=      | =theme-menu= / =next-theme=              | themes, see [[file:theming.org][Theming]] |
 | =XF86Audio*=, =XF86MonBrightness*= | volume and brightness              | with an on-screen display               |
 
+** The C-t prefix
+
+The StumpWM keys, for when SUPER is taken (Mahogany nested in another
+compositor, say): =C-t= and then one of these. =C-t ?= lists them all.
+
+| Key                       | Command                                   | What it does                      |
+|---------------------------+-------------------------------------------+-----------------------------------|
+| =C-t c=                   | =open-terminal=                           | a terminal                        |
+| =C-t SPC=                 | =launcher-apps=                           | start an application              |
+| =C-t "=                   | =launcher-windows=                        | find a window                     |
+| =C-t x= / =C-t ;= / =C-t != | =launcher-commands= / =colon= / =run-shell-command= | a command, the prompt, a shell command |
+| =C-t m=                   | =launcher-menu=                           | the launcher's modes              |
+| =C-t 1= … =C-t 9=         | =select-group-N=                          | group N of this output            |
+| =C-t g 1= … =C-t g 9=     | =move-window-to-group-N=                  | the window to group N             |
+| =C-t g F1= … =C-t g F10=  | =select-group-N=                          | the same as =C-t N=               |
+| =C-t g n= / =C-t g p=     | =gnext= / =gprev=                         | the next or previous group        |
+| =C-t g N= / =C-t g P=     | =gnext-with-window= / =gprev-with-window= | the window along                  |
+| =C-t g c= / =C-t g k=     | =gnew= / =gkill=                          | a new group; remove this one      |
+| =C-t g l= / =C-t g m= / =C-t g M= | =grouplist= / =gmove= / =gmove-and-follow= | groups by name              |
+| =C-t Left= … =C-t Right=  | =focus-left= … =focus-right=              | focus the frame in that direction |
+| =C-t M-Left= … =C-t M-Right= | =move-window-left= …                   | move the window that way          |
+| =C-t S-Left= … =C-t S-Right= | =focus-output-left= …                  | focus the screen that way         |
+| =C-t o= / =C-t O=         | =next-frame= / =prev-frame=               | the next or previous frame        |
+| =C-t n= / =C-t p=         | =next-view= / =previous-view=             | the windows hidden behind the frame |
+| =C-t k=                   | =close-current-view=                      | close the window                  |
+| =C-t s= / =C-t S= / =C-t R= | =split-frame-v= / =split-frame-h= / =remove-current-frame= | frames          |
+| =C-t Q= / =C-t f=         | =maximize-current-frame= / =fullscreen-toggle= | one frame; fullscreen        |
+| =C-t a=                   | =show-time=                               | the date and time                 |
+| =C-t q q=                 | =shutdown-gracefully=                     | quit                              |
+
 ** Keys and keyboard layouts
 
 A key is matched twice: first as the layout types it (=Shift-2= is

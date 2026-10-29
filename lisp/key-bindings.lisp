@@ -309,49 +309,42 @@ keymap is listed once, with the binding that wins."
        (state-current-group *compositor-state*)
        surface))))
 
-;; TODO: Stumpwm has a handy feature where instead
-;; of a symbol keymap you can use a command string.
-;; One that is implemented, we should have a `gselect`
-;; command that takes an argument, just like stumpwm.
-(defcommand group-select-1 ()
-  (:method ()
-    (state-select-group *compositor-state* 1)))
+;;; Groups by number: s-N and C-t N switch, s-C-N and C-t g N move the
+;;; window; the groups up to N are made when missing, so s-5 works in
+;;; a fresh session.
 
-(defcommand group-select-2 ()
-  (:method ()
-    (state-select-group *compositor-state* 2)))
+(defun select-group-number (n)
+  "Switch the focused output to its group number N, making the groups
+up to N when they are missing."
+  (let ((state *compositor-state*))
+    (loop until (%state-select-group state n)
+          do (mahogany-state-group-add state :make-current nil))
+    (state-select-group state n)))
 
-(defcommand group-select-3 ()
-  (:method ()
-    (state-select-group *compositor-state* 3)))
+(defun move-window-to-group-number (n &key follow)
+  "Move the focused window to group number N of its output (made when
+missing), and switch to it when FOLLOW is true."
+  (let* ((state *compositor-state*)
+         (group (or (%state-select-group state n)
+                    (progn (loop until (%state-select-group state n)
+                                 do (mahogany-state-group-add state :make-current nil))
+                           (%state-select-group state n)))))
+    (unless (eq group (state-current-group state))
+      (%move-current-surface group)
+      (mode-line-update)
+      (when follow
+        (setf (state-current-group state) group)))))
 
-(defcommand group-select-4 ()
-  (:method ()
-    (state-select-group *compositor-state* 4)))
-
-(defcommand group-select-5 ()
-  (:method ()
-    (state-select-group *compositor-state* 5)))
-
-(defcommand group-select-6 ()
-  (:method ()
-    (state-select-group *compositor-state* 6)))
-
-(defcommand group-select-7 ()
-  (:method ()
-    (state-select-group *compositor-state* 7)))
-
-(defcommand group-select-8 ()
-  (:method ()
-    (state-select-group *compositor-state* 8)))
-
-(defcommand group-select-9 ()
-  (:method ()
-    (state-select-group *compositor-state* 9)))
-
-(defcommand group-select-10 ()
-  (:method ()
-    (state-select-group *compositor-state* 10)))
+(macrolet ((define-number-commands ()
+             `(progn
+                ,@(loop for n from 1 to 10
+                        collect `(defcommand ,(alexandria:symbolicate "SELECT-GROUP-" (princ-to-string n)) ()
+                                   (:documentation ,(format nil "Switch to group ~D, making it when missing" n))
+                                   (:method () (select-group-number ,n)))
+                        collect `(defcommand ,(alexandria:symbolicate "MOVE-WINDOW-TO-GROUP-" (princ-to-string n)) ()
+                                   (:documentation ,(format nil "Move the focused window to group ~D" n))
+                                   (:method () (move-window-to-group-number ,n)))))))
+  (define-number-commands))
 
 (defun interactively-read-valid-output-layout (com im arg prompt)
   (declare (ignore com arg))
@@ -430,16 +423,27 @@ valid output layouts")
     (kbd "P") #'gprev-with-window
     (kbd "m") #'gmove
     (kbd "M") #'gmove-and-follow
-    (kbd "F1") #'group-select-1
-    (kbd "F2") #'group-select-2
-    (kbd "F3") #'group-select-3
-    (kbd "F4") #'group-select-4
-    (kbd "F5") #'group-select-5
-    (kbd "F6") #'group-select-6
-    (kbd "F7") #'group-select-7
-    (kbd "F8") #'group-select-8
-    (kbd "F9") #'group-select-9
-    (kbd "F10") #'group-select-10))
+    ;; C-t g N sends the window to group N, C-t g FN switches to it
+    ;; (as C-t N does):
+    (kbd "1") #'move-window-to-group-1
+    (kbd "2") #'move-window-to-group-2
+    (kbd "3") #'move-window-to-group-3
+    (kbd "4") #'move-window-to-group-4
+    (kbd "5") #'move-window-to-group-5
+    (kbd "6") #'move-window-to-group-6
+    (kbd "7") #'move-window-to-group-7
+    (kbd "8") #'move-window-to-group-8
+    (kbd "9") #'move-window-to-group-9
+    (kbd "F1") #'select-group-1
+    (kbd "F2") #'select-group-2
+    (kbd "F3") #'select-group-3
+    (kbd "F4") #'select-group-4
+    (kbd "F5") #'select-group-5
+    (kbd "F6") #'select-group-6
+    (kbd "F7") #'select-group-7
+    (kbd "F8") #'select-group-8
+    (kbd "F9") #'select-group-9
+    (kbd "F10") #'select-group-10))
 
 (defvar *root-map*
   (define-kmap
@@ -457,7 +461,20 @@ valid output layouts")
     (kbd "n") #'next-view
     (kbd "p") #'previous-view
     (kbd "g") '*group-map*
-    (kbd "R") #'remove-current-frame))
+    (kbd "R") #'remove-current-frame
+    ;; Groups by number, as StumpWM's gselect; C-t g N moves the window:
+    (kbd "1") #'select-group-1
+    (kbd "2") #'select-group-2
+    (kbd "3") #'select-group-3
+    (kbd "4") #'select-group-4
+    (kbd "5") #'select-group-5
+    (kbd "6") #'select-group-6
+    (kbd "7") #'select-group-7
+    (kbd "8") #'select-group-8
+    (kbd "9") #'select-group-9))
+
+;; The launcher and the directions are bound on *root-map* too, in
+;; default-bindings.lisp, which loads after them.
 
 (defvar *top-map* (define-kmap))
 
