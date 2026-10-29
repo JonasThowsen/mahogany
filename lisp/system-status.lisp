@@ -151,9 +151,10 @@ asynchronously (iwctl, then iw). CALLBACK, if given, gets the status."
   (let ((start (search "Volume:" output)))
     (when start
       (let* ((rest (string-trim " " (subseq output (+ start 7))))
-             (end (or (position #\Space rest) (length rest)))
-             (number (ignore-errors (let ((*read-default-float-format* 'double-float))
-                                      (parse-number (subseq rest 0 end))))))
+             (end (or (position-if-not (lambda (char) (or (digit-char-p char) (char= char #\.)))
+                                       rest)
+                      (length rest)))
+             (number (ignore-errors (parse-number (subseq rest 0 end)))))
         (when (numberp number)
           (list :percent (round (* 100 number))
                 :muted (not (null (search "MUTED" rest)))))))))
@@ -171,7 +172,10 @@ asynchronously (iwctl, then iw). CALLBACK, if given, gets the status."
   "Read the default sink's volume asynchronously; CALLBACK gets the plist."
   (run-async '("wpctl" "get-volume" "@DEFAULT_AUDIO_SINK@")
              (lambda (output code)
-               (setf *volume-status* (and output (eql code 0) (%parse-wpctl-volume output)))
+               (let ((status (and output (member code '(nil 0)) (%parse-wpctl-volume output))))
+                 (if status
+                     (setf *volume-status* status)
+                     (log-string :warn "wpctl get-volume gave no volume (exit ~S): ~S" code output)))
                (when callback (funcall callback *volume-status*)))))
 
 (defun volume-change (delta &optional callback)

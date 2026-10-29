@@ -19,6 +19,7 @@ This file is a part of mahogany.
                (:file "directions-tests")
                (:file "wifi-tests")
                (:file "groups-tests")
+               (:file "system-status-tests")
 	           (:file "tree-tests" :depends-on ("util"))
 	           (:file "keyboard-tests")
                (:file "output-config-tests" :depends-on ("util"))
