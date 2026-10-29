@@ -366,31 +366,107 @@ none is."
          (all-outputs (concatenate 'list outputs added)))
     (values all-outputs added)))
 
+(defun %renumber-group (state group home &optional (preferred (mahogany-group-number group)))
+  "Give GROUP the number PREFERRED among the groups of HOME, or the
+lowest free one above it, renaming it when it is named by its number."
+  (declare (type mahogany-state state))
+  (let* ((taken (mapcar #'mahogany-group-number
+                        (remove group (%home-groups state home))))
+         (number (if (member preferred taken)
+                     (mahogany/util::find-free-number taken preferred)
+                     preferred)))
+    (when (string= (mahogany-group-name group)
+                   (%next-group-name (mahogany-group-number group)))
+      (setf (mahogany-group-name group) (%next-group-name number)))
+    (setf (mahogany-group-number group) number)))
+
+(defun %attach-group (state group output-container)
+  "Put GROUP, detached from any output, on OUTPUT-CONTAINER: back on its
+own output, or away from home on another, remembering where it belongs
+(its origin and its number there) so it can go back; away it gets a
+free number. Its frame tree is rebuilt there, its windows hidden until
+the layout places them."
+  (declare (type mahogany-state state)
+           (type mahogany-group group))
+  (let ((name (%output-designator-name output-container))
+        (home (mahogany-group-home group)))
+    (cond ((equal home name))
+          ((equal (mahogany-group-origin group) name)
+           (%renumber-group state group name (mahogany-group-origin-number group))
+           (setf (mahogany-group-origin group) nil))
+          (t
+           (unless (mahogany-group-origin group)
+             (setf (mahogany-group-origin group) home
+                   (mahogany-group-origin-number group) (mahogany-group-number group)))
+           (%renumber-group state group name)))
+    (setf (mahogany-group-home group) name)
+    (group-add-output group output-container)
+    (group-views-changed group)
+    group))
+
+(defun %first-group-of-output (state output-container)
+  "The first group of OUTPUT-CONTAINER by number, made as its group 1
+when it has none."
+  (declare (type mahogany-state state))
+  (let ((name (%output-designator-name output-container)))
+    (or (first (output-groups state name))
+        (let* ((index (%next-group-index state name))
+               (group (%add-group state (%next-group-name index) index name)))
+          (group-add-output group output-container)
+          group))))
+
+(defun %send-group-home (state group output-container)
+  "Move GROUP, away on another output, home to OUTPUT-CONTAINER, which
+has just come back. The output it leaves shows another of its groups
+in its place."
+  (declare (type mahogany-state state))
+  (let* ((cur-outputs (state-cur-outputs state))
+         (host (mahogany-group-home group))
+         (host-container (find host cur-outputs :key #'%output-designator-name :test #'equal))
+         (shown-p (eq group (state-output-group state host))))
+    (when (eq group (state-current-group state))
+      (setf (state-%current-frame state) nil))
+    (when host-container
+      (group-remove-output group host-container (server-seat state)))
+    (when shown-p
+      (remhash host (state-output-groups state))
+      (when host-container
+        (%show-output-group state (%first-group-of-output state host-container))))
+    (%attach-group state group output-container)))
+
 (defun %add-output-container (state mh-output)
   "Start using MH-OUTPUT: the groups waiting for it (those it had before
-it went, or every waiting group when it is the first output) get their
-frame trees on it, or it gets a group 1; the first by number is shown."
+it went, or every waiting group when it is the first output) and the
+groups of its own living on other outputs since it went get their
+frame trees on it, or it gets a group 1. It shows the current group
+when that came back to it, else its first group by number."
   (declare (type mahogany-state state))
   (let* ((cur-outputs (state-cur-outputs state))
          (name (hrt:output-full-name mh-output))
          (first-p (zerop (length cur-outputs)))
          (output-container (tree::make-output-container mh-output))
+         (current (state-current-group state))
          (waiting (remove-if-not
                    (lambda (group)
                      (let ((home (mahogany-group-home group)))
                        (and (not (eq home :none))
                             (not (group-attached-p group))
                             (or first-p (equal home name)))))
-                   (state-groups state))))
+                   (state-groups state)))
+         (away (remove-if-not
+                (lambda (group)
+                  (and (group-attached-p group)
+                       (equal (mahogany-group-origin group) name)))
+                (state-groups state))))
     (vector-push-extend output-container cur-outputs)
     (loop for group across waiting
-          do (setf (mahogany-group-home group) name)
-             (group-add-output group output-container))
-    (when (zerop (length waiting))
-      (let ((index (%next-group-index state name)))
-        (group-add-output (%add-group state (%next-group-name index) index name)
-                          output-container)))
-    (%show-output-group state (first (output-groups state name)))
+          do (%attach-group state group output-container))
+    (loop for group across away
+          do (%send-group-home state group output-container))
+    (%show-output-group state (if (and current (equal (mahogany-group-home current) name)
+                                       (group-attached-p current))
+                                  current
+                                  (%first-group-of-output state output-container)))
     (%ensure-focus state)))
 
 (defun %add-output (state mh-output)
@@ -527,15 +603,6 @@ frame trees on it, or it gets a group 1; the first by number is shown."
   (alexandria:when-let ((container (%find-output-container hrt-output state)))
     (tree:output-container-output container)))
 
-(defun %group-on-output (state output number)
-  "The group NUMBER of OUTPUT (a container), made when missing."
-  (declare (type mahogany-state state))
-  (or (%state-select-group state number output)
-      (let ((group (%add-group state (%next-group-name number) number
-                               (%output-designator-name output))))
-        (group-add-output group output)
-        group)))
-
 (defun %delete-group (state group)
   (declare (type mahogany-state state))
   (let ((server (state-server state)))
@@ -544,9 +611,10 @@ frame trees on it, or it gets a group 1; the first by number is shown."
                             (hrt:hrt-server-seat server))))
 
 (defun %remove-output-container (state hrt-output)
-  "Stop using HRT-OUTPUT. Its groups' windows go to the groups of the
-same numbers on another output, and the groups themselves; without
-another output they wait for one, their windows hidden."
+  "Stop using HRT-OUTPUT. Its groups move to another output, with their
+windows, until it comes back (%add-output-container sends them home);
+without another output they wait for one, their windows hidden. The
+current group is shown where it went."
   (declare (type mahogany-state state)
            (type hrt:output hrt-output))
   (with-accessors ((cur-outputs state-cur-outputs)
@@ -573,12 +641,9 @@ another output they wait for one, their windows hidden."
           (dolist (group dead-groups)
             (group-remove-output group output-container seat)
             (when target
-              (let ((destination (%group-on-output state target (mahogany-group-number group))))
-                (group-transfer-views destination group)
-                (when (eq group current)
-                  (setf (state-%current-group state)
-                        (state-output-group state target)))
-                (%delete-group state group)))))
+              (%attach-group state group target)))
+          (when (and target current (member current dead-groups))
+            (%show-output-group state current)))
         (%ensure-focus state))
       (log-string :error "Removed an output that was never added to a container"))))
 

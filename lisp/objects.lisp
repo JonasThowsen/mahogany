@@ -3,7 +3,9 @@
 (defstruct (mahogany-group (:constructor %make-mahogany-group
                                (name number hrt-group tiled-container)))
   (name "" :type string)
-  (number 1 :type fixnum :read-only t)
+  ;; Its number on its output; a group away from home gets a free one
+  ;; on the output that hosts it.
+  (number 1 :type fixnum)
   (active-p nil :type boolean)
   (hrt-group (cffi:null-pointer) :type cffi:foreign-pointer :read-only t)
   (tiled-container nil :type tree:layer-container :read-only t)
@@ -19,7 +21,12 @@
   ;; the output's full name, NIL for one waiting for an output (none
   ;; connected yet, or its own gone), or :NONE for one never shown, such
   ;; as the scratchpad's.
-  (home nil :type (or null string (eql :none))))
+  (home nil :type (or null string (eql :none)))
+  ;; A group whose output went away lives on another output until its
+  ;; own comes back: ORIGIN names that output and ORIGIN-NUMBER is its
+  ;; number there. NIL for a group at home.
+  (origin nil :type (or null string))
+  (origin-number 1 :type fixnum))
 
 (defstruct (mahogany-state (:conc-name state-))
   (server nil :type (or null cffi:foreign-pointer))

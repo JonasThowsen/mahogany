@@ -66,3 +66,27 @@
   (is (not (mahogany::group-attached-p (make-group "1" 1 "DP-1"))))
   (is (eq :node (mahogany::group-output-node (make-group "1" 1 "DP-1" t))))
   (is (null (mahogany::group-output-node (make-group "1" 1 nil)))))
+
+(fiasco:deftest a-group-away-from-home-gets-a-free-number-and-goes-back ()
+  (let* ((a1 (make-group "1" 1 "DP-1" t))
+         (a2 (make-group "2" 2 "DP-1" t))
+         (b2 (make-group "2" 2 "eDP-1" t))
+         (named (make-group "mail" 3 "eDP-1" t))
+         (state (make-state a1 a2 b2 named)))
+    ;; eDP-1 goes: its groups move to DP-1, after DP-1's own.
+    (dolist (group (list b2 named))
+      (clrhash (mahogany::mahogany-group-output-map group)))
+    (mahogany::%renumber-group state b2 "DP-1")
+    (setf (mahogany::mahogany-group-origin b2) "eDP-1"
+          (mahogany::mahogany-group-origin-number b2) 2
+          (mahogany::mahogany-group-home b2) "DP-1")
+    (is (= 3 (mahogany::mahogany-group-number b2)))
+    (is (equal "3" (mahogany::mahogany-group-name b2)))
+    (mahogany::%renumber-group state named "DP-1")
+    (setf (mahogany::mahogany-group-home named) "DP-1")
+    (is (= 4 (mahogany::mahogany-group-number named)))
+    (is (equal "mail" (mahogany::mahogany-group-name named)))
+    ;; A number that is free is kept:
+    (mahogany::%renumber-group state b2 "HDMI-1" 2)
+    (is (= 2 (mahogany::mahogany-group-number b2)))
+    (is (equal "2" (mahogany::mahogany-group-name b2)))))

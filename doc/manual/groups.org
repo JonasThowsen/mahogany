@@ -24,12 +24,18 @@ group 2 of every output.
 ** Outputs coming and going
 
 When an output goes away (unplugged, or the lid closes, see
-[[file:touchpad.org][Touchpad, Mouse and Keyboard Locks]]), the windows of each of
-its groups go to the group of the same number on the first output
-left, made when missing, and the empty groups are dropped. Without
-another output the groups wait, their windows hidden, and the next
-output to appear takes them over. A new output starts with a group 1
-of its own.
+[[file:touchpad.org][Touchpad, Mouse and Keyboard Locks]]), its groups move with their
+windows to the first output left, as niri's workspaces do: there they
+take the numbers free after that output's own groups (its 1, 2 become
+3, 4 on an output that has two), and the group that was current is
+shown. They remember their own output, and go back to it, with the
+windows they have then, when it returns; the output that hosted them
+shows its own first group again. Without another output the groups
+wait, their windows hidden, and the next output to appear takes them
+over. A new output starts with a group 1 of its own.
+
+A group named by its number is renamed as it moves; one named with
+=grename= keeps its name.
 
 ** From Lisp
 
@@ -44,5 +50,7 @@ of its own.
 - =(mahogany-state-group-remove state group)= :: removes it, its
   windows going to the group before it; the only group of an output
   stays.
+- =(mahogany-group-origin group)= :: the output a group away from
+  home goes back to, NIL at home.
 - =(move-view-to-frame view frame &key follow swap)= :: a window into a
   frame, of its own group or of the group shown on another output.
