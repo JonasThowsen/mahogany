@@ -178,7 +178,10 @@ leave; the width itself when every frame has a border of its own."
   (let ((old-view (frame-surface frame)))
     (call-next-method)
     (when old-view
-      (setf (hrt::view-container old-view) nil))
+      (setf (hrt::view-container old-view) nil)
+      (let ((seat (slot-value frame 'seat)))
+        (when (and (not new-view) seat)
+          (hrt:unfocus-view old-view seat))))
     (when new-view
       (setf (hrt::view-container new-view) frame))))
 
