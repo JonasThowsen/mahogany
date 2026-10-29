@@ -144,7 +144,7 @@ the current frame when that is empty, else kept hidden behind it."
          (%fill-frame-from-hidden destination (%group-tiled-frame destination))
          (group-views-changed destination))))))
 
-(defun group-transfer-views (destination source)
+(defun group-transfer-views (source destination)
   "Transfer the all views from the SOURCE group to the DESTINATION group"
   (declare (type mahogany-group destination source))
   (dolist (view (mahogany-group-views source))
@@ -362,18 +362,9 @@ to match."
                    (hidden mahogany-group-hidden-views)
                    (tiled-container mahogany-group-tiled-container))
       group
+    ;; Remove it from the datastructures if it is mapped:
     (when (hrt:view-mapped-p view)
-      ;; if the view is hidden, it won't be in a frame:
-      (or
-       (ring-list:remove-item hidden view)
-       (alexandria:when-let ((f (hrt::view-container view)))
-         (cond ((typep f 'tree:floating-frame)
-                (%destroy-floating-frame group f))
-               (t
-                (setf (tree:frame-surface f) nil)
-                (when (typep f 'tree:view-frame)
-                  (group-views-changed group (tree:find-root-frame f))))))))
-    (%remove-hidden-view-info group view)
+      (group-unmap-view group view))
     (setf view-list (remove view view-list :test #'equalp))))
 
 (defmethod tree:find-empty-frame ((group mahogany-group))

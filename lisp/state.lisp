@@ -883,7 +883,7 @@ which is shown in its place. The only group of an output stays."
                (setf (state-current-group state) heir)))
             ((eq group (state-output-group state home))
              (%show-output-group state heir)))
-      (group-transfer-views heir group)
+      (group-transfer-views group heir)
       (%delete-group state group)
       (mode-line-update))))
 
@@ -1067,6 +1067,20 @@ focused; hidden behind another window, it is shown in the current frame."
 (config-system:defconfig grab-pointer-cursor "help"
   string
   "The cursor image to use for the grab pointer.")
+
+(defun state-move-view (state source dest view)
+  "Move the given view from SOURCE to DEST groups"
+  (group-move-view source dest view)
+  ;; Downstream: the focus follows whichever of the two is current (a
+  ;; window taken along to the next group lands in the current one):
+  (%cur-frame-set-from-group state source)
+  (%cur-frame-set-from-group state dest))
+
+(defun state-transfer-views (state source dest)
+  "Move every view of the group SOURCE to DEST."
+  (group-transfer-views source dest)
+  (%cur-frame-set-from-group state source)
+  (%cur-frame-set-from-group state dest))
 
 (defun state-remove-cur-group-frame (state)
   (declare (type mahogany-state state))

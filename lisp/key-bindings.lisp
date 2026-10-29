@@ -287,14 +287,18 @@ keymap is listed once, with the binding that wins."
 (defun %move-current-surface (destination)
   (multiple-value-bind (cur-group surface)
       (%prep-move-cur-view)
-    (group-move-view cur-group destination surface)))
+    (state-move-view *compositor-state* cur-group destination surface)))
 
 (defcommand gmerge
     ((from (:function interactively-read-group :data "From Group")))
   (:documentation "Merge FROM into the current group. FROM is not deleted")
   (:method (from)
-    (group-transfer-views (state-current-group *compositor-state*)
-                          from)))
+    ;; Downstream: FROM's windows into the current group, as documented
+    ;; (upstream passes the two the other way round since
+    ;; group-transfer-views took SOURCE first).
+    (state-transfer-views *compositor-state*
+                          from
+                          (state-current-group *compositor-state*))))
 
 (defcommand gmove
     ((group (:function interactively-read-group :data "Group?")))
@@ -309,7 +313,7 @@ keymap is listed once, with the binding that wins."
   (:method (views destination)
     (let ((cur-group (state-current-group *compositor-state*)))
       (dolist (v views)
-        (group-move-view cur-group destination v)))))
+        (state-move-view *compositor-state* cur-group destination v)))))
 
 (defcommand gmove-and-follow
     ((group (:function interactively-read-group :data "Group?")))
@@ -327,7 +331,7 @@ keymap is listed once, with the binding that wins."
     (multiple-value-bind (initial-group surface)
         (%prep-move-cur-view)
       (state-next-group *compositor-state*)
-      (group-move-view
+      (state-move-view *compositor-state*
        initial-group
        (state-current-group *compositor-state*)
        surface))))
@@ -340,7 +344,7 @@ keymap is listed once, with the binding that wins."
     (multiple-value-bind (initial-group surface)
         (%prep-move-cur-view)
       (state-previous-group *compositor-state*)
-      (group-move-view
+      (state-move-view *compositor-state*
        initial-group
        (state-current-group *compositor-state*)
        surface))))
