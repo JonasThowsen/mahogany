@@ -24,6 +24,7 @@
 
 #include <hrt/hrt_output.h>
 #include "session_lock_impl.h"
+#include <scene_impl.h>
 
 static void handle_request_state(struct wl_listener *listener, void *data) {
     wlr_log(WLR_DEBUG, "Request State Handled");

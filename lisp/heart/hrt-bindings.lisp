@@ -419,7 +419,7 @@ parent."
 
 (cffi:defcstruct hrt-output
   (wlr-output :pointer #| (:struct wlr-output) |#)
-  (layout :pointer #| (:struct wlr-output-layout-output |#)
+  (layout :pointer #| (:struct wlr-output-layout-output) |#)
   (server (:pointer (:struct hrt-server)))
   (scene (:pointer (:struct hrt-scene-output)))
   (wlr-scene :pointer #| (:struct wlr-scene-output) |#)
