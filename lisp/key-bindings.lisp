@@ -184,7 +184,8 @@ keymap is listed once, with the binding that wins."
 
 (defun interactively-read-group (com im arg prompt)
   (declare (ignore com arg))
-  (let* ((groups (remove-if-not #'group-listed-p (state-groups *compositor-state*)))
+  (let* ((groups (remove-if-not #'group-listed-p
+                                (output-groups *compositor-state* (state-current-home *compositor-state*))))
          ;; It would be good to sort the list so that the current
          ;; group is on the bottom, mark the current group with a `*`,
          ;; or something similar to help user.
@@ -216,12 +217,14 @@ keymap is listed once, with the binding that wins."
       (mahogany-state-group-remove *compositor-state* current-group))))
 
 (defcommand gnext ()
+  (:documentation "The next group of this output, by number")
   (:method ()
-    (state-next-hidden-group *compositor-state*)))
+    (state-next-group *compositor-state*)))
 
 (defcommand gprev ()
+  (:documentation "The previous group of this output, by number")
   (:method ()
-    (state-prev-hidden-group *compositor-state*)))
+    (state-previous-group *compositor-state*)))
 
 (defcommand grename
     ((new-name (:function interactively-read-string :data "New Name")))
@@ -283,11 +286,11 @@ keymap is listed once, with the binding that wins."
 (defcommand gnext-with-window
     ()
   (:documentation
-   "Cycle to the next group in the group list, taking the current window along.")
+   "Cycle to the next group of this output, taking the current window along.")
   (:method ()
     (multiple-value-bind (initial-group surface)
         (%prep-move-cur-view)
-      (state-next-hidden-group *compositor-state*)
+      (state-next-group *compositor-state*)
       (group-move-view
        initial-group
        (state-current-group *compositor-state*)
@@ -296,11 +299,11 @@ keymap is listed once, with the binding that wins."
 (defcommand gprev-with-window
     ()
   (:documentation
-   "Cycle to the previous group in the group list, taking the current window along.")
+   "Cycle to the previous group of this output, taking the current window along.")
   (:method ()
     (multiple-value-bind (initial-group surface)
         (%prep-move-cur-view)
-      (state-prev-hidden-group *compositor-state*)
+      (state-previous-group *compositor-state*)
       (group-move-view
        initial-group
        (state-current-group *compositor-state*)

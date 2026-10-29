@@ -132,7 +132,9 @@ mahogany, remote»):
   `hrt:make-canvas` and `hrt:with-canvas-frame` (`lisp/heart/canvas.lisp`)
   Lisp draws bars, menus and OSDs directly into an output's scene.
 - `lisp/tree/` — the frame tree; `lisp/group.lisp`, `lisp/state.lisp` —
-  groups and compositor state; `lisp/command.lisp`, `lisp/key-bindings.lisp`,
+  groups and compositor state (groups are per output, as dwm's tags:
+  each output has its own, shows one, and the focused frame's group is
+  the current one; a group's frame tree has one output node); `lisp/command.lisp`, `lisp/key-bindings.lisp`,
   `lisp/kmap-modes.lisp` — commands and keymaps; `lisp/main.lisp` — startup
   and the user's `~/.config/mahogany/init.lisp`.
 - Lisp desktop pieces, one file each: `lisp/mode-line.lisp` (bar and

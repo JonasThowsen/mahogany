@@ -270,11 +270,15 @@ the settings set before then only remember the values."
 (defun %focus-frame-under-cursor (seat)
   (declare (optimize (speed 2)))
   (declare (type cffi:foreign-pointer seat))
-  (let* ((group (state-current-group *compositor-state*))
+  (let* ((lx (hrt:hrt-seat-cursor-lx seat))
+         (ly (hrt:hrt-seat-cursor-ly seat))
+         ;; The frame under the cursor is in the group shown on the
+         ;; output there:
          (found (silence-notes
-                  (tree:frame-at (mahogany-group-tiled-container group)
-                                 (hrt:hrt-seat-cursor-lx seat)
-                                 (hrt:hrt-seat-cursor-ly seat)))))
+                  (loop for group being the hash-values
+                          of (state-output-groups *compositor-state*)
+                        thereis (tree:frame-at (mahogany-group-tiled-container group)
+                                               lx ly)))))
     (if found
         (state-focus-frame *compositor-state* found seat)
         nil)))

@@ -1,0 +1,48 @@
+* Groups
+
+Groups are Mahogany's workspaces, and each output has its own, the way
+dwm's tags and Hyprland's workspaces are per monitor: an output shows
+one of its groups, numbered 1, 2, 3 …, and the keys act on the output
+that has the focus. =s-2= switches the focused output to its group 2,
+made when it is missing, and leaves the other outputs as they are;
+=s-C-2= sends the focused window to group 2 of its output. =gnext= and
+=gprev= (=s-d= / =s-u=) go through the focused output's groups by
+number, around the end.
+
+The current group is the group of the focused frame. Focusing a frame
+on another output, by direction (=s-l=), with =s-S-l= / =s-S-h=, or by
+clicking, makes the group shown there the current one, so the mode-line
+of each output marks the group that output shows. A window goes to
+another output by moving into the group shown there, with =s-C-S-l=
+and the like, =move-window-to-next-output=, or the output menu; it
+leaves its group for that one.
+
+A group is named by its number unless =grename= gives it a name;
+=*group-layout-defaults*= and the like go by name, so ="2"= there means
+group 2 of every output.
+
+** Outputs coming and going
+
+When an output goes away (unplugged, or the lid closes, see
+[[file:touchpad.org][Touchpad, Mouse and Keyboard Locks]]), the windows of each of
+its groups go to the group of the same number on the first output
+left, made when missing, and the empty groups are dropped. Without
+another output the groups wait, their windows hidden, and the next
+output to appear takes them over. A new output starts with a group 1
+of its own.
+
+** From Lisp
+
+- =(output-groups state output)= :: the groups of OUTPUT, by number.
+- =(state-output-group state output)= :: the group OUTPUT shows.
+- =(state-current-group state)= and its =setf= :: the current group;
+  setting it shows the group on its output and focuses it.
+- =(mahogany-state-group-add state &key group-name number home
+  make-current)= :: a new group on HOME (an output, its full name, or
+  the focused output), or =:none= for one never shown, as the
+  scratchpad's.
+- =(mahogany-state-group-remove state group)= :: removes it, its
+  windows going to the group before it; the only group of an output
+  stays.
+- =(move-view-to-frame view frame &key follow swap)= :: a window into a
+  frame, of its own group or of the group shown on another output.

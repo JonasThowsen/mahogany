@@ -14,7 +14,12 @@
   ;; Map that contains views hidden by fullscreen windows.
   ;; view -> %hidden-view-info
   (hidden-view-map (make-hash-table) :type hash-table)
-  (views nil :type list))
+  (views nil :type list)
+  ;; The output the group belongs to (its workspaces are per output):
+  ;; the output's full name, NIL for one waiting for an output (none
+  ;; connected yet, or its own gone), or :NONE for one never shown, such
+  ;; as the scratchpad's.
+  (home nil :type (or null string (eql :none))))
 
 (defstruct (mahogany-state (:conc-name state-))
   (server nil :type (or null cffi:foreign-pointer))
@@ -35,8 +40,9 @@
   (groups (make-array 0 :element-type 'mahogany-group
                         :adjustable t :fill-pointer t)
    :type (vector mahogany-group *))
-  (hidden-groups (ring-list:make-ring-list)
-   :type ring-list:ring-list
+  ;; output full name -> the group shown on it (its current workspace):
+  (output-groups (make-hash-table :test 'equal)
+   :type hash-table
    :read-only t)
   (views (make-hash-table)
    :type hash-table

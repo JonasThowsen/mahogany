@@ -1,8 +1,8 @@
 * The Mode-line
 
 The mode-line is a bar along the top of each output, drawn by Mahogany
-itself. By default it shows the groups, with the current one marked,
-the title of the focused window, and the clock. The tiling area and
+itself. By default it shows the output's groups, with the one shown
+marked, the title of the focused window, and the clock. The tiling area and
 layer-shell surfaces such as bars from other programs leave it room.
 
 The =mode-line= command toggles it. It has no default keybinding; run
@@ -17,8 +17,9 @@ it from the colon prompt (=C-t ;=), or bind it:
 The configuration property =mh::*mode-line-segments*= lists the
 segments from left to right; each is the name of a module:
 
-- =:groups= :: every group, the current one marked. A click on a group
-  goes to it; the wheel over the bar goes through the groups.
+- =:groups= :: the groups of the bar's output, the one it shows marked.
+  A click on a group goes to it; the wheel over the bar goes through
+  that output's groups.
 - =:title= :: the focused window's title, shortened to the room left.
 - =:network= :: the SSID when on wifi (through =iwctl= or =iw=), the
   interface when wired, "offline" otherwise.

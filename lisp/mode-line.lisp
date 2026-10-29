@@ -209,13 +209,13 @@ Then add :uptime to *mode-line-segments*."
         (let ((title (hrt:view-title view)))
           (and title (plusp (length title)) title))))))
 
-(defun %mode-line-groups ()
-  "The groups in order of their numbers, as (name current-p group)."
-  (let ((current (state-current-group *compositor-state*)))
-    (map 'list (lambda (group)
-                 (list (mahogany-group-name group) (eq group current) group))
-         (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
-               :key #'mahogany-group-number))))
+(defun %mode-line-groups (output)
+  "The groups of OUTPUT in order of their numbers, as (name shown-p
+group), the one it shows marked."
+  (let ((shown (state-output-group *compositor-state* output)))
+    (mapcar (lambda (group)
+              (list (mahogany-group-name group) (eq group shown) group))
+            (remove-if-not #'group-listed-p (output-groups *compositor-state* output)))))
 
 (defun %mode-line-items (output)
   "What to draw for OUTPUT, as a list of items: (:text STRING &key
@@ -228,7 +228,7 @@ marked flexible) and :fill."
                               (alexandria:remove-from-plist options :icon))
                        items))))
         (case segment
-          (:groups (loop for (name current group) in (%mode-line-groups)
+          (:groups (loop for (name current group) in (%mode-line-groups output)
                          do (add name :marked current
                                  :on-click (let ((group group))
                                              (lambda ()
@@ -342,9 +342,8 @@ say), otherwise it goes through the groups."
             when (and on-scroll (<= x0 x x1))
               do (funcall on-scroll direction)
                  (return-from %mode-line-scroll))
-      (if (plusp direction)
-          (state-next-hidden-group *compositor-state*)
-          (state-prev-hidden-group *compositor-state*)))))
+      (state-next-group *compositor-state* :step direction
+                                           :output (mode-line-output mode-line)))))
 
 ;;; Mode-lines of the outputs
 

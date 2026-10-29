@@ -34,7 +34,9 @@ started.")
            (mahogany-state-group-add *compositor-state*
                                      :group-name *scratchpad-group-name*
                                      :make-current nil
-                                     :number 0))))
+                                     :number 0
+                                     ;; Never shown, on no output:
+                                     :home :none))))
 
 (defun %live-view-p (view)
   (%find-view-in-groups view (state-groups *compositor-state*)))

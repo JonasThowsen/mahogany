@@ -10,11 +10,12 @@
 
 (deftype direction () '(member :left :right :up :down))
 
-(defun %leaf-frames (group)
-  "Every leaf frame of GROUP, on every output."
+(defun %shown-leaf-frames ()
+  "Every leaf frame shown: those of the group each output shows."
   (let ((leaves '()))
-    (loop for node being the hash-values of (mahogany-group-output-map group)
-          do (tree::foreach-leaf (leaf node) (push leaf leaves)))
+    (loop for group being the hash-values of (state-output-groups *compositor-state*)
+          do (alexandria:when-let ((node (group-output-node group)))
+               (tree::foreach-leaf (leaf node) (push leaf leaves))))
     leaves))
 
 (defun %rectangle-in-direction (direction x y width height cx cy cwidth cheight)
@@ -61,18 +62,17 @@ one straight ahead."
             (setf best candidate best-distance distance best-offset offset)))))))
 
 (defun frame-in-direction (direction &optional (frame (state-current-frame *compositor-state*)))
-  "The leaf frame nearest in DIRECTION from FRAME in the current group,
+  "The leaf frame nearest in DIRECTION from FRAME among the frames shown,
 on any output, or NIL at the edge."
   (declare (type direction direction))
   (when (typep frame 'tree:frame)
-    (let ((group (state-current-group *compositor-state*)))
-      (%nearest-in-direction direction
-                             (tree:frame-x frame) (tree:frame-y frame)
-                             (tree:frame-width frame) (tree:frame-height frame)
-                             (remove frame (%leaf-frames group))
-                             (lambda (f)
-                               (values (tree:frame-x f) (tree:frame-y f)
-                                       (tree:frame-width f) (tree:frame-height f)))))))
+    (%nearest-in-direction direction
+                           (tree:frame-x frame) (tree:frame-y frame)
+                           (tree:frame-width frame) (tree:frame-height frame)
+                           (remove frame (%shown-leaf-frames))
+                           (lambda (f)
+                             (values (tree:frame-x f) (tree:frame-y f)
+                                     (tree:frame-width f) (tree:frame-height f))))))
 
 (defun %output-rectangle (output)
   "OUTPUT's place in the layout: (values x y width height), in layout
@@ -97,26 +97,19 @@ coordinates (pixels divided by the scale)."
     frame))
 
 (defun move-window-in-direction (direction)
-  "Exchange the focused window with what the frame in DIRECTION shows,
-and follow it. A window moved into an empty frame leaves its own frame
-to a hidden window, if there is one. Returns the frame, or NIL at the
-edge."
+  "Move the focused window into the frame in DIRECTION and follow it:
+exchanged with what that frame shows on this output, or, on the output
+beside it, into the group shown there, what that frame showed going
+behind it. A window moved out of its frame leaves it to a hidden
+window, if there is one. Returns the frame, or NIL at the edge."
   (let* ((state *compositor-state*)
-         (group (state-current-group state))
          (source (state-current-frame state))
          (target (frame-in-direction direction source)))
     (when target
-      (let ((view (tree:frame-surface source)))
+      (let ((view (and (typep source 'tree:frame) (tree:frame-surface source))))
         (unless (typep view 'hrt:view)
           (error 'mahogany/util:invalid-operation :text "No window to move"))
-        (hrt:with-view-transaction ()
-          (rotatef (tree:frame-surface source) (tree:frame-surface target))
-          (unless (tree:frame-surface source)
-            (%fill-frame-from-hidden group source))
-          (state-focus-frame state target (server-seat state))
-          (group-views-changed group (tree:find-root-frame source))
-          (group-views-changed group (tree:find-root-frame target)))
-        (hrt:dirty-view-transaction)
+        (move-view-to-frame view target :swap t)
         target))))
 
 (defun focus-output-in-direction (direction)

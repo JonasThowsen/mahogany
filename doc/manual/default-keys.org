@@ -47,11 +47,13 @@ pressed. Both live in =lisp/default-bindings.lisp= and
 
 ** Groups (workspaces)
 
-Groups are numbered 1, 2, 3 … and made as they are asked for.
+Each output has groups of its own, numbered 1, 2, 3 … and made as
+they are asked for; these keys act on the output that has the focus.
+See [[file:groups.org][Groups]].
 
 | Key                        | Command                                  | What it does                      |
 |----------------------------+------------------------------------------+-----------------------------------|
-| =s-1= … =s-9=              | =select-group-N=                         | group N, made when missing        |
+| =s-1= … =s-9=              | =select-group-N=                         | group N of this output, made when missing |
 | =s-C-1= … =s-C-9=          | =move-window-to-group-N=                 | the window to group N             |
 | =s-S-1= … =s-S-9=          | the same                                 |                                   |
 | =s-d= / =s-u=              | =gnext= / =gprev=                        | the next or previous group        |

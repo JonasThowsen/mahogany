@@ -73,15 +73,38 @@
     (setf (mahogany-group-active-p group) nil)
     (hrt:hrt-scene-group-set-enabled hrt-group nil)))
 
-(defun group-wakeup (group seat)
-  "Start displaying the group"
+(defun %first-hash-table-value (table)
+  (declare (type hash-table table)
+           (optimize (speed 3) (safety 0)))
+  (with-hash-table-iterator (iter table)
+    (multiple-value-bind (found key value) (iter)
+      (declare (ignore found key))
+      value)))
+
+(defun group-show (group)
+  "Start displaying the group, without focusing it: what the output it
+belongs to shows while another output has the focus."
   (declare (type mahogany-group group))
-  (with-accessors ((hrt-group mahogany-group-hrt-group))
-      group
-    (log-string :debug "Waking up group ~A" (mahogany-group-name group))
-    (group-focus group seat)
+  (unless (mahogany-group-active-p group)
+    (log-string :debug "Showing group ~A" (mahogany-group-name group))
     (setf (mahogany-group-active-p group) t)
-    (hrt:hrt-scene-group-set-enabled hrt-group t)))
+    (hrt:hrt-scene-group-set-enabled (mahogany-group-hrt-group group) t)))
+
+(defun group-wakeup (group seat)
+  "Start displaying the group and focus its frame"
+  (declare (type mahogany-group group))
+  (log-string :debug "Waking up group ~A" (mahogany-group-name group))
+  (group-show group)
+  (group-focus group seat))
+
+(defun group-attached-p (group)
+  "Whether GROUP has an output to be shown on."
+  (plusp (hash-table-count (mahogany-group-output-map group))))
+
+(defun group-output-node (group)
+  "The output node of GROUP's frame tree: a group belongs to one
+output. NIL while it waits for one."
+  (%first-hash-table-value (mahogany-group-output-map group)))
 
 (defun %fill-frame-from-hidden (group frame)
   "Show a hidden window of GROUP in FRAME when it is an empty frame."
@@ -157,14 +180,6 @@ to match."
               (mahogany-group-name group))
   (loop for output across outputs
         do (group-rearrange-output group (tree:output-container-output output))))
-
-(defun %first-hash-table-value (table)
-  (declare (type hash-table table)
-           (optimize (speed 3) (safety 0)))
-  (with-hash-table-iterator (iter table)
-    (multiple-value-bind (found key value) (iter)
-      (declare (ignore found key))
-      value)))
 
 (defun %group-current-output-node (group)
   (alexandria:when-let ((cur-frame (mahogany-group-current-frame group)))

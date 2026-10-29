@@ -5,8 +5,16 @@
                         wallpaper-update wallpaper-reset notifications-stop))
 
 (defvar *default-group-name* "1"
-  "The name of the first group. Groups are named by their number unless
-given a name (grename), as workspaces are.")
+  "The name of the first group of an output. Groups are named by their
+number unless given a name (grename), as workspaces are.")
+
+;;; Groups are per output, as the workspaces of dwm or Hyprland: each
+;;; output has its own groups 1, 2, 3 …, one of them shown
+;;; (state-output-group), and the group of the focused frame is the
+;;; current one (state-current-group). Selecting a group by number
+;;; changes only the output that has the focus, and a window goes to
+;;; another output by moving into the group shown there. A group has one
+;;; output node in its frame tree; its home names the output.
 
 ;; If there turns out to be more choices than
 ;; minimize and maximize, make this a bitmask or separate them out:
@@ -41,24 +49,60 @@ or HRT-OUTPUT is NIL or a null pointer."
           :key #'tree::output-container-output-ptr
           :test #'cffi:pointer-eq)))
 
-(declaim (inline %next-group-index))
-(defun %next-group-index (state)
+(defun %output-designator-name (output)
+  "The full name of OUTPUT, given as an output, a name or NIL."
+  (etypecase output
+    (null nil)
+    (string output)
+    (hrt:output (hrt:output-full-name output))
+    (tree:output-container (hrt:output-full-name (tree:output-container-output output)))))
+
+(defun %home-groups (state home)
+  "The groups whose home is HOME (an output's full name, NIL or :none)."
+  (remove-if-not (lambda (group) (equal (mahogany-group-home group) home))
+                 (coerce (state-groups state) 'list)))
+
+(defun output-groups (state output)
+  "The groups of OUTPUT (its workspaces), in order of their numbers."
+  (declare (type mahogany-state state))
+  (sort (remove-if-not #'group-attached-p
+                       (%home-groups state (%output-designator-name output)))
+        #'< :key #'mahogany-group-number))
+
+(defun state-output-group (state output)
+  "The group shown on OUTPUT, or NIL for an output not in use."
+  (declare (type mahogany-state state))
+  (gethash (%output-designator-name output) (state-output-groups state)))
+
+(defun state-current-home (state)
+  "The full name of the output that has the focus, or NIL without one."
+  (alexandria:when-let ((group (state-current-group state)))
+    (let ((home (mahogany-group-home group)))
+      (and (stringp home) home))))
+
+(defun %next-group-index (state home)
   (declare (type mahogany-state state))
   (mahogany/util::find-free-number
-   (map 'list #'mahogany-group-number (state-groups state)) 1))
+   (mapcar #'mahogany-group-number (%home-groups state home)) 1))
 
-(defun %add-group (state name index)
+(defun %add-group (state name index home)
   (declare (type mahogany-state state)
            (type string name)
            (type fixnum index))
-  (with-accessors ((groups state-groups)
-                   (current-group state-current-group)
-                   (server state-server))
-      state
-    (let* ((default-group (make-mahogany-group name index server)))
-      (setf (mahogany-group-active-p default-group) t)
-      (vector-push-extend default-group groups)
-      default-group)))
+  (let ((group (make-mahogany-group name index (state-server state))))
+    (setf (mahogany-group-home group) home)
+    (vector-push-extend group (state-groups state))
+    group))
+
+(defun state-frame-group (state frame)
+  "The group whose frame tree holds FRAME, or NIL for a layer shell
+frame or a frame of no group."
+  (declare (type mahogany-state state))
+  (when (group-frame-p frame)
+    (let ((root (tree:find-root-frame frame)))
+      (find-if (lambda (group)
+                 (eq (group-output-node group) root))
+               (state-groups state)))))
 
 (defun server-state-init (state server output-callbacks seat-callbacks view-callbacks
 			  layer-shell-callbacks
@@ -70,15 +114,15 @@ or HRT-OUTPUT is NIL or a null pointer."
                            debug-level)
     (error 'mahogany/util:mahogany-panic
            :text "Could not initialize the compositor."))
-  (let ((default-group (%add-group state *default-group-name*
-                                   (%next-group-index state))))
-    (setf (state-current-group state) default-group)))
+  ;; The first group waits for the first output, which adopts it:
+  (let ((default-group (%add-group state *default-group-name* 1 nil)))
+    (setf (state-%current-group state) default-group)))
 
 (defun server-state-reset (state)
   (declare (type mahogany-state state))
   (with-accessors ((groups state-groups)
                    (server state-server)
-                   (hidden-groups state-hidden-groups)
+                   (output-groups state-output-groups)
                    (views state-views)
                    (layer-surfaces state-layer-surfaces))
       state
@@ -115,7 +159,7 @@ or HRT-OUTPUT is NIL or a null pointer."
              (clrhash table)))
       (clear-toplevel-tbl views "views")
       (clear-toplevel-tbl layer-surfaces "layer surfaces"))
-    (ring-list:clear-list hidden-groups)
+    (clrhash output-groups)
     (setf (state-%current-group state) nil)
     (setf groups (adjust-array groups 0 :fill-pointer 0))))
 
@@ -182,54 +226,73 @@ whose names start with a dot, such as the scratchpad's, are not."
   (let ((name (mahogany-group-name group)))
     (not (and (plusp (length name)) (char= (char name 0) #\.)))))
 
-(defun (setf state-current-group) (group state)
+(defun %show-output-group (state group)
+  "Show GROUP on its output in place of the group shown there, without
+moving the focus."
   (declare (type mahogany-state state)
            (type mahogany-group group))
-  (with-accessors ((hidden-groups state-hidden-groups)
-                   (server state-server))
-      state
-    (when (not (find group (state-groups state) :test #'equalp))
-      (error (format nil "Group ~S is not part of this state" group)))
-    (let ((previous (state-%current-group state)))
-      (when previous
-        (group-suspend previous (hrt:hrt-server-seat server)))
-      (setf (state-%current-group state) group)
-      ;; Keep the ring of hidden groups right however the current group
-      ;; was chosen (gnext swaps in the ring itself; a click on the
-      ;; mode-line or grouplist does not): the new one is not hidden, the
-      ;; previous one is, unless it is being removed.
-      (ring-list:remove-item hidden-groups group :test #'eq)
-      (when (and previous
-                 (not (eq previous group))
-                 (group-listed-p previous)
-                 (find previous (state-groups state) :test #'eq)
-                 (not (ring-list:contains-item hidden-groups previous :test #'eq)))
-        (ring-list:add-item hidden-groups previous)))
-    (group-wakeup group (hrt:hrt-server-seat server))
+  (let* ((home (mahogany-group-home group))
+         (shown (and (stringp home) (gethash home (state-output-groups state)))))
+    (when (and shown (not (eq shown group)))
+      (group-suspend shown (server-seat state)))
+    (when (group-attached-p group)
+      (setf (gethash home (state-output-groups state)) group))
+    (group-show group)))
+
+(defun (setf state-current-group) (group state)
+  "Make GROUP the current one: shown on its output in place of the group
+shown there, and focused."
+  (declare (type mahogany-state state)
+           (type mahogany-group group))
+  (when (not (find group (state-groups state) :test #'eq))
+    (error (format nil "Group ~S is not part of this state" group)))
+  (let ((previous (state-%current-group state))
+        (seat (server-seat state)))
+    (%show-output-group state group)
+    ;; The previous group on another output stays shown, but loses the
+    ;; focus:
+    (when (and previous (not (eq previous group)) (mahogany-group-active-p previous))
+      (group-unfocus previous seat))
+    (setf (state-%current-group state) group)
+    (group-wakeup group seat)
     (alexandria:when-let ((group-frame (mahogany-group-current-frame group)))
-      (state-focus-frame state group-frame (server-seat state))
+      (state-focus-frame state group-frame seat)
       (when *show-group-name*
         (toast-message state (mahogany-group-name group)
-                       :ms-delay *group-name-delay*)))
-    (mode-line-update)
-    (hrt:dirty-view-transaction)))
+                       :ms-delay *group-name-delay*))))
+  (mode-line-update)
+  (hrt:dirty-view-transaction))
 
-(defun %state-select-group (state designator)
-  "Retrieve a group based on the given designator. If a number,
-the group with that number is returned"
+(defun %state-select-group (state designator &optional (output (state-current-home state)))
+  "The group of OUTPUT (the focused one by default) that DESIGNATOR
+names: its number, or NIL."
   (declare (type mahogany-state state))
   (etypecase designator
     (null nil)
     (integer
-     (let ((groups (state-groups state)))
-       (find designator groups :key #'mahogany-group-number
-             :test #'=)))))
+     (find designator (output-groups state output)
+           :key #'mahogany-group-number :test #'=))))
 
 (defun state-select-group (state designator)
+  "Switch the focused output to its group DESIGNATOR (a number)."
   (declare (type mahogany-state state))
   (let ((group (%state-select-group state designator)))
     (when group
       (setf (state-current-group state) group))))
+
+(defun state-next-group (state &key (step 1) (output (state-current-home state)))
+  "Switch OUTPUT (the focused one by default) to the group STEP after
+the one it shows, by number and around the end; with one group, nothing."
+  (declare (type mahogany-state state))
+  (let* ((groups (remove-if-not #'group-listed-p (output-groups state output)))
+         (shown (state-output-group state output))
+         (position (position shown groups)))
+    (when (and position (> (length groups) 1))
+      (setf (state-current-group state)
+            (nth (mod (+ position step) (length groups)) groups)))))
+
+(defun state-previous-group (state &key (output (state-current-home state)))
+  (state-next-group state :step -1 :output output))
 
 (defun group-frame-p (frame)
   ;; TODO: It might be better to start storing the
@@ -240,22 +303,45 @@ the group with that number is returned"
   (not (typep frame 'tree::layer-shell-frame)))
 
 (defun state-focus-frame (state new-frame seat)
-  "Focus the given frame. The frame must either be a member of
-the current group or a layer shell frame"
+  "Focus the given frame: one of a group shown on an output, whose group
+becomes the current one, or a layer shell frame."
   (with-accessors ((cur-frame state-%current-frame)
-                   (cur-group state-current-group))
+                   (cur-group state-%current-group))
       state
     (unless (eql cur-frame new-frame)
       ;; Determine if the frame is in a group:
       (let ((cur-in-group (group-frame-p cur-frame))
-            (next-in-group (group-frame-p new-frame)))
-        (if next-in-group
-            (group-focus-frame cur-group new-frame seat)
-            (progn
-              (when cur-in-group
-                (group-unfocus cur-group seat))
-              (tree:mark-frame-focused new-frame seat))))
+            (next-group (state-frame-group state new-frame)))
+        (cond
+          (next-group
+           (unless (eq next-group cur-group)
+             (when (and cur-in-group cur-group)
+               (group-unfocus cur-group seat))
+             (setf cur-group next-group)
+             (mode-line-update))
+           (group-focus-frame next-group new-frame seat))
+          (t
+           (when (and cur-in-group cur-group)
+             (group-unfocus cur-group seat))
+           (tree:mark-frame-focused new-frame seat))))
       (setf cur-frame new-frame))))
+
+(defun %ensure-focus (state)
+  "After outputs came or went: when the current group has no output,
+make the group shown on the first output current, and focus a frame when
+none is."
+  (declare (type mahogany-state state))
+  (let ((current (state-current-group state)))
+    (unless (and current (group-attached-p current))
+      (alexandria:when-let ((group (loop for container across (state-cur-outputs state)
+                                         thereis (state-output-group state container))))
+        (when (and current (not (eq current group)) (mahogany-group-active-p current))
+          (group-unfocus current (server-seat state)))
+        (setf (state-%current-group state) group
+              current group)))
+    (when (and current (null (state-%current-frame state)))
+      (alexandria:when-let ((frame (mahogany-group-current-frame current)))
+        (state-focus-frame state frame (server-seat state))))))
 
 (defun server-keystate-reset (state)
   (setf (state-key-state state)
@@ -281,13 +367,31 @@ the current group or a layer shell frame"
     (values all-outputs added)))
 
 (defun %add-output-container (state mh-output)
+  "Start using MH-OUTPUT: the groups waiting for it (those it had before
+it went, or every waiting group when it is the first output) get their
+frame trees on it, or it gets a group 1; the first by number is shown."
   (declare (type mahogany-state state))
-  (let ((cur-outputs (state-cur-outputs state))
-        (groups (state-groups state))
-        (output-container (tree::make-output-container mh-output)))
+  (let* ((cur-outputs (state-cur-outputs state))
+         (name (hrt:output-full-name mh-output))
+         (first-p (zerop (length cur-outputs)))
+         (output-container (tree::make-output-container mh-output))
+         (waiting (remove-if-not
+                   (lambda (group)
+                     (let ((home (mahogany-group-home group)))
+                       (and (not (eq home :none))
+                            (not (group-attached-p group))
+                            (or first-p (equal home name)))))
+                   (state-groups state))))
     (vector-push-extend output-container cur-outputs)
-    (loop for g across groups
-          do (group-add-output g output-container))))
+    (loop for group across waiting
+          do (setf (mahogany-group-home group) name)
+             (group-add-output group output-container))
+    (when (zerop (length waiting))
+      (let ((index (%next-group-index state name)))
+        (group-add-output (%add-group state (%next-group-name index) index name)
+                          output-container)))
+    (%show-output-group state (first (output-groups state name)))
+    (%ensure-focus state)))
 
 (defun %add-output (state mh-output)
   (declare (type mahogany-state state))
@@ -388,10 +492,7 @@ the current group or a layer shell frame"
                    (declare (ignore config))
                    (%update-output-enabled *compositor-state* output))
                  config-map)))
-    (unless (state-%current-frame *compositor-state*)
-      (let ((cur-group (state-current-group *compositor-state*)))
-        (group-focus cur-group (server-seat *compositor-state*))
-        (setf (state-%current-frame *compositor-state*) (mahogany-group-current-frame cur-group)))))
+    (%ensure-focus *compositor-state*))
   (wallpaper-update))
 
 (defun %make-output-process-timer (state change-data)
@@ -426,37 +527,59 @@ the current group or a layer shell frame"
   (alexandria:when-let ((container (%find-output-container hrt-output state)))
     (tree:output-container-output container)))
 
+(defun %group-on-output (state output number)
+  "The group NUMBER of OUTPUT (a container), made when missing."
+  (declare (type mahogany-state state))
+  (or (%state-select-group state number output)
+      (let ((group (%add-group state (%next-group-name number) number
+                               (%output-designator-name output))))
+        (group-add-output group output)
+        group)))
+
+(defun %delete-group (state group)
+  (declare (type mahogany-state state))
+  (let ((server (state-server state)))
+    (setf (state-groups state) (delete group (state-groups state) :test #'eq))
+    (destroy-mahogany-group group (hrt:hrt-server-scene-tree server)
+                            (hrt:hrt-server-seat server))))
+
 (defun %remove-output-container (state hrt-output)
+  "Stop using HRT-OUTPUT. Its groups' windows go to the groups of the
+same numbers on another output, and the groups themselves; without
+another output they wait for one, their windows hidden."
   (declare (type mahogany-state state)
            (type hrt:output hrt-output))
   (with-accessors ((cur-outputs state-cur-outputs)
-                   (cur-frame state-%current-frame)
-                   (groups state-groups))
+                   (cur-frame state-%current-frame))
       state
     (alexandria:if-let ((output-container (%find-output-container
                           (hrt:output-hrt-output hrt-output)
                           state)))
-      (let ((mh-output (tree::output-container-output output-container)))
-        (log-string :debug "Output removed ~S" (hrt:output-full-name mh-output))
-        (loop for g across groups
-              do (group-remove-output g output-container (server-seat state)))
+      (let* ((mh-output (tree::output-container-output output-container))
+             (name (hrt:output-full-name mh-output))
+             (seat (server-seat state))
+             (dead-groups (output-groups state name))
+             (current (state-current-group state)))
+        (log-string :debug "Output removed ~S" name)
         (setf cur-outputs (delete output-container cur-outputs :test #'equalp))
-        ;; We could have removed the current frame,
-        ;; so switch our focus around to keep us in a valid state.
-        ;; Leave the rest of the output shuffling for the
-        ;; configuration timer handler
-        (typecase cur-frame
-          (tree:layer-container
-           (let ((container (tree:frame-parent cur-frame)))
-             (when (hrt:output= (tree:output-container-output container)
-                                hrt-output)
-               (setf cur-frame (mahogany-group-current-frame
-                            (state-current-group state))))))
-          (t
-           (setf cur-frame (mahogany-group-current-frame
-                            (state-current-group state)))))
-        (when cur-frame
-          (tree:mark-frame-focused cur-frame (server-seat state))))
+        (remhash name (state-output-groups state))
+        ;; The frame focused is going, and the groups' own current frames
+        ;; with it:
+        (when (or (null cur-frame)
+                  (not (group-frame-p cur-frame))
+                  (member (state-frame-group state cur-frame) dead-groups))
+          (setf cur-frame nil))
+        (let ((target (and (plusp (length cur-outputs)) (aref cur-outputs 0))))
+          (dolist (group dead-groups)
+            (group-remove-output group output-container seat)
+            (when target
+              (let ((destination (%group-on-output state target (mahogany-group-number group))))
+                (group-transfer-views destination group)
+                (when (eq group current)
+                  (setf (state-%current-group state)
+                        (state-output-group state target)))
+                (%delete-group state group)))))
+        (%ensure-focus state))
       (log-string :error "Removed an output that was never added to a container"))))
 
 (defun mahogany-state-output-remove (state hrt-output)
@@ -495,62 +618,63 @@ the current group or a layer shell frame"
   "The name of a group made with INDEX and no name: the number itself."
   (princ-to-string index))
 
-(defun state-next-group-name (state)
-  (let ((index (%next-group-index state)))
-    (%next-group-name index)))
+(defun state-next-group-name (state &optional (home (state-current-home state)))
+  (%next-group-name (%next-group-index state home)))
 
-(defun mahogany-state-group-add (state &key group-name (make-current t) number)
-  "Add a group named GROUP-NAME (the next free number by default), with
-NUMBER or the lowest free number from 1, and make it current unless
-MAKE-CURRENT is NIL."
+(defun %output-designator-name-or-none (home)
+  (if (eq home :none) :none (%output-designator-name home)))
+
+(defun mahogany-state-group-add (state &key group-name (make-current t) number
+                                         (home (or (state-current-home state)
+                                                   (and (state-current-group state)
+                                                        (mahogany-group-home (state-current-group state))))))
+  "Add a group to the output HOME (the focused one by default; :none for
+a group never shown, the scratchpad's), named GROUP-NAME (its number by
+default), with NUMBER or the lowest number free on that output from 1,
+and make it current unless MAKE-CURRENT is NIL."
   (declare (type mahogany-state state))
-  (let ((index (or number (%next-group-index state))))
+  (let* ((home (%output-designator-name-or-none home))
+         (index (or number (%next-group-index state home))))
     (unless group-name
       (setf group-name (%next-group-name index)))
-    (let ((new-group (%add-group state group-name index)))
-      (with-accessors ((current-group state-current-group)
-                       (hidden-groups state-hidden-groups)
-                       (state-outputs state-cur-outputs))
-          state
-        (loop for o across state-outputs
-              do (group-add-output new-group o))
-        (cond
-          (make-current
-           (ring-list:add-item hidden-groups current-group)
-           (setf current-group new-group))
-          (t
-           (when (group-listed-p new-group)
-             (ring-list:add-item hidden-groups new-group))
-           (mode-line-update)))
-        (log-string :trace "Hidden groups: ~S" hidden-groups))
+    (let ((new-group (%add-group state group-name index home)))
+      (when (stringp home)
+        (alexandria:when-let ((container (find home (state-cur-outputs state)
+                                               :key #'%output-designator-name
+                                               :test #'string=)))
+          (group-add-output new-group container)))
+      (if (and make-current (group-attached-p new-group))
+          (setf (state-current-group state) new-group)
+          (mode-line-update))
       new-group)))
 
 (defun mahogany-state-group-remove (state group)
-  (with-accessors ((groups state-groups)
-                   (hidden-groups state-hidden-groups)
-                   (current-group state-current-group))
-      state
-    (when (= (length groups) 1)
-      (log-string :warn "Cannot remove the only group")
+  "Remove GROUP, its windows going to the group before it on its output,
+which is shown in its place. The only group of an output stays."
+  (with-accessors ((groups state-groups)) state
+    (unless (find group groups :test #'eq)
+      (log-string :error "could not find group to delete")
       (return-from mahogany-state-group-remove))
-    (if (find group groups :test #'equalp)
-        (let* ((server (state-server state))
-               (scene-tree (hrt:hrt-server-scene-tree server))
-               (seat (hrt:hrt-server-seat server)))
-          ;; Out of the groups first, so that making another one current
-          ;; does not put this one among the hidden ones:
-          (setf groups (delete group groups :test #'eq))
-          (cond
-            ((eq group current-group)
-             (let ((new-current (ring-list:pop-item hidden-groups)))
-               (setf current-group new-current)
-               (group-wakeup new-current seat)))
-            (t
-             (ring-list:remove-item hidden-groups group :test #'eq)))
-          (group-transfer-views current-group group)
-          (destroy-mahogany-group group scene-tree seat)
-          (log-string :trace "Hidden groups: ~S" hidden-groups))
-        (log-string :error "could not find group to delete"))))
+    (let* ((home (mahogany-group-home group))
+           (siblings (and (stringp home)
+                          (remove group (output-groups state home))))
+           (heir (cond ((not (group-attached-p group))
+                        (state-current-group state))
+                       (siblings
+                        (or (car (last (remove-if (lambda (g) (> (mahogany-group-number g)
+                                                                  (mahogany-group-number group)))
+                                                  siblings)))
+                            (first siblings))))))
+      (when (or (null heir) (eq heir group))
+        (log-string :warn "Cannot remove the only group of ~A" home)
+        (return-from mahogany-state-group-remove))
+      (cond ((eq group (state-current-group state))
+             (setf (state-current-group state) heir))
+            ((eq group (state-output-group state home))
+             (%show-output-group state heir)))
+      (group-transfer-views heir group)
+      (%delete-group state group)
+      (mode-line-update))))
 
 (defun mahogany-state-output-reconfigure (state)
   (hrt:with-view-transaction ()
@@ -669,7 +793,8 @@ focused; hidden behind another window, it is shown in the current frame."
            (type hrt:view view))
   (progn
     (%with-found-group state (group view)
-      (unless (eq group (state-current-group state))
+      (unless (or (eq group (state-current-group state))
+                  (not (group-attached-p group)))
         (setf (state-current-group state) group))
       (alexandria:if-let ((frame (tree:find-view-frame
                                   (mahogany-group-tiled-container group) view)))
@@ -716,21 +841,6 @@ focused; hidden behind another window, it is shown in the current frame."
     (let ((group (state-current-group state)))
       (group-previous-hidden group)
       (%cur-frame-set-from-group state group))))
-
-(defun state-next-hidden-group (state)
-  (declare (type mahogany-state state))
-  (let ((current-group (state-current-group state))
-        (hidden-groups (state-hidden-groups state)))
-    (when (> (ring-list:ring-list-size hidden-groups) 0)
-      (setf (state-current-group state) (ring-list:swap-next hidden-groups current-group))
-      (log-string :trace "Hidden groups: ~S" hidden-groups))))
-
-(defun state-prev-hidden-group (state)
-  (declare (type mahogany-state state))
-  (let ((current-group (state-current-group state))
-        (hidden-groups (state-hidden-groups state)))
-    (when (> (ring-list:ring-list-size hidden-groups) 0)
-      (setf (state-current-group state) (ring-list:swap-previous hidden-groups current-group)))))
 
 (config-system:defconfig grab-pointer-cursor "help"
   string

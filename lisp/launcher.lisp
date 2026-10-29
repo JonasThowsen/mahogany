@@ -266,26 +266,36 @@ directory with a given file wins."
                   (toast-message *compositor-state* (format nil "No command ~A" name)
                                  :theme *message-error-theme*)))))
 
+(defun %group-label (group)
+  "GROUP's name, with its output's when there is more than one output."
+  (let ((home (mahogany-group-home group)))
+    (if (and (stringp home) (> (length (state-cur-outputs *compositor-state*)) 1))
+        (format nil "~A ~A" home (mahogany-group-name group))
+        (mahogany-group-name group))))
+
+(defun %listed-groups ()
+  "The groups of the focused output the user chooses among, by number."
+  (remove-if-not #'group-listed-p
+                 (output-groups *compositor-state* (state-current-home *compositor-state*))))
+
 (define-launcher-mode :windows (:prompt "Window" :description "Windows")
   :items (loop for group across (state-groups *compositor-state*)
                append (loop for view in (mahogany-group-views group)
                             collect (make-menu-item (or (hrt:view-title view) "(untitled)")
                                                     :data view
-                                                    :detail (mahogany-group-name group))))
+                                                    :detail (%group-label group))))
   :action (lambda (view) (mahogany-state-show-view *compositor-state* view)))
 
-(define-launcher-mode :groups (:prompt "Group" :description "Groups")
-  :items (loop for group across (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
-                                      :key #'mahogany-group-number)
+(define-launcher-mode :groups (:prompt "Group" :description "Groups of this output")
+  :items (loop for group in (%listed-groups)
                collect (make-menu-item (mahogany-group-name group)
                                        :data group
                                        :detail (format nil "~D window~:P"
                                                        (length (mahogany-group-views group)))))
   :action (lambda (group) (setf (state-current-group *compositor-state*) group)))
 
-(define-launcher-mode :move-to-group (:prompt "Move window to" :description "Move the window to a group")
-  :items (loop for group across (sort (remove-if-not #'group-listed-p (state-groups *compositor-state*)) #'<
-                                      :key #'mahogany-group-number)
+(define-launcher-mode :move-to-group (:prompt "Move window to" :description "Move the window to a group of this output")
+  :items (loop for group in (%listed-groups)
                unless (eq group (state-current-group *compositor-state*))
                  collect (make-menu-item (mahogany-group-name group) :data group))
   :action (lambda (group) (%move-current-surface group)))
