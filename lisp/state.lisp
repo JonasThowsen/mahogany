@@ -175,8 +175,8 @@ frame or a frame of no group."
     (cond
       ((> num-views 0)
        (toast-message state
-                      (format nil "Waiting for ~A client~P to close."
-                              num-views num-views))
+                      (format nil "Waiting for ~A client~:P to close."
+                              num-views))
        (hrt:timer-handle-update timer *shutdown-timeout-msec*))
       (t
        (hrt:timer-handle-destroy timer)
@@ -196,8 +196,8 @@ frame or a frame of no group."
       ((> num-views 0)
        (log-string :info "Shutdown: Waiting for clients to disconnect.")
        (toast-message state
-                      (format nil "Quiting after ~A client~P close..."
-                              num-views num-views))
+                      (format nil "Waiting for ~A client~:P to close."
+                              num-views))
        (maphash (lambda (_ view)
                   (declare (ignore _))
                   (hrt:view-request-close view))
