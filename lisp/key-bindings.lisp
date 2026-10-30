@@ -284,11 +284,6 @@ keymap is listed once, with the binding that wins."
   (error 'mahogany/util:invalid-operation
          :text "No view to move."))
 
-(defun %move-current-surface (destination)
-  (multiple-value-bind (cur-group surface)
-      (%prep-move-cur-view)
-    (state-move-view *compositor-state* cur-group destination surface)))
-
 (defcommand gmerge
     ((from (:function interactively-read-group :data "From Group")))
   (:documentation "Merge FROM into the current group. FROM is not deleted")
@@ -304,7 +299,9 @@ keymap is listed once, with the binding that wins."
     ((group (:function interactively-read-group :data "Group?")))
   (:documentation "Move the currently focused view to the specified group")
   (:method (destination)
-    (%move-current-surface destination)))
+    (multiple-value-bind (cur-group surface)
+        (%prep-move-cur-view)
+      (state-move-view *compositor-state* cur-group destination surface))))
 
 (defcommand gmove-select
     ((views (:function read-group-windows :data "To Move"))
@@ -313,15 +310,18 @@ keymap is listed once, with the binding that wins."
   (:method (views destination)
     (let ((cur-group (state-current-group *compositor-state*)))
       (dolist (v views)
-        (state-move-view *compositor-state* cur-group destination v)))))
+        (group-move-view cur-group destination v))
+      (%cur-frame-set-from-group *compositor-state* cur-group))))
 
 (defcommand gmove-and-follow
     ((group (:function interactively-read-group :data "Group?")))
   (:documentation
    "Move the currently focused view to the specified group and switch to it")
   (:method (destination)
-    (%move-current-surface destination)
-    (setf (state-current-group *compositor-state*) destination)))
+    (multiple-value-bind (cur-group surface)
+        (%prep-move-cur-view)
+      (group-move-view cur-group destination surface)
+      (setf (state-current-group *compositor-state*) destination))))
 
 (defcommand gnext-with-window
     ()
