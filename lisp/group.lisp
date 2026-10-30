@@ -123,7 +123,10 @@ output. NIL while it waits for one."
 
 (defun group-move-view (source destination view)
   "Move VIEW from the group SOURCE to DESTINATION, where it is shown in
-the current frame when that is empty, else kept hidden behind it."
+the current frame when that is empty, else kept hidden behind it. This
+does not change the state's focused frame; %cur-frame-set-from-group
+or another function that does MUST be called after (state-move-view
+does both)."
   (declare (type mahogany-group destination source))
   (when (eq source destination)
     (return-from group-move-view))
@@ -145,7 +148,9 @@ the current frame when that is empty, else kept hidden behind it."
          (group-views-changed destination))))))
 
 (defun group-transfer-views (source destination)
-  "Transfer the all views from the SOURCE group to the DESTINATION group"
+  "Transfer the all views from the SOURCE group to the DESTINATION group.
+This does not change the state's focused frame; %cur-frame-set-from-group
+or another function that does MUST be called after."
   (declare (type mahogany-group destination source))
   (dolist (view (mahogany-group-views source))
     (group-move-view source destination view)))
