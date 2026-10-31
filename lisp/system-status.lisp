@@ -57,8 +57,34 @@ the first battery, or NIL without one."
   (integer 1 100)
   "Percent points the brightness keys change the backlight by.")
 
+(config:defconfig *backlight-device* nil
+  (or null string)
+  "The backlight the brightness keys drive, a name under
+/sys/class/backlight such as \"intel_backlight\"; NIL picks one: the
+integrated GPU's (intel_backlight, amdgpu_bl*) before any other, and
+NVIDIA's last, since on a laptop with two GPUs the panel usually hangs
+off the integrated one and the other backlight changes nothing.")
+
+(defun %backlight-name (dir)
+  (car (last (pathname-directory dir))))
+
+(defun %backlight-rank (name)
+  (cond ((or (alexandria:starts-with-subseq "intel_backlight" name)
+             (alexandria:starts-with-subseq "amdgpu_bl" name)) 0)
+        ((alexandria:starts-with-subseq "nvidia" name) 2)
+        (t 1)))
+
 (defun %backlight-directory ()
-  (first (directory "/sys/class/backlight/*/")))
+  "The directory of the backlight in use, or NIL without one."
+  (let ((dirs (directory "/sys/class/backlight/*/")))
+    (if *backlight-device*
+        (find *backlight-device* dirs :key #'%backlight-name :test #'string=)
+        (first (stable-sort (copy-list dirs) #'< :key (lambda (dir) (%backlight-rank (%backlight-name dir))))))))
+
+(defun backlight-device ()
+  "The name of the backlight in use, or NIL without one."
+  (alexandria:when-let ((dir (%backlight-directory)))
+    (%backlight-name dir)))
 
 (defun brightness-percent ()
   "The backlight's brightness in percent, or NIL without one."
@@ -69,13 +95,16 @@ the first battery, or NIL without one."
       (round (* 100 now) max))))
 
 (defun brightness-change (delta &optional callback)
-  "Change the backlight by DELTA percent points through brightnessctl;
-CALLBACK, if given, gets the new percentage."
-  (run-async (list "brightnessctl" "-q" "set"
-                   (format nil "~D%~A" (abs delta) (if (minusp delta) "-" "+")))
-             (lambda (output code)
-               (declare (ignore output code))
-               (when callback (funcall callback (brightness-percent))))))
+  "Change the backlight by DELTA percent points through brightnessctl,
+on the backlight in use; CALLBACK, if given, gets the new percentage."
+  (let ((device (backlight-device)))
+    (run-async (append (list "brightnessctl")
+                       (when device (list "-d" device))
+                       (list "set" (format nil "~D%~A" (abs delta) (if (minusp delta) "-" "+"))))
+               (lambda (output code)
+                 (unless (eql code 0)
+                   (log-string :warn "brightnessctl on ~A failed (~A): ~A" device code output))
+                 (when callback (funcall callback (brightness-percent)))))))
 
 ;;; Network
 

@@ -12,3 +12,9 @@ moment in the on-screen display, a small panel with a bar.
 or =:bottom=) and =mh::*osd-theme*= configure the display, and
 =(mh::osd-show "Caps lock" :icon "⇪")= shows anything else on it:
 =:percent= adds the bar.
+
+The backlight is the integrated GPU's when there are several
+(=intel_backlight= or =amdgpu_bl*= before others, NVIDIA's last): on a
+laptop with two GPUs the panel hangs off the integrated one and the
+other backlight changes nothing. =(setf *backlight-device* "nvidia_0")=
+names one by hand; =brightnessctl -l= lists them.
