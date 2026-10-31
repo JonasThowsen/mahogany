@@ -7,7 +7,8 @@
 ;;; milliseconds, or at the next key press when asked.
 
 ;; In group.lisp and canvas.lisp, which load after this file:
-(declaim (ftype function group-current-output))
+;; group.lisp, which loads after this file, defines it with this type:
+(declaim (ftype (function (mahogany-group) (or null hrt:output)) group-current-output))
 
 (config:defconfig *message-gravity* :gravity-top-right
   (member :gravity-top-right :gravity-top-left :gravity-bottom-right :gravity-bottom-left

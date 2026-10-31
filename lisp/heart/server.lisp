@@ -124,7 +124,7 @@ The order of execution is not guaranteed if multiple lambdas are added at the sa
     (remhash (cffi:pointer-address timer-handle) *timer-table*)
     (hrt-event-loop-timer-destroy timer-handle)))
 
-(declaim (inline %hrt-server))
+;; Not inline: subprocess.lisp, which loads first, calls it already.
 (defun %hrt-server ()
   "Get the global hrt-server object"
   #+hrt-debug

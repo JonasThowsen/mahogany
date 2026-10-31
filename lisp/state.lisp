@@ -781,8 +781,9 @@ output left shows the group the current group's windows went to."
         (mode-line-update))
       ;; An output that was disabled (the lid, a configuration) left
       ;; its container when it was; at shutdown it is just torn down.
-      (log-string (if (hrt:output-enabled hrt-output) :error :debug)
-                  "Removed an output that was never added to a container"))))
+      (if (hrt:output-enabled hrt-output)
+          (log-string :error "Removed an output that was never added to a container")
+          (log-string :debug "Removed an output that was never added to a container")))))
 
 (defun mahogany-state-output-remove (state hrt-output)
   (declare (type mahogany-state state)
