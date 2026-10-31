@@ -303,9 +303,11 @@ the settings set before then only remember the values."
   (declare (optimize (speed 3))
            #+sbcl
            (sb-ext:muffle-conditions sb-ext:compiler-note))
-  (when (not (zerop (logand *keyboard-focus-bits* +click-mask+)))
-    (%focus-frame-under-cursor seat))
-  (hrt:hrt-seat-notify-button seat event))
+  ;; Super and a button on a floating window move or resize it:
+  (unless (floating-drag-button seat event)
+    (when (not (zerop (logand *keyboard-focus-bits* +click-mask+)))
+      (%focus-frame-under-cursor seat))
+    (hrt:hrt-seat-notify-button seat event)))
 
 ;;; A key grab: while a Lisp widget (a menu, a prompt) has it, every key
 ;;; press goes to its function and to nothing else, keybindings included.

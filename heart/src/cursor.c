@@ -318,6 +318,10 @@ error:
     return false;
 }
 
+uint32_t hrt_seat_keyboard_modifiers(struct hrt_seat *seat) {
+    return wlr_keyboard_get_modifiers(&seat->keyboard_group->keyboard);
+}
+
 void hrt_seat_cursor_warp(struct hrt_seat *seat, double lx, double ly) {
     wlr_cursor_warp_closest(seat->cursor, NULL, lx, ly);
     hrt_seat_reset_view_under(seat);

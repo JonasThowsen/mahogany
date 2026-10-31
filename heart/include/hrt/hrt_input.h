@@ -212,6 +212,12 @@ void hrt_seat_set_numlock(struct hrt_seat *seat, bool on);
  **/
 void hrt_seat_cursor_warp(struct hrt_seat *seat, double lx, double ly);
 
+/**
+ * The modifiers held on the keyboard right now (a wlr_keyboard_modifier
+ * mask), for pointer gestures such as Super and a drag.
+ **/
+uint32_t hrt_seat_keyboard_modifiers(struct hrt_seat *seat);
+
 double hrt_seat_cursor_lx(struct hrt_seat *seat);
 
 double hrt_seat_cursor_ly(struct hrt_seat *seat);

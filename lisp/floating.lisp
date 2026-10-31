@@ -182,6 +182,118 @@ Returns that frame, or NIL when VIEW was not floating."
       (group-views-changed group (tree:find-root-frame target))
       target)))
 
+;;; Moving and resizing with the pointer: Super and the left button
+;;; held on a floating window drag it, Super and the right button
+;;; resize it from its bottom right corner, as in niri and Hyprland.
+;;; While the drag lasts a transparent canvas over the output takes the
+;;; pointer, as the screenshot's area selection does, so the window
+;;; underneath hears nothing of it.
+
+(config:defconfig *floating-drag-modifier* :super
+  (member :super :alt nil)
+  "The modifier held with a button to move (left) or resize (right) a
+floating window with the pointer; NIL turns the gestures off.")
+
+(cffi:defcstruct %pointer-button-event
+  ;; struct wlr_pointer_button_event
+  (pointer :pointer)
+  (time-msec :uint32)
+  (button :uint32)
+  (state :int))
+
+(defglobal *floating-drag* nil
+  "The drag going on: a plist (:frame :mode :canvas :x0 :y0 :fx :fy :fw :fh),
+or NIL.")
+
+(defvar *in-drag-motion* nil
+  "True while the frame is being moved for a motion event: moving it
+makes heart look under the pointer again, which reports a motion to
+the canvas, which must not move it again.")
+
+(defun %drag-modifier-held-p (seat)
+  (let ((mask (ecase *floating-drag-modifier*
+                (:super mahogany/keyboard::+modifier-super+)
+                (:alt mahogany/keyboard::+modifier-alt+)
+                ((nil) nil))))
+    (and mask (plusp (logand (hrt:hrt-seat-keyboard-modifiers seat) mask)))))
+
+(defun %floating-drag-end ()
+  (alexandria:when-let ((drag *floating-drag*))
+    (setf *floating-drag* nil)
+    (hrt:canvas-destroy (getf drag :canvas))
+    (hrt:dirty-view-transaction)))
+
+(defun %floating-drag-motion (x y)
+  "The pointer moved to X Y (in layout coordinates) during the drag: the
+frame follows."
+  (alexandria:when-let ((drag (and (not *in-drag-motion*) *floating-drag*)))
+    (let ((*in-drag-motion* t))
+      (destructuring-bind (&key frame mode x0 y0 fx fy fw fh output &allow-other-keys) drag
+        (let ((dx (round (- x x0))) (dy (round (- y y0))))
+          (multiple-value-bind (ox oy) (hrt:output-position output)
+            (multiple-value-bind (ow oh) (hrt:output-resolution output)
+              (ecase mode
+                (:move
+                 ;; Some of the frame stays on the output:
+                 (let ((nx (max (- ox (- fw 60)) (min (+ ox ow -60) (+ fx dx))))
+                       (ny (max oy (min (+ oy oh -60) (+ fy dy)))))
+                   (unless (and (= nx (tree:frame-x frame)) (= ny (tree:frame-y frame)))
+                     (tree::set-position frame nx ny))))
+                (:resize
+                 (let* ((inset (* 2 (%floating-frame-inset)))
+                        (nw (max (+ 120 inset) (+ fw dx)))
+                        (nh (max (+ 80 inset) (+ fh dy))))
+                   (unless (and (= nw (tree:frame-width frame)) (= nh (tree:frame-height frame)))
+                     (tree::set-dimensions frame nw nh)))))))))
+      (hrt:dirty-view-transaction))))
+
+(defun %floating-drag-start (frame mode seat)
+  "Start dragging FRAME, a floating frame, with the pointer: MODE :move
+or :resize. The frame gets the focus too."
+  (%floating-drag-end)
+  (let* ((state *compositor-state*)
+         (output (group-current-output (state-frame-group state frame)))
+         (canvas (hrt:make-canvas output :layer :layer-overlay))
+         (x0 (hrt:hrt-seat-cursor-lx seat))
+         (y0 (hrt:hrt-seat-cursor-ly seat)))
+    (let ((hrt:*in-pointer-event* t))
+      (state-focus-frame state frame seat))
+    (multiple-value-bind (ow oh) (hrt:output-resolution output)
+      (hrt:canvas-set-position canvas 0 0)
+      (hrt:with-canvas-frame (cr canvas ow oh)
+        (draw:clear cr '(0 0 0 0))))
+    (setf *floating-drag* (list :frame frame :mode mode :canvas canvas :output output
+                                :x0 x0 :y0 y0
+                                :fx (tree:frame-x frame) :fy (tree:frame-y frame)
+                                :fw (tree:frame-width frame) :fh (tree:frame-height frame)))
+    (multiple-value-bind (ox oy) (hrt:output-position output)
+      (setf (hrt:canvas-on-motion canvas)
+            (lambda (canvas x y)
+              (declare (ignore canvas))
+              (%floating-drag-motion (+ ox x) (+ oy y)))
+            (hrt:canvas-on-button canvas)
+            (lambda (canvas x y button pressed)
+              (declare (ignore canvas x y button))
+              (unless pressed
+                (%floating-drag-end)))))
+    frame))
+
+(defun floating-drag-button (seat event)
+  "A pointer button EVENT came: when it is Super and the left or right
+button pressed over a floating window, start moving or resizing it and
+return true, so the event goes no further."
+  (cffi:with-foreign-slots ((button state) event (:struct %pointer-button-event))
+    (when (and (= state 1)
+               (or (= button hrt:+button-left+) (= button hrt:+button-right+))
+               (%drag-modifier-held-p seat))
+      (let* ((lx (hrt:hrt-seat-cursor-lx seat))
+             (ly (hrt:hrt-seat-cursor-ly seat))
+             (frame (loop for group being the hash-values of (state-output-groups *compositor-state*)
+                          thereis (group-floating-frame-at group lx ly))))
+        (when frame
+          (%floating-drag-start frame (if (= button hrt:+button-left+) :move :resize) seat)
+          t)))))
+
 ;;; Commands
 
 (defun %focused-window ()

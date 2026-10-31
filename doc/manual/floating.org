@@ -41,6 +41,9 @@ centred.
 | =C-t v= / =C-t V= | the same       |                                                 |
 
 A click on a floating window focuses it and brings it to the front.
+With Super held, the left button drags it about and the right button
+resizes it from its bottom right corner (=*floating-drag-modifier*=:
+=:super=, =:alt= or =nil= for off).
 With a floating window focused, =s-q= closes it, =s-C-1= and the group
 keys move it, and the frame keys (splits, =next-view=, moving by
 direction) act on the tiled frame that had the focus last, or say that

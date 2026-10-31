@@ -210,6 +210,13 @@ an output), and tell the surface there, as when it moved by hand."
   (ly :double))
 
 #-HRT-DEBUG
+(declaim (inline hrt-seat-keyboard-modifiers))
+(cffi:defcfun ("hrt_seat_keyboard_modifiers" hrt-seat-keyboard-modifiers) :uint32
+  "The modifiers held on the keyboard right now (a wlr_keyboard_modifier
+mask), for pointer gestures such as Super and a drag."
+  (seat (:pointer (:struct hrt-seat))))
+
+#-HRT-DEBUG
 (declaim (inline hrt-seat-cursor-lx))
 (cffi:defcfun ("hrt_seat_cursor_lx" hrt-seat-cursor-lx) :double
   (seat (:pointer (:struct hrt-seat))))

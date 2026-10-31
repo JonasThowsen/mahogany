@@ -164,6 +164,8 @@
            #:canvas-on-axis
            #:+button-left+
            #:+button-right+
+           #:hrt-seat-keyboard-modifiers
+           #:+button-right+
            #:+button-middle+
            #:canvas-callbacks-init
            #:hrt-canvas-callbacks
