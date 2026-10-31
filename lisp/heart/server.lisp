@@ -172,7 +172,14 @@ The order of execution is not guaranteed if multiple lambdas are added at the sa
     initialized))
 
 (defun server-start (server)
-  (float-features:with-float-traps-masked (:overflow :divide-by-zero)
+  ;; No floating-point traps while the event loop runs: GPU drivers,
+  ;; pixman and the rest of C compute with NaNs and infinities as they
+  ;; please, and a trap left on turns one of those into a
+  ;; FLOATING-POINT-INVALID-OPERATION in the main thread, which killed
+  ;; sessions. Lisp arithmetic gets NaN or infinity instead of an
+  ;; error, which a compositor can live with.
+  (float-features:with-float-traps-masked (:overflow :divide-by-zero :invalid
+                                           :inexact :underflow)
     (hrt-server-start server)))
 
 (defun server-finish (server)

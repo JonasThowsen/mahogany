@@ -17,26 +17,35 @@
           (when-val-present (val error-spec :error-val)
             ;; let's be pendantic and require nil to make things a bit clearer:
             (unless (null val)
-              (error "Default callback return value must be nil when the callback return type is :void"))
-            (push `(callback-exit-default ()
-	               :report "Return the default value from the callback (nil)"
-	               nil)
-                  restarts))
-            restarts)
+              (error "Default callback return value must be nil when the callback return type is :void")))
+          (push `(callback-exit-default ()
+	             :report "Return the default value from the callback (nil)"
+	             nil)
+                restarts)
+          restarts)
       (let ((restarts (list `(callback-exit (val)
                                  :report "Exit the callback, returning the specified value"
                                  :interactive (lambda ()
 		                                (format *query-io* "Return value (type ~S): " ,return-type)
                                                 (force-output *query-io*)
 		                                (list (read *query-io*)))
-                                 val))))
-        (when-val-present (val error-spec :error-val)
-          (push `(callback-exit-default ()
-                     :report (lambda (s)
-                               (format s "Return the value produced by evaluating ~S"
-                                       (quote ,val)))
-                     ,val)
-                restarts))
+                                 val)))
+            ;; Without an :error-val, a value of the return type that
+            ;; means "nothing": 0, false, NULL. So every callback can be
+            ;; left by callback-exit-default, by the debugger hook of a
+            ;; session without the debugger (mahogany::%recover-from-error).
+            (default (if (member :error-val error-spec)
+                         (cadr (member :error-val error-spec))
+                         (ecase return-type
+                           (:int 0)
+                           (:bool nil)
+                           (:pointer '(cffi:null-pointer))))))
+        (push `(callback-exit-default ()
+                   :report (lambda (s)
+                             (format s "Return the value produced by evaluating ~S"
+                                     (quote ,default)))
+                   ,default)
+              restarts)
         restarts))))
 
  (defmacro define-hrt-callback (name return-type args error-spec &body body)

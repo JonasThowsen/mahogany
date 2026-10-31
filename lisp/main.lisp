@@ -83,14 +83,44 @@ further up. "
     (hrt:keyboard-interactivity-updated handle-layer-shell-keyboard-interactivity)
     (hrt:layer-changed handle-layer-shell-layer-changed)))
 
+(defun %recover-from-error (condition hook)
+  "What a session without the debugger does with an unhandled error:
+log it with its backtrace, tell the user, and leave the callback or
+work item it happened in, so the session goes on without whatever that
+was doing. With nothing to leave, the compositor exits, as it did for
+every error before."
+  (declare (ignore hook))
+  (log-string :error "Unhandled ~A: ~A~%~A" (type-of condition) condition
+              (with-output-to-string (s)
+                #+sbcl (sb-debug:print-backtrace :stream s :count 40)))
+  (ignore-errors
+   (toast-message *compositor-state*
+                  (format nil "Internal error (see the log): ~A" condition)
+                  :theme *message-error-theme* :ms-delay 8000))
+  ;; The nearest way out, and never one outside the event loop (that
+  ;; would unwind through C): the work item's continue when the error
+  ;; is in one, else the callback's exit with a value of its type.
+  (let ((restart (find-if (lambda (r)
+                            (member (restart-name r) '(continue hrt::callback-exit-default)))
+                          (compute-restarts condition))))
+    (cond (restart
+           (log-string :warn "Going on past the error with ~A" (restart-name restart))
+           (invoke-restart restart))
+          (t
+           (log-string :error "No way past the error: exiting")
+           (finish-output)
+           (uiop:quit 1)))))
+
 (defun run-server (args
                    &aux (log-level (intern (gethash 'loglevel args) 'keyword)))
   (hrt:load-foreign-libraries)
   (tree::init-frame-border-styles)
   (log-init :level log-level)
-  (when (gethash 'enable-debugger args)
-    (log-string :info "Running with debugger enabled.")
-    (enable-debugger))
+  (cond ((gethash 'enable-debugger args)
+         (log-string :info "Running with debugger enabled.")
+         (enable-debugger))
+        (t
+         #+sbcl (setf sb-ext:*invoke-debugger-hook* #'%recover-from-error)))
   (cffi:with-foreign-objects ((output-callbacks '(:struct hrt:hrt-output-callbacks))
 		              (seat-callbacks '(:struct hrt:hrt-seat-callbacks))
 		              (view-callbacks '(:struct hrt:hrt-view-callbacks))
