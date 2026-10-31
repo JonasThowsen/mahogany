@@ -9,6 +9,13 @@ void hrt_output_resolution(struct hrt_output *output, int *width, int *height) {
 void hrt_output_position(struct hrt_output *output, int *x, int *y) {
     struct wlr_output_layout_output *l_output = wlr_output_layout_get(
         output->server->output_layout, output->wlr_output);
+    // An output that was disabled is out of the layout until it is
+    // enabled again; asking where it is must not crash the compositor:
+    if (!l_output) {
+        *x = 0;
+        *y = 0;
+        return;
+    }
     *x = l_output->x;
     *y = l_output->y;
 }
