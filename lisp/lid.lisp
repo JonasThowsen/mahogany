@@ -11,8 +11,16 @@
 
 (config:defconfig *lid-close-action* :lock
   (or (member :lock :nothing) function)
-  "What closing the lid does besides switching screens: :lock the
-session, :nothing, or a function of no arguments.")
+  "What closing the lid does when the built-in screen is the only one:
+:lock the session, :nothing, or a function of no arguments. With an
+external monitor connected the lid only switches screens, unless
+*lid-close-action-docked* says otherwise.")
+
+(config:defconfig *lid-close-action-docked* :nothing
+  (or (member :lock :nothing) function)
+  "What closing the lid does when an external monitor is connected and
+takes over (see *lid-switch-outputs*): :nothing by default, since the
+session goes on there; :lock, or a function of no arguments.")
 
 (config:defconfig *lid-switch-outputs* t
   boolean
@@ -63,21 +71,27 @@ on it go (the windows moving to another output) or come back."
     (mode-line-update)
     (wallpaper-update)))
 
+(defun %lid-act (action)
+  (etypecase action
+    ((eql :lock) (lock-session))
+    ((eql :nothing) nil)
+    (function (funcall action))))
+
 (defun lid-closed ()
-  "What happens when the lid closes."
+  "What happens when the lid closes: docked (an external monitor there
+to take over), the built-in screen goes off and *lid-close-action-docked*
+runs; alone, *lid-close-action* runs."
   (setf *lid-closed* t)
   (let* ((outputs (%all-outputs))
          (internal (remove-if-not #'internal-output-p outputs))
-         (external (remove-if #'internal-output-p outputs)))
-    (when (and *lid-switch-outputs* internal external)
+         (external (remove-if #'internal-output-p outputs))
+         (docked (and internal external)))
+    (when (and *lid-switch-outputs* docked)
       (dolist (output internal)
         (log-string :info "Lid closed: switching ~A off" (hrt:output-name output))
         (pushnew (hrt:output-full-name output) *lid-disabled-outputs* :test #'string=)
         (%set-output-enabled output nil)))
-    (etypecase *lid-close-action*
-      ((eql :lock) (lock-session))
-      ((eql :nothing) nil)
-      (function (funcall *lid-close-action*)))
+    (%lid-act (if docked *lid-close-action-docked* *lid-close-action*))
     (dolist (hook *lid-hooks*)
       (funcall hook :closed))))
 

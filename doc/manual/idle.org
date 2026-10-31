@@ -44,11 +44,13 @@ keybinding:
 
 * The lid
 
-Closing the laptop's lid locks the session (=*lid-close-action*=:
-=:lock=, =:nothing=, or a function), and with an external monitor
-connected it switches the built-in screen off, moving its windows to
-the external one; opening the lid switches it on again and the
-windows come back (=*lid-switch-outputs*=). Built-in screens are
+Closing the laptop's lid with no other screen locks the session
+(=*lid-close-action*=: =:lock=, =:nothing=, or a function). With an
+external monitor connected it switches the built-in screen off
+instead, moving its windows into the same-numbered groups on the
+external one, and does nothing else (=*lid-close-action-docked*=,
+=:nothing=; =:lock= to lock then too); opening the lid switches it on
+again and the windows come back (=*lid-switch-outputs*=). Built-in screens are
 those whose names start with =eDP=, =LVDS= or =DSI=
 (=*internal-output-names*=). Suspending stays with systemd-logind
 (=HandleLidSwitch=), which does not suspend while docked.

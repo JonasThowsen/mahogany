@@ -59,6 +59,7 @@
 ;;; built-in screen goes off and its windows move over
 
 ;; (setf *lid-close-action* :nothing)
+;; (setf *lid-close-action-docked* :lock)
 ;; (setf *lid-switch-outputs* nil)
 
 ;;; X11 programs run through xwayland-satellite when it is installed
