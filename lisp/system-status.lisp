@@ -51,6 +51,39 @@ the first battery, or NIL without one."
                                      ((equal status "Full") :full)
                                      (t :unknown)))))))))
 
+(defglobal *battery-status* nil
+  "The last reading of battery-status, or NIL before the first one.")
+
+(defglobal *battery-reading-p* nil
+  "True while a battery-refresh thread reads.")
+
+(defun battery-refresh (&optional callback)
+  "Read the battery in a thread of its own, then, on the main thread,
+keep the reading in *battery-status* and call CALLBACK with it. The
+kernel asks the battery's firmware (ACPI) when its cached value is
+older than a second, which can take a tenth of a second or more, and
+the compositor must not stop for it. A read still under way is not
+started again."
+  (unless *battery-reading-p*
+    (setf *battery-reading-p* t)
+    (flet ((done (status error)
+             (hrt:run-in-main-thread
+              (lambda ()
+                (setf *battery-reading-p* nil)
+                (if error
+                    (log-string :warn "Could not read the battery: ~A" error)
+                    (setf *battery-status* status))
+                (when callback (funcall callback *battery-status*))))))
+      (handler-case
+          (bt:make-thread (lambda ()
+                            (handler-case (done (battery-status) nil)
+                              (error (c) (done nil (princ-to-string c)))))
+                          :name "battery")
+        (error (c)
+          (setf *battery-reading-p* nil)
+          (log-string :warn "Could not start reading the battery: ~A" c)))))
+  (values))
+
 ;;; Backlight
 
 (config:defconfig *brightness-step* 5

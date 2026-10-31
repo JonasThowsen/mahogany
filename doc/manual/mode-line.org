@@ -29,7 +29,8 @@ segments from left to right; each is the name of a module:
 - =:brightness= :: the backlight, from =/sys/class/backlight=; the wheel
   changes it through =brightnessctl=. Hidden without a backlight.
 - =:battery= :: the charge, with the icon following the level and red
-  under 15%. Hidden without a battery.
+  under 15%. Read every 30 seconds, and at once when the pointer comes
+  over it. Hidden without a battery.
 - =:date=, =:clock= :: weekday, day and month; HH:MM.
 - =:center= :: the segments up to =:fill= are centred on the bar.
 - =:fill= :: the rest of the segments go to the right end.
@@ -49,9 +50,12 @@ characters.
 
 A module is defined with =define-mode-line-module=: its text, evaluated
 at every redraw with =output= bound, and optionally an icon, a color,
-what a click and the wheel do, and a =:refresh= function run every
-=:interval= seconds for anything that should be read asynchronously
-(=mh::run-async= runs a program and calls back with its output):
+what a click, the wheel and the pointer coming over it (=:on-hover=)
+do, and a =:refresh= function run every =:interval= seconds for
+anything that should be read asynchronously (=mh::run-async= runs a
+program and calls back with its output). The text runs on the
+compositor's main thread at every redraw, so it must be quick: anything
+that can make it wait belongs in =:refresh=.
 
 #+BEGIN_SRC lisp
   (defvar *weather* nil)

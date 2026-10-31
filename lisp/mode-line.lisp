@@ -92,9 +92,12 @@ window titles. Group and focus changes redraw it at once.")
 (defstruct (mode-line (:constructor %make-mode-line (output canvas)))
   (output nil :type hrt:output :read-only t)
   (canvas nil :type hrt:canvas :read-only t)
-  ;; What a click or the wheel does where: a list of
-  ;; (X0 X1 ON-CLICK ON-SCROLL), from the last draw.
-  (hits '() :type list))
+  ;; What a click, the wheel or the pointer coming over does where: a
+  ;; list of (X0 X1 ON-CLICK ON-SCROLL ON-HOVER), from the last draw.
+  (hits '() :type list)
+  ;; The ON-HOVER of the item under the pointer, so it runs once as the
+  ;; pointer comes over the item, not at every motion:
+  (hovered nil))
 
 (defglobal *mode-lines* (make-hash-table :test 'equal)
   "The mode-line of each output, by the output's full name.")
@@ -115,6 +118,8 @@ window titles. Group and focus changes redraw it at once.")
   ;; () and (delta): what a click and the wheel over the module do:
   (on-click nil :type (or null function))
   (on-scroll nil :type (or null function))
+  ;; (): what the pointer coming over the module does:
+  (on-hover nil :type (or null function))
   ;; Seconds between calls of REFRESH, a function starting whatever
   ;; (asynchronous) reading the text needs:
   (interval nil)
@@ -124,22 +129,27 @@ window titles. Group and focus changes redraw it at once.")
 (defglobal *mode-line-modules* (make-hash-table)
   "The mode-line's modules, by name.")
 
-(defun register-mode-line-module (name &key text icon color on-click on-scroll interval refresh)
+(defun register-mode-line-module (name &key text icon color on-click on-scroll on-hover
+                                             interval refresh)
   (check-type name keyword)
   (setf (gethash name *mode-line-modules*)
         (%make-mode-line-module :name name :text text :icon icon :color color
-                                :on-click on-click :on-scroll on-scroll
+                                :on-click on-click :on-scroll on-scroll :on-hover on-hover
                                 :interval interval :refresh refresh))
   name)
 
-(defmacro define-mode-line-module (name (&key icon color on-click on-scroll interval refresh)
+(defmacro define-mode-line-module (name (&key icon color on-click on-scroll on-hover
+                                               interval refresh)
                                    &body text-body)
   "Define a module the mode-line can show, named by the keyword NAME.
 TEXT-BODY is evaluated at every redraw, with OUTPUT bound to the output,
-and gives the text to show, or NIL for nothing. ICON is a string or the
+and gives the text to show, or NIL for nothing. It runs on the main
+thread, which stops the compositor while it runs: it must be quick, so
+no reading that can wait (a battery, a program). ICON is a string or the
 name of an icon in *icons*, shown before the text. COLOR, a cl-colors2
 rgb, colors the text. ON-CLICK is a function of no arguments; ON-SCROLL
-a function of the wheel's direction, 1 or -1. REFRESH is a function
+a function of the wheel's direction, 1 or -1; ON-HOVER a function of no
+arguments, called when the pointer comes over the module. REFRESH is a function
 called every INTERVAL seconds to start reading something asynchronously
 (see run-async), for text that is not cheap to get.
 
@@ -151,7 +161,7 @@ Then add :uptime to *mode-line-segments*."
   `(register-mode-line-module ,name
                               :text (lambda (output) (declare (ignorable output)) ,@text-body)
                               :icon ,icon :color ,color
-                              :on-click ,on-click :on-scroll ,on-scroll
+                              :on-click ,on-click :on-scroll ,on-scroll :on-hover ,on-hover
                               :interval ,interval :refresh ,refresh))
 
 (defun %module-item (module output)
@@ -168,7 +178,8 @@ Then add :uptime to *mode-line-segments*."
         (list :text (if icon (format nil "~A ~A" icon text) text)
               :color (mode-line-module-color module)
               :on-click (mode-line-module-on-click module)
-              :on-scroll (mode-line-module-on-scroll module))))))
+              :on-scroll (mode-line-module-on-scroll module)
+              :on-hover (mode-line-module-on-hover module))))))
 
 (defun %refresh-modules ()
   "Start the asynchronous refreshes that are due."
@@ -282,7 +293,8 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
                        sum (+ (text-width item) pad)))
              (draw-item (item x available)
                "Draw ITEM at X in at most AVAILABLE pixels; return its width."
-               (destructuring-bind (&key text marked dim flexible on-click on-scroll color) item
+               (destructuring-bind (&key text marked dim flexible on-click on-scroll on-hover color)
+                   item
                  (let* ((room (if flexible (max 0 (- available pad)) nil))
                         (chip (if marked chip-pad 0))
                         (font-color (mh/theme:theme-font-color theme))
@@ -304,8 +316,8 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
                             cr x (- y (round chip 2)) (+ w (* 2 chip)) (+ h chip) 5
                             (mh/theme:theme-border-color theme)))
                          (draw:show-layout cr layout (+ x chip) y text-color)
-                         (when (or on-click on-scroll)
-                           (push (list x (+ x w (* 2 chip)) on-click on-scroll) hits))
+                         (when (or on-click on-scroll on-hover)
+                           (push (list x (+ x w (* 2 chip)) on-click on-scroll on-hover) hits))
                          (+ w (* 2 chip)))))))))
       ;; From the right end first, so the left side knows its room:
       (let ((x (- width pad)))
@@ -351,8 +363,7 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
   "A click on MODE-LINE: run what is under X."
   (declare (ignore y))
   (when (and pressed (= button hrt:+button-left+))
-    (loop for (x0 x1 on-click on-scroll) in (mode-line-hits mode-line)
-          do (progn on-scroll)
+    (loop for (x0 x1 on-click) in (mode-line-hits mode-line)
           when (and on-click (<= x0 x x1))
             do (funcall on-click)
                (mode-line-update)
@@ -363,13 +374,24 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
 say), otherwise it goes through the groups."
   (when vertical
     (let ((direction (if (plusp delta) 1 -1)))
-      (loop for (x0 x1 on-click on-scroll) in (mode-line-hits mode-line)
-            do (progn on-click)
+      (loop for (x0 x1 nil on-scroll) in (mode-line-hits mode-line)
             when (and on-scroll (<= x0 x x1))
               do (funcall on-scroll direction)
                  (return-from %mode-line-scroll))
       (state-next-group *compositor-state* :step direction
                                            :output (mode-line-output mode-line)))))
+
+(defun %mode-line-motion (mode-line x)
+  "The pointer over MODE-LINE at X: when it has come over an item with
+an ON-HOVER, run that, once until it leaves the item."
+  (let ((on-hover (loop for (x0 x1 nil nil on-hover) in (mode-line-hits mode-line)
+                        when (and on-hover (<= x0 x x1))
+                          return on-hover)))
+    (unless (eq on-hover (mode-line-hovered mode-line))
+      (setf (mode-line-hovered mode-line) on-hover)
+      (when on-hover
+        (handler-case (funcall on-hover)
+          (error (c) (log-string :error "Mode-line hover: ~A" c)))))))
 
 ;;; Mode-lines of the outputs
 
@@ -391,7 +413,15 @@ say), otherwise it goes through the groups."
                 (hrt:canvas-on-axis canvas)
                 (lambda (canvas x y vertical delta)
                   (declare (ignore canvas y))
-                  (%mode-line-scroll mode-line x vertical delta)))
+                  (%mode-line-scroll mode-line x vertical delta))
+                (hrt:canvas-on-motion canvas)
+                (lambda (canvas x y)
+                  (declare (ignore canvas y))
+                  (%mode-line-motion mode-line x))
+                (hrt:canvas-on-leave canvas)
+                (lambda (canvas)
+                  (declare (ignore canvas))
+                  (setf (mode-line-hovered mode-line) nil)))
           (%mode-line-reserve output *mode-line-height*)
           (setf (gethash name *mode-lines*) mode-line)))))
 
@@ -479,26 +509,31 @@ missing and dropping those of outputs that have gone."
 
 ;;; The built-in modules
 
-(define-mode-line-module :battery (:icon :battery-full)
-  (alexandria:when-let ((status (battery-status)))
-    (format nil "~D%" (getf status :percent))))
+(defun %battery-refresh-and-redraw ()
+  (battery-refresh (lambda (status)
+                     (declare (ignore status))
+                     (mode-line-update))))
 
-;; The battery's icon and color follow its level:
-(setf (mode-line-module-text (gethash :battery *mode-line-modules*))
-      (lambda (output)
-        (declare (ignore output))
-        (alexandria:when-let ((status (battery-status)))
-          (let* ((percent (getf status :percent))
-                 (state (getf status :state))
-                 (module (gethash :battery *mode-line-modules*)))
-            (setf (mode-line-module-icon module)
-                  (if (member state '(:charging :full))
-                      :battery-charging
-                      (nth (min 10 (floor percent 10)) (getf *icons* :battery-levels)))
-                  (mode-line-module-color module)
-                  (when (and (eq state :discharging) (<= percent 15))
-                    (colors:rgb 0.95 0.3 0.3)))
-            (format nil "~D%" percent)))))
+;; Every 30 seconds, and at once when the pointer comes over it:
+(define-mode-line-module :battery (:icon :battery-full
+                                   :interval 30
+                                   :refresh #'%battery-refresh-and-redraw
+                                   :on-hover #'%battery-refresh-and-redraw)
+  ;; The last reading: reading the battery here, at every redraw, would
+  ;; stop the compositor while the kernel asks the firmware.
+  (alexandria:when-let ((status *battery-status*))
+    (let* ((percent (getf status :percent))
+           (state (getf status :state))
+           (module (gethash :battery *mode-line-modules*)))
+      ;; The battery's icon and color follow its level:
+      (setf (mode-line-module-icon module)
+            (if (member state '(:charging :full))
+                :battery-charging
+                (nth (min 10 (floor percent 10)) (getf *icons* :battery-levels)))
+            (mode-line-module-color module)
+            (when (and (eq state :discharging) (<= percent 15))
+              (colors:rgb 0.95 0.3 0.3)))
+      (format nil "~D%" percent))))
 
 (define-mode-line-module :brightness (:icon :brightness
                                       :on-scroll (lambda (direction)
