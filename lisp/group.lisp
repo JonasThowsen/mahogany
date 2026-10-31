@@ -1,7 +1,8 @@
 (in-package #:mahogany)
 
 ;; In layouts.lisp and floating.lisp, which load after this file:
-(declaim (ftype function group-views-changed view-floats-p group-float-view
+(declaim (ftype function group-views-changed group-auto-layout-p layout-apply
+                view-floats-p group-float-view
                 %destroy-floating-frame %group-tiled-frame))
 
 (defun make-mahogany-group (name number hrt-server)
@@ -363,8 +364,10 @@ to match."
   t)
 
 (defun group-maximize-current-frame (group)
-  "Remove all of the splits in the current window tree and replae it with the
-currently focused frame"
+  "Remove all of the splits in the current window tree and replace it
+with the currently focused frame; when it is the only frame already,
+apply the group's layout again, so the key toggles (a :manual layout
+has nothing to go back to)."
   (declare (type mahogany-group group))
   (let ((current-frame (mahogany-group-current-frame group)))
     (unless current-frame
@@ -374,8 +377,11 @@ currently focused frame"
       (error 'mahogany/util:invalid-operation
              :text "The window floats; float-toggle (s-v) tiles it first"))
     (unless (%maximize-frame group current-frame)
-      (error 'mahogany/util:invalid-operation
-             :text "Frame is already maximized!"))))
+      (cond ((group-auto-layout-p group)
+             (layout-apply group))
+            (t
+             (error 'mahogany/util:invalid-operation
+                    :text "Frame is already maximized, and the layout is manual"))))))
 
 (defstruct (%hidden-view-info (:constructor %make-hidden-view-info (output frame)))
   (output nil :type tree:output-node :read-only t)
