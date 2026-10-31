@@ -327,9 +327,41 @@ the one it shows, by number and around the end; with one group, nothing."
   ;; to state-focus-frame
   (not (typep frame 'tree::layer-shell-frame)))
 
+(config-system:defconfig *warp-pointer-to-focus* t
+  boolean
+  "Whether the pointer moves to the middle of a frame that gets the
+focus from the keyboard (a direction key, next-view, a group or an
+output switch), as niri's warp-mouse-to-focus. A focus change by a
+click leaves the pointer where it is.")
+
+(defun %warp-pointer-to-frame (frame)
+  "Move the pointer into FRAME's middle, unless it is in FRAME already,
+or a pointer event is what focused it."
+  (when (and *warp-pointer-to-focus*
+             (not hrt:*in-pointer-event*)
+             (state-server *compositor-state*))
+    (let ((seat (server-seat *compositor-state*)))
+      (multiple-value-bind (x y width height)
+          (typecase frame
+            (tree:frame (values (tree:frame-x frame) (tree:frame-y frame)
+                                (tree:frame-width frame) (tree:frame-height frame)))
+            (tree:output-node
+             (let ((output (tree:output-container-output (tree:output-node-output frame))))
+               (multiple-value-bind (ox oy) (hrt:output-position output)
+                 (multiple-value-bind (w h) (hrt:output-resolution output)
+                   (values ox oy w h))))))
+        (when (and x (plusp width) (plusp height))
+          (let ((lx (hrt:hrt-seat-cursor-lx seat))
+                (ly (hrt:hrt-seat-cursor-ly seat)))
+            (unless (and (<= x lx (+ x width)) (<= y ly (+ y height)))
+              (hrt:hrt-seat-cursor-warp seat
+                                        (float (+ x (/ width 2)) 1d0)
+                                        (float (+ y (/ height 2)) 1d0)))))))))
+
 (defun state-focus-frame (state new-frame seat)
   "Focus the given frame: one of a group shown on an output, whose group
-becomes the current one, or a layer shell frame."
+becomes the current one, or a layer shell frame. The pointer follows,
+see *warp-pointer-to-focus*."
   (with-accessors ((cur-frame state-%current-frame)
                    (cur-group state-%current-group))
       state
@@ -349,7 +381,9 @@ becomes the current one, or a layer shell frame."
            (when (and cur-in-group cur-group)
              (group-unfocus cur-group seat))
            (tree:mark-frame-focused new-frame seat))))
-      (setf cur-frame new-frame))))
+      (setf cur-frame new-frame)
+      (when (group-frame-p new-frame)
+        (%warp-pointer-to-frame new-frame)))))
 
 (defun %ensure-focus (state)
   "After outputs came or went: when the current group has no output,

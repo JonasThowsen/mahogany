@@ -281,7 +281,8 @@ the settings set before then only remember the values."
                                     (tree:frame-at (mahogany-group-tiled-container group)
                                                    lx ly))))))
     (if found
-        (state-focus-frame *compositor-state* found seat)
+        (let ((hrt:*in-pointer-event* t))
+          (state-focus-frame *compositor-state* found seat))
         nil)))
 
 (hrt:define-hrt-callback handle-mouse-wheel-event :void
@@ -391,8 +392,10 @@ or NIL for keys that type nothing, such as Shift or F1."
       (close-message *compositor-state*))
     ;; A key let go stops its repeat into a grab, whichever key: a
     ;; held key is the one that matters, and it goes when any does.
-    (when (and *grab-repeat* (/= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
-      (%grab-repeat-stop))
+    ;; That is all a release is for here; heart forwards it anyway.
+    (unless (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+)
+      (%grab-repeat-stop)
+      (return-from keyboard-callback nil))
     ;; A widget has the keyboard: it gets the key, nothing else does.
     (when (and *key-grab* (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
       (when (plusp hrt:keysyms-len)

@@ -58,6 +58,7 @@
 ;;; The lid: lock when it closes; with an external monitor, the
 ;;; built-in screen goes off and its windows move over
 
+;; (setf *warp-pointer-to-focus* nil)   ; keep the pointer where it is on keyboard focus
 ;; (setf *lid-close-action* :nothing)
 ;; (setf *lid-close-action-docked* :lock)
 ;; (setf *lid-switch-outputs* nil)

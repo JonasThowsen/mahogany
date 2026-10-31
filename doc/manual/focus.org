@@ -51,3 +51,12 @@ settings that control how focus moves from one surface to another.
   in order to get the equivalent behavior of stumpwm, set the cursor
   focus to =:stumpwm=, and the keyboard focus settings will match up
   nicely with the stumpwm options.
+
+** The pointer follows the focus
+
+When the focus moves by the keyboard (a direction key, =next-frame=,
+a group or an output switch, a window picked in the launcher), the
+pointer moves to the middle of the frame that got it, as niri's
+warp-mouse-to-focus, unless it is in that frame already. A focus
+change by a click leaves the pointer alone. =(setf
+*warp-pointer-to-focus* nil)= turns it off.
