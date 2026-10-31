@@ -1,8 +1,9 @@
 * The Default Keys
 
 Mahogany comes with two sets of keys: SUPER chords laid out as niri
-has them (=h j k l= and the arrows are directions, Control moves the
-window, Shift goes to the next screen), and the =C-t= prefix map of
+has them (=h j k l= and the arrows are directions; Shift, or Control,
+moves the window that way, on to the next screen past the edge;
+Shift-Control moves the focus to the next screen), and the =C-t= prefix map of
 StumpWM (=*root-map*=; =C-t ?= lists it). =s-S-SPC= (or
 =describe-bindings=) shows everything bound right now: typing narrows
 the list to the keys and commands that contain the text, Backspace
@@ -32,11 +33,11 @@ takes it back, and Escape (or a click) closes it. Both live in =lisp/default-bin
 | =s-q=                       | =close-current-view=         | close the window; an empty split frame goes instead |
 | =s-h= =s-j= =s-k= =s-l=     | =focus-left= … =focus-right= | focus the frame in that direction         |
 | =s-Left= … =s-Right=        | the same                     | on this screen, or the next one over      |
-| =s-C-h= … =s-C-l=           | =move-window-left= …         | move the window into that frame           |
-| =s-C-Left= … =s-C-Right=    | the same                     | (the windows swap)                        |
-| =s-S-h= … =s-S-l=           | =focus-output-left= …        | focus the screen in that direction        |
+| =s-S-h= … =s-S-l=           | =move-window-left= …         | move the window into that frame (the windows swap); past the edge, to the next screen |
 | =s-S-Left= … =s-S-Right=    | the same                     |                                           |
-| =s-S-C-h= … =s-S-C-l=       | =move-window-to-output-left= … | move the window to that screen          |
+| =s-C-h= … =s-C-l=           | the same                     | as niri has it                            |
+| =s-S-C-h= … =s-S-C-l=       | =focus-output-left= …        | focus the screen in that direction        |
+| =s-S-C-Left= … =s-S-C-Right= | the same                    | (=move-window-to-output-left= … are commands still) |
 | =s-Tab= / =s-S-Tab=         | =next-view= / =previous-view= | the next window hidden behind this frame |
 | =s-f=                       | =maximize-current-frame=     | one frame, and the layout again on the next press |
 | =s-S-f=                     | =fullscreen-toggle=          | the window fullscreen, and back           |

@@ -1,8 +1,9 @@
 (in-package #:mahogany)
 
 ;;; The default keys: SUPER chords on *top-map*, laid out as niri has
-;;; them (h j k l and the arrows for directions, Control moves the
-;;; window, Shift the output), next to the C-t prefix map of StumpWM
+;;; them (h j k l and the arrows for directions; Shift, and Control,
+;;; move the window, Shift-Control the focus to the next output), next
+;;; to the C-t prefix map of StumpWM
 ;;; (*root-map*). init.lisp changes any of them with define-key and
 ;;; undefine-key on *top-map*; describe-bindings (s-S-SPC) lists what
 ;;; is bound. Also here: *autostart*, the programs started with the
@@ -31,22 +32,24 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "s-M-l" #'lock-session
   "s-S-e" #'shutdown-confirm
   ;; Windows and frames: h j k l and the arrows are left, down, up,
-  ;; right; Control moves the window, Shift goes to the output beside
+  ;; right; Shift (or Control) moves the window that way, on past the
+  ;; edge to the next output; Shift-Control moves the focus to the
+  ;; output that way
   "s-q" #'close-current-view
   "s-h" #'focus-left "s-j" #'focus-down "s-k" #'focus-up "s-l" #'focus-right
   "s-Left" #'focus-left "s-Down" #'focus-down "s-Up" #'focus-up "s-Right" #'focus-right
+  "s-S-h" #'move-window-left "s-S-j" #'move-window-down
+  "s-S-k" #'move-window-up "s-S-l" #'move-window-right
+  "s-S-Left" #'move-window-left "s-S-Down" #'move-window-down
+  "s-S-Up" #'move-window-up "s-S-Right" #'move-window-right
   "s-C-h" #'move-window-left "s-C-j" #'move-window-down
   "s-C-k" #'move-window-up "s-C-l" #'move-window-right
   "s-C-Left" #'move-window-left "s-C-Down" #'move-window-down
   "s-C-Up" #'move-window-up "s-C-Right" #'move-window-right
-  "s-S-h" #'focus-output-left "s-S-j" #'focus-output-down
-  "s-S-k" #'focus-output-up "s-S-l" #'focus-output-right
-  "s-S-Left" #'focus-output-left "s-S-Down" #'focus-output-down
-  "s-S-Up" #'focus-output-up "s-S-Right" #'focus-output-right
-  "s-S-C-h" #'move-window-to-output-left "s-S-C-j" #'move-window-to-output-down
-  "s-S-C-k" #'move-window-to-output-up "s-S-C-l" #'move-window-to-output-right
-  "s-S-C-Left" #'move-window-to-output-left "s-S-C-Down" #'move-window-to-output-down
-  "s-S-C-Up" #'move-window-to-output-up "s-S-C-Right" #'move-window-to-output-right
+  "s-S-C-h" #'focus-output-left "s-S-C-j" #'focus-output-down
+  "s-S-C-k" #'focus-output-up "s-S-C-l" #'focus-output-right
+  "s-S-C-Left" #'focus-output-left "s-S-C-Down" #'focus-output-down
+  "s-S-C-Up" #'focus-output-up "s-S-C-Right" #'focus-output-right
   "s-Tab" #'next-view
   "s-S-Tab" #'previous-view
   "s-f" #'maximize-current-frame
