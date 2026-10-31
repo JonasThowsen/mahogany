@@ -125,6 +125,22 @@ static void seat_handle_key(struct wl_listener *listener, void *data) {
                                                  translated_modifiers,
                                                  translated_keysyms_len);
         }
+    } else if (event->state == WL_KEYBOARD_KEY_STATE_RELEASED &&
+               !hrt_session_locked(server)) {
+        // Lisp hears releases too (a key held in one of its menus stops
+        // repeating when let go), but never swallows them: a client that
+        // saw the press must see the release.
+        const xkb_keysym_t *translated_keysyms;
+        uint32_t translated_modifiers;
+        size_t translated_keysyms_len = seat_translate_keysyms(
+            seat, keycode, &translated_keysyms, &translated_modifiers);
+        struct hrt_keypress_info key_info = {
+            .keysyms      = translated_keysyms,
+            .keysyms_len  = translated_keysyms_len,
+            .modifiers    = translated_modifiers,
+            .wl_key_state = event->state,
+        };
+        seat->callbacks->keyboard_keypress_event(seat, &key_info);
     }
 
     // TODO: I don't know if this condition is correct
