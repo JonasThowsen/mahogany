@@ -459,12 +459,67 @@ in its place."
         (%show-output-group state (%first-group-of-output state host-container))))
     (%attach-group state group output-container)))
 
+(defun view-forget-origin (view &optional (state *compositor-state*))
+  "VIEW stays where it is when the output it came from returns: for a
+window the user moved on purpose."
+  (remhash view (state-view-origins state)))
+
+(defun %merge-group-away (state group host output-name)
+  "Move the windows of GROUP, whose output OUTPUT-NAME is going, into
+the group with the same number on the output HOST (made when missing),
+remembering where each came from, and delete GROUP. Returns the group
+they went to."
+  (declare (type mahogany-state state)
+           (type mahogany-group group))
+  (let* ((host-name (%output-designator-name host))
+         (number (mahogany-group-number group))
+         (origin (list output-name number (mahogany-group-name group)))
+         (destination (or (%state-select-group state number host-name)
+                          (mahogany-state-group-add state :number number :home host-name
+                                                          :make-current nil))))
+    (dolist (view (mahogany-group-views group))
+      (setf (gethash view (state-view-origins state)) origin)
+      (group-move-view group destination view))
+    (%delete-group state group)
+    destination))
+
+(defun %bring-views-home (state output-container)
+  "The windows that left OUTPUT-CONTAINER's output when it went go back
+to it, each into the group it had there, made again when needed with
+its name. A group they leave empty goes, as when a group is left.
+Returns the groups they went to, lowest number first."
+  (declare (type mahogany-state state))
+  (let ((name (%output-designator-name output-container))
+        (origins (state-view-origins state))
+        (sources '())
+        (destinations '()))
+    (maphash (lambda (view origin)
+               (destructuring-bind (home number group-name) origin
+                 (when (equal home name)
+                   (remhash view origins)
+                   (alexandria:when-let ((source (%find-view-in-groups view (state-groups state))))
+                     (let ((destination
+                             (or (%state-select-group state number name)
+                                 (mahogany-state-group-add state :number number :home name
+                                                                 :group-name group-name
+                                                                 :make-current nil))))
+                       (group-move-view source destination view)
+                       (pushnew source sources)
+                       (pushnew destination destinations))))))
+             origins)
+    (dolist (source sources)
+      (when (and (find source (state-groups state))
+                 (%group-disposable-p state source))
+        (%delete-group state source)))
+    (sort destinations #'< :key #'mahogany-group-number)))
+
 (defun %add-output-container (state mh-output)
   "Start using MH-OUTPUT: the groups waiting for it (those it had before
-it went, or every waiting group when it is the first output) and the
-groups of its own living on other outputs since it went get their
-frame trees on it, or it gets a group 1. It shows the current group
-when that came back to it, else its first group by number."
+it went, or every waiting group when it is the first output) get their
+frame trees on it, the windows that moved to other outputs when it
+went come back into their groups there, or it gets a group 1. It shows
+the current group when that came back to it, else the first group
+windows came back to, else its first group by number."
   (declare (type mahogany-state state))
   (let* ((cur-outputs (state-cur-outputs state))
          (name (hrt:output-full-name mh-output))
@@ -488,11 +543,14 @@ when that came back to it, else its first group by number."
           do (%attach-group state group output-container))
     (loop for group across away
           do (%send-group-home state group output-container))
-    (%show-output-group state (if (and current (equal (mahogany-group-home current) name)
-                                       (group-attached-p current))
-                                  current
-                                  (%first-group-of-output state output-container)))
-    (%ensure-focus state)))
+    (let ((returned (%bring-views-home state output-container)))
+      (%show-output-group state (cond ((and current (equal (mahogany-group-home current) name)
+                                            (group-attached-p current))
+                                       current)
+                                      (returned (first returned))
+                                      (t (%first-group-of-output state output-container)))))
+    (%ensure-focus state)
+    (mode-line-update)))
 
 (defun %add-output (state mh-output)
   (declare (type mahogany-state state))
@@ -636,10 +694,11 @@ when that came back to it, else its first group by number."
                             (hrt:hrt-server-seat server))))
 
 (defun %remove-output-container (state hrt-output)
-  "Stop using HRT-OUTPUT. Its groups move to another output, with their
-windows, until it comes back (%add-output-container sends them home);
-without another output they wait for one, their windows hidden. The
-current group is shown where it went."
+  "Stop using HRT-OUTPUT. The windows of each of its groups join the
+group with the same number on the first output left, remembering where
+they came from (%add-output-container brings them back); without
+another output the groups wait for one, their windows hidden. The
+output left shows the group the current group's windows went to."
   (declare (type mahogany-state state)
            (type hrt:output hrt-output))
   (with-accessors ((cur-outputs state-cur-outputs)
@@ -662,14 +721,18 @@ current group is shown where it went."
                   (not (group-frame-p cur-frame))
                   (member (state-frame-group state cur-frame) dead-groups))
           (setf cur-frame nil))
-        (let ((target (and (plusp (length cur-outputs)) (aref cur-outputs 0))))
+        (let ((target (and (plusp (length cur-outputs)) (aref cur-outputs 0)))
+              (show nil))
           (dolist (group dead-groups)
             (group-remove-output group output-container seat)
             (when target
-              (%attach-group state group target)))
-          (when (and target current (member current dead-groups))
-            (%show-output-group state current)))
-        (%ensure-focus state))
+              (let ((destination (%merge-group-away state group target name)))
+                (when (eq group current)
+                  (setf show destination)))))
+          (when show
+            (%show-output-group state show)))
+        (%ensure-focus state)
+        (mode-line-update))
       (log-string :error "Removed an output that was never added to a container"))))
 
 (defun mahogany-state-output-remove (state hrt-output)
@@ -823,6 +886,7 @@ window it started here, and window rules can be built on it.")
       (progn
         (%with-found-group state (group view)
           (group-remove-view group view))
+        (view-forget-origin view state)
         (remhash (cffi:pointer-address view-ptr) views))
       (log-string :error "Could not find mahogany view associated with pointer ~S" view-ptr))))
 

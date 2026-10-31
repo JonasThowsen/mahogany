@@ -244,6 +244,7 @@ keymap is listed once, with the binding that wins."
                   current-frame)
         (error 'mahogany/util:mahogany-panic
                :text "Current tiled frame does not match current group"))
+      (view-forget-origin surface)
       (return-from %prep-move-cur-view (values current-group surface))))
   (error 'mahogany/util:invalid-operation
          :text "No view to move."))

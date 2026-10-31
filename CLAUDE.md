@@ -148,7 +148,9 @@ mahogany, remote»):
   groups and compositor state (groups are per output, as dwm's tags:
   each output has its own, shows one, and the focused frame's group is
   the current one; a group's frame tree has one output node; a group
-  whose output went lives on another, with an `origin`, until it is back); `lisp/command.lisp`, `lisp/key-bindings.lisp`,
+  whose output went sends its windows into the same-numbered group of
+  another output, each with an origin in `state-view-origins`, until it
+  is back); `lisp/command.lisp`, `lisp/key-bindings.lisp`,
   `lisp/kmap-modes.lisp` — commands and keymaps; `lisp/main.lisp` — startup
   and the user's `~/.config/mahogany/init.lisp`.
 - Lisp desktop pieces, one file each: `lisp/mode-line.lisp` (bar and

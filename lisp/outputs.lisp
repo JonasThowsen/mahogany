@@ -66,6 +66,7 @@ window if there is one. Returns VIEW."
     (unless (and source-group target-group)
       (error 'mahogany/util:invalid-operation :text "The window has no group"))
     (unless (eq source target)
+      (view-forget-origin view)
       (hrt:with-view-transaction ()
         (let ((shown (tree:frame-surface target)))
           (setf (tree:frame-surface source) nil)

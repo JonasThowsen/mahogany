@@ -32,18 +32,18 @@ group 2 of every output.
 ** Outputs coming and going
 
 When an output goes away (unplugged, or the lid closes, see
-[[file:touchpad.org][Touchpad, Mouse and Keyboard Locks]]), its groups move with their
-windows to the first output left, as niri's workspaces do: there they
-take the numbers free after that output's own groups (its 1, 2 become
-3, 4 on an output that has two), and the group that was current is
-shown. They remember their own output, and go back to it, with the
-windows they have then, when it returns; the output that hosted them
-shows its own first group again. Without another output the groups
+[[file:touchpad.org][Touchpad, Mouse and Keyboard Locks]]), the windows of each of its
+groups join the group with the same number on the first output left,
+made when it is missing: what was in group 1 of the external screen
+is in group 1 of the laptop screen, next to what was there. The
+output left shows the group the current one's windows went to. Each
+window remembers where it came from, and goes back to that output and
+group (made again, with its name, when needed) when the output
+returns; a group left empty by that goes away, as when a group is
+left. A window moved to another group or output by hand in the
+meantime stays where it was put. Without another output the groups
 wait, their windows hidden, and the next output to appear takes them
 over. A new output starts with a group 1 of its own.
-
-A group named by its number is renamed as it moves; one named with
-=grename= keeps its name.
 
 ** From Lisp
 

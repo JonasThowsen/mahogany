@@ -61,6 +61,12 @@
   (views (make-hash-table)
    :type hash-table
    :read-only t)
+  ;; view -> (output-name group-number group-name): where a window that
+  ;; moved over when its output went belongs, until the output is back
+  ;; or the user moves it.
+  (view-origins (make-hash-table :test 'eq)
+   :type hash-table
+   :read-only t)
   (layer-surfaces (make-hash-table)
    :type hash-table
    :read-only t)
