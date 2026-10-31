@@ -108,7 +108,7 @@ struct hrt_seat_callbacks {
     bool (*keyboard_keypress_event)(struct hrt_seat *seat,
                                     struct hrt_keypress_info *info);
     /**
-     * A switch toggled: SWITCH_TYPE is a wlr_switch_type (1 the lid, 2
+     * A switch toggled: SWITCH_TYPE is a wlr_switch_type (0 the lid, 1
      * tablet mode), ON true when the lid is closed or tablet mode is
      * entered. May be NULL.
      **/

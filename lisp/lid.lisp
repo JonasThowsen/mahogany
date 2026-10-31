@@ -107,8 +107,11 @@ back."
   (dolist (hook *lid-hooks*)
     (funcall hook :opened)))
 
-(defconstant +switch-lid+ 1)
-(defconstant +switch-tablet-mode+ 2)
+;; wlr_switch_type: WLR_SWITCH_TYPE_LID is 0, WLR_SWITCH_TYPE_TABLET_MODE 1
+;; (they were taken for 1 and 2 once, and every real lid event was
+;; logged as an unknown switch and ignored).
+(defconstant +switch-lid+ 0)
+(defconstant +switch-tablet-mode+ 1)
 
 (hrt:define-hrt-callback handle-switch-event :void
     ((seat :pointer)
