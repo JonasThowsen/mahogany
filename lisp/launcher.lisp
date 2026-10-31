@@ -247,7 +247,7 @@ directory with a given file wins."
             (launch-desktop-entry entry)))
 
 (define-launcher-mode :commands (:prompt "Command" :description "Mahogany commands")
-  :items (let ((keys (make-hash-table :test 'equal)))
+  :items (let ((keys (make-hash-table :test 'equalp)))
            (loop for (keys-string . name) in (%active-bindings)
                  unless (gethash name keys)
                    do (setf (gethash name keys) keys-string))
@@ -306,6 +306,90 @@ directory with a given file wins."
                              #'> :key #'cdr))
   :action (lambda (command) (%remember-choice command) (uiop:launch-program command))
   :text-action (lambda (command) (%remember-choice command) (uiop:launch-program command)))
+
+;;; Everything in one list, as Raycast has it: applications, windows,
+;;; commands, groups, screens and the launcher's own modes, each item
+;;; saying what it is, the often chosen first.
+
+(defun %all-command-items ()
+  ;; The bindings name commands in lower case, the database in upper:
+  (let ((keys (make-hash-table :test 'equalp)))
+    (loop for (keys-string . name) in (%active-bindings)
+          unless (gethash name keys)
+            do (setf (gethash name keys) keys-string))
+    (mapcar (lambda (name)
+              (make-menu-item (string-downcase name)
+                              :data (list :command name)
+                              :detail (format nil "Command~@[ · ~A~]" (gethash name keys))))
+            (sort (copy-list (cl-interactive:database-strings
+                              cl-interactive:*default-command-database*))
+                  #'string-lessp))))
+
+(defun %all-items ()
+  "The items of the :all mode, the often chosen first within each kind:
+applications, windows, groups, screens, commands, modes."
+  (let ((windows (loop for group across (state-groups *compositor-state*)
+                       append (loop for view in (mahogany-group-views group)
+                                    collect (make-menu-item (or (hrt:view-title view) "(untitled)")
+                                                            :data (list :window view)
+                                                            :detail (format nil "Window · ~A" (%group-label group))
+                                                            :keywords (list (or (hrt:view-app-id view) ""))))))
+        (apps (%by-history
+               (mapcar (lambda (entry)
+                         (make-menu-item (desktop-entry-name entry)
+                                         :data (list :app entry)
+                                         :detail (format nil "App~@[ · ~A~]"
+                                                         (or (desktop-entry-generic entry)
+                                                             (desktop-entry-comment entry)))
+                                         :keywords (append (desktop-entry-keywords entry)
+                                                           (list (desktop-entry-exec entry)))))
+                       (desktop-entries))
+               (lambda (item) (desktop-entry-name (second (menu-item-data item))))))
+        (groups (loop for group in (%listed-groups)
+                      unless (eq group (state-current-group *compositor-state*))
+                        collect (make-menu-item (format nil "Group ~A" (mahogany-group-name group))
+                                                :data (list :group group)
+                                                :detail (format nil "Group · ~D window~:P"
+                                                                (length (mahogany-group-views group)))
+                                                :keywords (list "workspace"))))
+        (screens (let ((all (outputs)))
+                   (when (> (length all) 1)
+                     (loop for output in all
+                           unless (hrt:output= output (current-output))
+                             collect (make-menu-item (hrt:output-name output)
+                                                     :data (list :output output)
+                                                     :detail "Screen"
+                                                     :keywords (list "monitor" "output"))))))
+        (commands (%by-history (%all-command-items) #'menu-item-label))
+        (modes (loop for name in *launcher-mode-order*
+                     for mode = (gethash name *launcher-modes*)
+                     unless (member name '(:menu :all))
+                       collect (make-menu-item (launcher-mode-description mode)
+                                               :data (list :mode name)
+                                               :detail "Mode"))))
+    (append windows apps groups screens commands modes)))
+
+(defun %all-choose (data)
+  (destructuring-bind (kind payload) data
+    (ecase kind
+      (:app (%remember-choice (desktop-entry-name payload))
+       (launch-desktop-entry payload))
+      (:window (mahogany-state-show-view *compositor-state* payload))
+      (:group (setf (state-current-group *compositor-state*) payload))
+      (:output (focus-output payload))
+      (:command (%remember-choice payload)
+       (let ((command (cl-interactive:find-command
+                       cl-interactive:*default-command-database* payload)))
+         (execute-command command nil (server-seat *compositor-state*))))
+      (:mode (launcher payload)))))
+
+(define-launcher-mode :all (:prompt "Go" :description "Everything: apps, windows, commands, groups, screens")
+  :items (%all-items)
+  :action #'%all-choose)
+
+(defcommand launcher-all ()
+  (:documentation "Everything in one list: applications, windows, commands, groups, screens")
+  (:method () (launcher :all)))
 
 ;;; The input method of interactive commands
 

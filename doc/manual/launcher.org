@@ -22,6 +22,12 @@ moves the selection.
 
 The launcher is a set of menus, called modes. The commands:
 
+- =launcher-all= (=s-SPC=) :: everything in one list, as Raycast has it:
+  the windows open, the applications installed, the other groups of
+  this screen, the other screens, every Mahogany command with its key,
+  and the launcher's modes; each item says what it is, and typing
+  narrows all of them at once. Applications and commands chosen before
+  come first within their kind.
 - =launcher-apps= :: start an application, from the =.desktop= files of
   the installed programs (=XDG_DATA_DIRS= and =~/.local/share/applications=).
   Applications that were started before come first.

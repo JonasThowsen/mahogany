@@ -23,7 +23,7 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
 (define-keys *top-map*
   ;; Programs and menus
   "s-RET" #'open-terminal
-  "s-SPC" #'launcher-apps
+  "s-SPC" #'launcher-all
   "s-S-SPC" #'describe-bindings
   "s-M-SPC" #'launcher-menu
   "s-x" #'launcher-commands
@@ -96,7 +96,7 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
 ;;; and C-t g N (the groups) are in key-bindings.lisp with the map.
 
 (define-keys *root-map*
-  "SPC" #'launcher-apps
+  "SPC" #'launcher-all
   "\"" #'launcher-windows
   "x" #'launcher-commands
   "m" #'launcher-menu

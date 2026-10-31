@@ -17,7 +17,7 @@ takes it back, and Escape (or a click) closes it. Both live in =lisp/default-bin
 | Key          | Command               | What it does                           |
 |--------------+-----------------------+----------------------------------------|
 | =s-RET=      | =open-terminal=       | a terminal (=*default-terminals*=)     |
-| =s-SPC=      | =launcher-apps=       | start an application                   |
+| =s-SPC=      | =launcher-all=        | everything: apps, windows, commands, groups, screens |
 | =s-S-SPC=    | =describe-bindings=   | the keys bound now                     |
 | =s-M-SPC=    | =launcher-menu=       | the launcher's modes (wifi, themes, …) |
 | =s-x=        | =launcher-commands=   | run a command by name                  |
@@ -85,7 +85,7 @@ with the same search as =s-S-SPC=.
 | Key                       | Command                                   | What it does                      |
 |---------------------------+-------------------------------------------+-----------------------------------|
 | =C-t c=                   | =open-terminal=                           | a terminal                        |
-| =C-t SPC=                 | =launcher-apps=                           | start an application              |
+| =C-t SPC=                 | =launcher-all=                            | everything in one list            |
 | =C-t "=                   | =launcher-windows=                        | find a window                     |
 | =C-t x= / =C-t ;= / =C-t != | =launcher-commands= / =colon= / =run-shell-command= | a command, the prompt, a shell command |
 | =C-t m=                   | =launcher-menu=                           | the launcher's modes              |
