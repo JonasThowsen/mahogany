@@ -360,7 +360,7 @@
           # would run the build from before the last nixos-rebuild until
           # the display manager is restarted.
           start = pkgs.writeShellScriptBin "mahogany-session" ''
-            dir="\''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
+            dir="''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
             mkdir -p "$dir"
             [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
             exec ${lib.getExe cfg.package} -l ${cfg.logLevel} >> "$dir/session.log" 2>&1
