@@ -363,6 +363,7 @@
             dir="''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
             mkdir -p "$dir"
             [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
+            ${lib.optionalString (cfg.drmDevices != [ ]) ''export WLR_DRM_DEVICES=${lib.concatStringsSep ":" cfg.drmDevices}''}
             exec ${lib.getExe cfg.package} -l ${cfg.logLevel} >> "$dir/session.log" 2>&1
           '';
           session = pkgs.runCommand "mahogany-session" { passthru.providedSessions = [ "mahogany" ]; } ''
@@ -385,6 +386,19 @@
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.mahogany;
               defaultText = lib.literalExpression "mahogany.packages.\${system}.mahogany";
               description = "The Mahogany package the session runs.";
+            };
+            drmDevices = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              example = lib.literalExpression ''[ "/dev/dri/by-path/pci-0000:00:02.0-card" ]'';
+              description = ''
+                The GPUs wlroots uses, as device paths; the first one renders
+                (WLR_DRM_DEVICES). Empty, wlroots picks the boot GPU. On a
+                laptop with two GPUs whose screens hang off the integrated
+                one, name that one (see ls -l /dev/dri/by-path), or every
+                frame is drawn on the other GPU and copied over, which stalls
+                input and the cursor.
+              '';
             };
             logLevel = lib.mkOption {
               type = lib.types.enum [ "trace" "debug" "info" "warn" "error" ];
