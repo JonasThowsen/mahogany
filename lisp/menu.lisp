@@ -98,6 +98,10 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
   (matches #() :type vector)
   (selected 0 :type fixnum)
   (scroll 0 :type fixnum)
+  ;; The rows the box has while it is open: *menu-rows*, or fewer for
+  ;; a short list. Fixed, so the box does not jump about as the typing
+  ;; narrows the matches.
+  (rows 0 :type fixnum)
   (allow-text nil)
   ;; Draw the filter as dots (a passphrase):
   (secret nil)
@@ -125,6 +129,7 @@ passphrase. An open menu is replaced."
                            :items (mapcar (lambda (item)
                                             (if (stringp item) (make-menu-item item) item))
                                           items)
+                           :rows (min *menu-rows* (length items))
                            :filter initial-filter
                            :allow-text allow-text
                            :secret secret
@@ -274,7 +279,9 @@ passphrase. An open menu is replaced."
          (output (menu-output menu))
          (canvas (menu-canvas menu))
          (matches (menu-matches menu))
-         (rows (min *menu-rows* (length matches))))
+         ;; The box keeps its rows; only as many as match are filled.
+         (rows (menu-rows menu))
+         (shown (min rows (length matches))))
     (multiple-value-bind (output-width output-height) (hrt:output-logical-size output)
       (let* ((width (min output-width
                          (max (round (* output-width *menu-width*)) 520)))
@@ -311,8 +318,12 @@ passphrase. An open menu is replaced."
                                               :ellipsize :start)
               (draw:draw-text cr count (- width pad count-width) pad :font font
                                                                      :color (%dim (mh/theme:theme-font-color theme) 0.6)))
+            ;; Nothing matches: say so, in the first row, dimmed.
+            (when (and (plusp rows) (zerop shown))
+              (draw:draw-text cr "No matches" (* 2 pad) (+ pad row-height pad (round (* pad 3) 8))
+                              :font font :color (%dim (mh/theme:theme-font-color theme) 0.5)))
             ;; The rows:
-            (loop for row from 0 below rows
+            (loop for row from 0 below shown
                   for index = (+ (menu-scroll menu) row)
                   for item = (aref matches index)
                   for row-y = (+ pad row-height pad (* row row-height))
