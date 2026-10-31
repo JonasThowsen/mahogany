@@ -301,14 +301,26 @@ bool hrt_seat_cursor_set_theme(struct hrt_seat *seat, char *theme_name,
             goto error;
         }
     }
-    wlr_xcursor_manager_destroy(seat->xcursor_manager);
-    seat->xcursor_manager = manager;
+    struct wlr_xcursor_manager *old = seat->xcursor_manager;
+    seat->xcursor_manager           = manager;
+    // The cursor may show an image of the old manager (a client set a
+    // shape through it): ours from the new one, before the old one goes.
+    wlr_cursor_set_xcursor(seat->cursor, manager, seat->cursor_image);
+    wlr_xcursor_manager_destroy(old);
+    // A client under the pointer sends its cursor again when the pointer
+    // enters anew; a plain re-enter of the focused surface is ignored.
+    wlr_seat_pointer_clear_focus(seat->seat);
     hrt_seat_reset_view_under(seat);
 
     return true;
 error:
     wlr_xcursor_manager_destroy(manager);
     return false;
+}
+
+void hrt_seat_cursor_warp(struct hrt_seat *seat, double lx, double ly) {
+    wlr_cursor_warp_closest(seat->cursor, NULL, lx, ly);
+    hrt_seat_reset_view_under(seat);
 }
 
 bool hrt_cursor_init(struct hrt_seat *seat, struct hrt_server *server) {

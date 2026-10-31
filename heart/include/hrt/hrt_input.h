@@ -206,6 +206,12 @@ void hrt_seat_reset_mouse_accel(struct hrt_seat *seat);
  **/
 void hrt_seat_set_numlock(struct hrt_seat *seat, bool on);
 
+/**
+ * Move the pointer to the layout position LX, LY (the nearest point on
+ * an output), and tell the surface there, as when it moved by hand.
+ **/
+void hrt_seat_cursor_warp(struct hrt_seat *seat, double lx, double ly);
+
 double hrt_seat_cursor_lx(struct hrt_seat *seat);
 
 double hrt_seat_cursor_ly(struct hrt_seat *seat);

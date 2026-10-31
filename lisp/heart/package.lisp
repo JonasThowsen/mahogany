@@ -92,6 +92,7 @@
            #:hrt-seat-notify-button
            #:hrt-seat-notify-axis
            #:hrt-seat-cursor-lx
+           #:hrt-seat-cursor-warp
            #:hrt-seat-cursor-ly
            #:hrt-seat-set-keymap
            #:hrt-seat-set-repeat-info
@@ -159,6 +160,7 @@
            #:canvas-on-motion
            #:canvas-on-leave
            #:canvas-on-button
+           #:*in-pointer-event*
            #:canvas-on-axis
            #:+button-left+
            #:+button-right+

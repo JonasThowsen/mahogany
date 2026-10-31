@@ -201,6 +201,15 @@ keyboards and keymaps come."
   (on :bool))
 
 #-HRT-DEBUG
+(declaim (inline hrt-seat-cursor-warp))
+(cffi:defcfun ("hrt_seat_cursor_warp" hrt-seat-cursor-warp) :void
+  "Move the pointer to the layout position LX, LY (the nearest point on
+an output), and tell the surface there, as when it moved by hand."
+  (seat (:pointer (:struct hrt-seat)))
+  (lx :double)
+  (ly :double))
+
+#-HRT-DEBUG
 (declaim (inline hrt-seat-cursor-lx))
 (cffi:defcfun ("hrt_seat_cursor_lx" hrt-seat-cursor-lx) :double
   (seat (:pointer (:struct hrt-seat))))

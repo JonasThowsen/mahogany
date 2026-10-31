@@ -159,12 +159,17 @@ only when BODY finishes. Returns true when the frame was shown."
     (alexandria:when-let ((handler (canvas-on-leave canvas)))
       (funcall handler canvas))))
 
+(defvar *in-pointer-event* nil
+  "True while a pointer event is handled (a click on a canvas, on a
+window): a focus change it causes does not move the pointer.")
+
 (define-hrt-callback %canvas-pointer-button :void
     ((pointer :pointer) (x :double) (y :double) (button :uint32) (pressed :bool))
     ()
   (%with-canvas-of (canvas pointer)
     (alexandria:when-let ((handler (canvas-on-button canvas)))
-      (funcall handler canvas x y button pressed))))
+      (let ((*in-pointer-event* t))
+        (funcall handler canvas x y button pressed)))))
 
 (define-hrt-callback %canvas-pointer-axis :void
     ((pointer :pointer) (x :double) (y :double) (vertical :bool) (delta :double))
