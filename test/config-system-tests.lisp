@@ -17,6 +17,7 @@
 
 (defvar *foo* "test variable")
 (defvar *bar* "test variable")
+(defvar *defconfig-sets-default*)
 
 (defconfig-test defconfig-sets-default ()
     ((let ((default 1))

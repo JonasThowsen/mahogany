@@ -51,6 +51,35 @@
        (symbol-name (c2mop:generic-function-name binding))
        (princ-to-string binding))))
 
+(defun %natural-key (string)
+  "STRING cut into runs of digits, as integers, and of other characters,
+lowercased: \"C-t g F10\" is (\"c-t g f\" 10)."
+  (let ((chunks '()) (i 0) (n (length string)))
+    (loop while (< i n)
+          do (let ((j i)
+                   (digits (digit-char-p (char string i))))
+               (loop while (and (< j n) (eq (and (digit-char-p (char string j)) t) (and digits t)))
+                     do (incf j))
+               (push (if digits
+                         (parse-integer string :start i :end j)
+                         (string-downcase (subseq string i j)))
+                     chunks)
+               (setf i j)))
+    (nreverse chunks)))
+
+(defun %natural-lessp (a b)
+  "Whether the string A sorts before B with the numbers in them compared
+as numbers, so F10 comes after F9."
+  (let ((ka (%natural-key a)) (kb (%natural-key b)))
+    (loop for x in ka
+          for y in kb
+          do (cond ((and (integerp x) (integerp y))
+                    (unless (= x y) (return-from %natural-lessp (< x y))))
+                   ((integerp x) (return-from %natural-lessp t))
+                   ((integerp y) (return-from %natural-lessp nil))
+                   ((string/= x y) (return-from %natural-lessp (string-lessp x y)))))
+    (< (length ka) (length kb))))
+
 (defun %active-bindings ()
   "Return a list of (KEYS-STRING . NAME) for every key binding that is
 active, shorter key sequences first. A sequence bound in more than one
@@ -75,7 +104,7 @@ keymap is listed once, with the binding that wins."
             (stable-sort result
                          (lambda (a b)
                            (if (= (first a) (first b))
-                               (string-lessp (second a) (second b))
+                               (%natural-lessp (second a) (second b))
                                (< (first a) (first b))))))))
 
 (declaim (ftype function show-key-help))
