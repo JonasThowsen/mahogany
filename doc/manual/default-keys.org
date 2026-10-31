@@ -88,6 +88,7 @@ with the same search as =s-S-SPC=.
 | =C-t SPC=                 | =launcher-all=                            | everything in one list            |
 | =C-t "=                   | =launcher-windows=                        | find a window                     |
 | =C-t x= / =C-t ;= / =C-t != | =launcher-commands= / =colon= / =run-shell-command= | a command, the prompt, a shell command |
+| =C-t :=                     | =launcher-eval=                                      | evaluate a Lisp form in the compositor |
 | =C-t m=                   | =launcher-menu=                           | the launcher's modes              |
 | =C-t 1= … =C-t 9=         | =select-group-N=                          | group N of this output            |
 | =C-t g 1= … =C-t g 9=     | =move-window-to-group-N=                  | the window to group N             |

@@ -99,6 +99,7 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "SPC" #'launcher-all
   "\"" #'launcher-windows
   "x" #'launcher-commands
+  ":" #'launcher-eval
   "m" #'launcher-menu
   "Left" #'focus-left "Down" #'focus-down "Up" #'focus-up "Right" #'focus-right
   "M-Left" #'move-window-left "M-Down" #'move-window-down

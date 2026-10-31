@@ -108,6 +108,14 @@ give \"Run:\"."
   (:documentation "Run a shell command")
   (:method () (launcher :run)))
 
+(defcommand launcher-eval ()
+  (:documentation "Evaluate a Lisp form in the compositor")
+  (:method () (launcher :eval)))
+
+(defcommand launcher-load ()
+  (:documentation "Load a Lisp file into the compositor")
+  (:method () (launcher :load)))
+
 (defcommand move-window-to-group-menu ()
   (:documentation "Move the current window to a group chosen from a menu")
   (:method () (launcher :move-to-group)))
@@ -306,6 +314,88 @@ directory with a given file wins."
                              #'> :key #'cdr))
   :action (lambda (command) (%remember-choice command) (uiop:launch-program command))
   :text-action (lambda (command) (%remember-choice command) (uiop:launch-program command)))
+
+;;; Lisp from the launcher: a form to evaluate, or a file to load, in
+;;; the running compositor. Both run on the main thread, as every
+;;; choice in a menu does, so they may touch any of the compositor's
+;;; state; a form that takes long stalls the session while it runs.
+
+(defglobal *eval-history* '()
+  "The forms evaluated from the launcher, the latest first.")
+
+(defun eval-text (text)
+  "Read the forms in TEXT in the mahogany package and evaluate them in
+order; the values of the last one."
+  (let ((*package* (find-package :mahogany))
+        (values '()))
+    (with-input-from-string (stream text)
+      (loop for form = (read stream nil stream)
+            until (eq form stream)
+            do (setf values (multiple-value-list (eval form)))))
+    (values-list values)))
+
+(defparameter *values-text-length* 400
+  "How much of the values an answer in a message shows.")
+
+(defun %values-text (values)
+  "VALUES as an answer shows them: each printed, briefly, and the
+whole cut to *values-text-length* characters (the log has it all)."
+  (let* ((*print-length* 20) (*print-level* 4) (*print-pretty* nil)
+         (*package* (find-package :mahogany))
+         (text (if values (format nil "~{~S~^, ~}" values) "; no values")))
+    (if (> (length text) *values-text-length*)
+        (concatenate 'string (subseq text 0 *values-text-length*) "…")
+        text)))
+
+(defun %eval-and-show (text)
+  "Evaluate TEXT, remember it, and show its values in a message."
+  (let* ((text (string-trim " " text))
+         (values (multiple-value-list (eval-text text)))
+         (answer (%values-text values)))
+    (setf *eval-history* (cons text (remove text *eval-history* :test #'string=)))
+    (log-string :info "Evaluated ~A => ~A" text
+                (let ((*print-length* 100) (*print-level* 10) (*print-pretty* nil)
+                      (*package* (find-package :mahogany)))
+                  (format nil "~{~S~^, ~}" values)))
+    (toast-message *compositor-state* (format nil "~A~%=> ~A" text answer))
+    (values-list values)))
+
+(define-launcher-mode :eval (:prompt "Eval" :description "Evaluate a Lisp form in the compositor")
+  :items *eval-history*
+  :action #'%eval-and-show
+  :text-action #'%eval-and-show)
+
+(defglobal *load-history* '()
+  "The files loaded from the launcher, the latest first, as typed.")
+
+(defun load-lisp-file (name)
+  "Load the Lisp file NAME (~ stands for the home directory) into the
+running compositor, as init.lisp is loaded, and return its truename."
+  (let ((file (probe-file (string-trim " " name))))
+    (unless file
+      (error 'mahogany/util:recoverable-error :text (format nil "No file ~A" name)))
+    (load file)
+    (log-string :info "Loaded ~A" file)
+    file))
+
+(defun %load-items ()
+  "The files loaded before, then the Lisp files beside init.lisp."
+  (let ((config-files (mapcar #'uiop:native-namestring
+                              (directory (uiop:xdg-config-home "mahogany/*.lisp")))))
+    (append *load-history*
+            (set-difference config-files *load-history* :test #'string=))))
+
+(defun %load-and-show (name)
+  (let ((file (load-lisp-file name))
+        (name (string-trim " " name)))
+    (setf *load-history* (cons name (remove name *load-history* :test #'string=)))
+    (toast-message *compositor-state* (format nil "Loaded ~A" file))
+    file))
+
+(define-launcher-mode :load (:prompt "Load" :description "Load a Lisp file into the compositor")
+  :items (%load-items)
+  :action #'%load-and-show
+  :text-action #'%load-and-show)
 
 ;;; Everything in one list, as Raycast has it: applications, windows,
 ;;; commands, groups, screens and the launcher's own modes, each item

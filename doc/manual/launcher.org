@@ -36,6 +36,13 @@ The launcher is a set of menus, called modes. The commands:
 - =launcher-groups= :: go to a group.
 - =move-window-to-group-menu= :: move the focused window to a group.
 - =launcher-run= :: run a shell command, with the commands run before to choose from.
+- =launcher-eval= (=C-t :=) :: evaluate a Lisp form in the running
+  compositor and show its values in a message; the forms evaluated
+  before are listed. The form runs on the main thread, as a command
+  does, so it may touch any state. See [[file:live-changes.org][Changing Things While It Runs]].
+- =launcher-load= :: load a Lisp file into the running compositor, as
+  init.lisp is loaded; the Lisp files beside init.lisp are listed, and
+  a path can be typed.
 - =launcher-menu= :: a menu of all the modes.
 
 In Lisp, =(mh::launcher :apps)= opens a mode by name.
