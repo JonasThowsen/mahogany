@@ -204,7 +204,9 @@ static void handle_switch_toggle(struct wl_listener *listener, void *data) {
     struct hrt_input *input = wl_container_of(listener, input, switch_toggle);
     struct wlr_switch_toggle_event *event = data;
     struct hrt_seat *seat                 = input->seat;
-    wlr_log(WLR_DEBUG, "Switch %d toggled to %d", event->switch_type,
+    // Rare, and worth a line in the session log: the lid is what makes
+    // screens come and go.
+    wlr_log(WLR_INFO, "Switch %d toggled to %d", event->switch_type,
             event->switch_state);
     if (seat->callbacks && seat->callbacks->switch_event) {
         seat->callbacks->switch_event(seat, (int)event->switch_type,
@@ -216,6 +218,7 @@ static void handle_switch_toggle(struct wl_listener *listener, void *data) {
 static void add_new_switch(struct hrt_input *input, struct hrt_seat *seat) {
     struct wlr_switch *switch_device =
         wlr_switch_from_input_device(input->wlr_input_device);
+    wlr_log(WLR_INFO, "Switch device added: %s", input->wlr_input_device->name);
     input->switch_toggle.notify = handle_switch_toggle;
     wl_signal_add(&switch_device->events.toggle, &input->switch_toggle);
     (void)seat;
