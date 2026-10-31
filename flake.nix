@@ -363,6 +363,7 @@
             dir="''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
             mkdir -p "$dir"
             [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
+            echo "mahogany-session: Mahogany ${self.shortRev or self.dirtyShortRev or "unknown"} (${cfg.package}), $(date -Is)" >> "$dir/session.log"
             ${lib.optionalString (cfg.drmDevices != [ ]) ''
               # WLR_DRM_DEVICES is colon-separated, and a stable name such as
               # /dev/dri/by-path/pci-0000:00:02.0-card has colons of its own:
@@ -438,6 +439,10 @@
             # swaylock authenticates through PAM:
             security.pam.services.swaylock = { };
             security.polkit.enable = lib.mkDefault true;
+            # brightnessctl's udev rules let the video group write the
+            # backlights and keyboard LEDs; without them only root can,
+            # and the brightness keys move nothing.
+            services.udev.packages = [ pkgs.brightnessctl ];
             hardware.graphics.enable = lib.mkDefault true;
             xdg.portal = {
               enable = lib.mkDefault true;
