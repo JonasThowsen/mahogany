@@ -149,11 +149,27 @@ tree do not apply it again.")
                              (%layout-build new second-spec)))))))
           (t (error "Bad layout spec ~S" spec)))))
 
-(defun layout-apply (group &optional node)
+(defun %insert-before (item before list)
+  "LIST with ITEM moved to just before BEFORE."
+  (loop for x in (remove item list)
+        when (eq x before) collect item
+        collect x))
+
+(defun %neighbour-view (leaves frame)
+  "The window of the nearest frame before FRAME among LEAVES, or else
+after it: where focus goes when FRAME's window has closed."
+  (let ((position (position frame leaves)))
+    (or (some #'tree:frame-surface (reverse (subseq leaves 0 position)))
+        (some #'tree:frame-surface (subseq leaves (1+ position))))))
+
+(defun layout-apply (group &optional node after)
   "Rebuild the frame tree of NODE (the output node the group focuses,
 by default) for GROUP's layout: its windows there, and the hidden
-ones, fill the layout's frames in order. Nothing happens for :manual
-or under a fullscreen window."
+ones, fill the layout's frames in order. AFTER is the window a new
+one has just replaced in the focused frame: it goes back in before
+the new one, so windows open after the one that had focus. When the
+focused frame's window has closed, the window before it gets focus.
+Nothing happens for :manual or under a fullscreen window."
   (let* ((name (group-layout group))
          (node (or node
                    (alexandria:when-let ((frame (mahogany-group-current-frame group)))
@@ -172,7 +188,9 @@ or under a fullscreen window."
            (views (append shown (set-difference (%hidden-views group) shown)))
            (current (mahogany-group-current-frame group))
            (current-here (and current (member current leaves)))
-           (focused (and current-here (tree:frame-surface current)))
+           (focused (and current-here
+                         (or (tree:frame-surface current)
+                             (%neighbour-view leaves current))))
            (output (tree:output-container-output (tree:output-node-output node)))
            (first-leaf (first leaves)))
       (hrt:with-view-transaction ()
@@ -190,6 +208,11 @@ or under a fullscreen window."
                                 (group-main-ratio group) width height))
                  (slots (%layout-build first-leaf spec))
                  (focused-slot (first slots)))
+            ;; Unless that would leave the new window without a frame
+            ;; (monocle), the window it replaced goes back before it:
+            (when (and after focused (not (eq after focused)) (member after views)
+                       (>= (length slots) (length views)))
+              (setf views (%insert-before after focused views)))
             (loop for view in views
                   for slot in slots
                   do (ring-list:remove-item hidden view)
@@ -204,11 +227,12 @@ or under a fullscreen window."
       (hrt:dirty-view-transaction)
       t)))
 
-(defun group-views-changed (group &optional node)
+(defun group-views-changed (group &optional node after)
   "Called by the group when a window came, went or moved: apply an
-automatic layout to the output node NODE."
+automatic layout to the output node NODE. AFTER is the window a new
+one replaced, see layout-apply."
   (when (and (not *in-layout*) (group-auto-layout-p group))
-    (handler-case (layout-apply group node)
+    (handler-case (layout-apply group node after)
       (error (c)
         (log-string :error "Could not apply the layout ~S: ~A" (group-layout group) c)))))
 

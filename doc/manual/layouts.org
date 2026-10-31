@@ -37,6 +37,10 @@ From Lisp, =(layout-set :grid)= sets the current group's layout,
 =(setf (group-layout group) :grid)= any group's, and
 =(setf (group-main-ratio group) 0.7)= its ratio.
 
+A new window opens just after the focused one, and gets focus. When
+the focused window closes, the one before it gets focus (the one after
+it, if it was the first).
+
 A window moved in from another group or output, or shown from the
 hidden ones, takes a place in the layout; windows beyond what the
 layout can show (a tiny output) wait hidden behind the last frame.

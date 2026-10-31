@@ -50,3 +50,9 @@
     (is (equal '(:h 0.3 :leaf :leaf) (spec :test-two 4 0.3)))
     (remhash :test-two mahogany::*layouts*)
     (setf mahogany::*layout-order* before)))
+
+(fiasco:deftest insert-before-moves-the-replaced-window-back ()
+  ;; A new window C replaced B in its frame; B goes back before it:
+  (is (equal '(a b c) (mahogany::%insert-before 'b 'c '(a c b))))
+  (is (equal '(b c a) (mahogany::%insert-before 'b 'c '(c a b))))
+  (is (equal '(a b) (mahogany::%insert-before 'a 'b '(b a)))))
