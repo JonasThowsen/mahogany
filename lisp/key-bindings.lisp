@@ -314,21 +314,19 @@ keymap is listed once, with the binding that wins."
 ;;; a fresh session.
 
 (defun select-group-number (n)
-  "Switch the focused output to its group number N, making the groups
-up to N when they are missing."
+  "Switch the focused output to its group number N, made when it is
+missing (and only it: 9 after 1 gives 1 and 9)."
   (let ((state *compositor-state*))
-    (loop until (%state-select-group state n)
-          do (mahogany-state-group-add state :make-current nil))
-    (state-select-group state n)))
+    (alexandria:if-let ((group (%state-select-group state n)))
+      (setf (state-current-group state) group)
+      (mahogany-state-group-add state :number n))))
 
 (defun move-window-to-group-number (n &key follow)
   "Move the focused window to group number N of its output (made when
 missing), and switch to it when FOLLOW is true."
   (let* ((state *compositor-state*)
          (group (or (%state-select-group state n)
-                    (progn (loop until (%state-select-group state n)
-                                 do (mahogany-state-group-add state :make-current nil))
-                           (%state-select-group state n)))))
+                    (mahogany-state-group-add state :number n :make-current nil))))
     (unless (eq group (state-current-group state))
       (%move-current-surface group)
       (mode-line-update)

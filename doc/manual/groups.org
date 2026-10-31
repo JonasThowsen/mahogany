@@ -9,6 +9,14 @@ made when it is missing, and leaves the other outputs as they are;
 =gprev= (=s-d= / =s-u=) go through the focused output's groups by
 number, around the end.
 
+Only the groups in use exist: =s-9= after =s-1= makes group 9 alone,
+not 2 to 8, and a group named by its number goes away when it is left
+with no windows in it, as niri's workspaces do (the mode-line shows
+the groups that are left, the empty ones dimmed). =(setf
+*remove-empty-groups* nil)= keeps them; a group named with =grename=
+always stays. The mode-line marks the group shown; =(setf
+*show-group-name* t)= names it in a toast on every switch as well.
+
 The current group is the group of the focused frame. Focusing a frame
 on another output, by direction (=s-l=), with =s-S-l= / =s-S-h=, or by
 clicking, makes the group shown there the current one, so the mode-line

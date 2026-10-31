@@ -212,9 +212,16 @@ frame or a frame of no group."
        (log-string :info "Shutdown: No clients, exiting now.")
        (server-stop state)))))
 
-(config-system:defconfig *show-group-name* t
+(config-system:defconfig *show-group-name* nil
   boolean
-  "Whether to name the group in a toast message when switching to it.")
+  "Whether to name the group in a toast message when switching to it.
+Off by default: the mode-line marks it.")
+
+(config-system:defconfig *remove-empty-groups* t
+  boolean
+  "Whether a group named by its number goes away when it is left with
+no windows, as niri's workspaces do, so only the groups in use remain.
+A group named with grename stays.")
 
 (config-system:defconfig *group-name-delay* 500
   fixnum
@@ -225,6 +232,20 @@ frame or a frame of no group."
 whose names start with a dot, such as the scratchpad's, are not."
   (let ((name (mahogany-group-name group)))
     (not (and (plusp (length name)) (char= (char name 0) #\.)))))
+
+(defun %group-disposable-p (state group)
+  "Whether GROUP goes away now that it is left: *remove-empty-groups*,
+and it is attached to an output but not shown there, has no windows and
+is named by its number."
+  (declare (type mahogany-state state))
+  (and *remove-empty-groups*
+       (group-attached-p group)
+       (null (mahogany-group-views group))
+       (string= (mahogany-group-name group)
+                (%next-group-name (mahogany-group-number group)))
+       (let ((home (mahogany-group-home group)))
+         (and (stringp home)
+              (not (eq group (state-output-group state home)))))))
 
 (defun %show-output-group (state group)
   "Show GROUP on its output in place of the group shown there, without
@@ -259,7 +280,11 @@ shown there, and focused."
       (state-focus-frame state group-frame seat)
       (when *show-group-name*
         (toast-message state (mahogany-group-name group)
-                       :ms-delay *group-name-delay*))))
+                       :ms-delay *group-name-delay*)))
+    ;; The group left behind goes when nothing is in it:
+    (when (and previous (not (eq previous group))
+               (%group-disposable-p state previous))
+      (%delete-group state previous)))
   (mode-line-update)
   (hrt:dirty-view-transaction))
 
@@ -734,7 +759,9 @@ which is shown in its place. The only group of an output stays."
         (log-string :warn "Cannot remove the only group of ~A" home)
         (return-from mahogany-state-group-remove))
       (cond ((eq group (state-current-group state))
-             (setf (state-current-group state) heir))
+             ;; Deleted below, once its windows have moved:
+             (let ((*remove-empty-groups* nil))
+               (setf (state-current-group state) heir)))
             ((eq group (state-output-group state home))
              (%show-output-group state heir)))
       (group-transfer-views heir group)

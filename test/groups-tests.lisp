@@ -90,3 +90,23 @@
     (mahogany::%renumber-group state b2 "HDMI-1" 2)
     (is (= 2 (mahogany::mahogany-group-number b2)))
     (is (equal "2" (mahogany::mahogany-group-name b2)))))
+
+(fiasco:deftest an-empty-numbered-group-goes-when-left ()
+  (let* ((a1 (make-group "1" 1 "DP-1" t))
+         (a2 (make-group "2" 2 "DP-1" t))
+         (named (make-group "mail" 3 "DP-1" t))
+         (waiting (make-group "4" 4 "HDMI-1"))
+         (state (make-state a1 a2 named waiting)))
+    (setf (gethash "DP-1" (mahogany::state-output-groups state)) a1)
+    ;; Shown, so it stays; left and empty, so it goes; named, so it
+    ;; stays; not on an output, so it is not touched:
+    (is (not (mahogany::%group-disposable-p state a1)))
+    (is (mahogany::%group-disposable-p state a2))
+    (is (not (mahogany::%group-disposable-p state named)))
+    (is (not (mahogany::%group-disposable-p state waiting)))
+    ;; A window keeps it, and so does turning the behaviour off:
+    (push :view (mahogany::mahogany-group-views a2))
+    (is (not (mahogany::%group-disposable-p state a2)))
+    (setf (mahogany::mahogany-group-views a2) nil)
+    (let ((mahogany::*remove-empty-groups* nil))
+      (is (not (mahogany::%group-disposable-p state a2))))))
