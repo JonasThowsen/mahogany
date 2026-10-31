@@ -1,0 +1,129 @@
+* Changing Things While It Runs
+
+Mahogany is a Lisp image. Nearly everything about it can be changed
+while it runs, without logging out, and this page says what applies
+when, and how to reach the running compositor.
+
+** The three layers
+
+- Your configuration, =~/.config/mahogany/init.lisp= :: settings,
+  keys, themes, layouts, launcher modes, floating rules, programs.
+  Change the file and run =loadrc= (from =C-t x= or =s-SPC=), or
+  evaluate the changed form from Emacs (below). The next login loads
+  the file again, so a change made this way persists by itself.
+- Mahogany's own Lisp, =lisp/*.lisp= :: the bar, the launcher, the
+  layouts, the window rules, the key handling. Any function in it can
+  be redefined in the running session the same way, from a checkout
+  of the repository: the change takes effect at once and lasts until
+  you log out. To keep it, commit it and rebuild.
+- heart, the C backend =heart/= :: the scene graph, input, outputs,
+  the Wayland protocols. A change here needs a rebuild and a new
+  login. It is deliberately thin, and policy stays out of it.
+
+A =nixos-rebuild= is only ever needed for the last two, and for
+Mahogany's Lisp only to make a change permanent.
+
+** Reaching the running compositor
+
+*** Slynk, for Emacs and the lisp command
+
+Mahogany can serve [[https://github.com/joaotavora/sly][SLY]]'s protocol, Slynk, on a port of 127.0.0.1.
+Off by default; to turn it on, in init.lisp:
+
+#+BEGIN_SRC lisp
+  (setf *slynk-port* 4005)   ; 0 takes a free port
+#+END_SRC
+
+or start the compositor with =--slynk 4005= (the NixOS module:
+=programs.mahogany.slynkPort = 4005;=), or run the =slynk-start=
+command. The port in use is written to
+=$XDG_RUNTIME_DIR/mahogany/slynk-port=; =slynk-stop= stops listening.
+
+From Emacs with SLY installed: =M-x sly-connect RET localhost RET 4005
+RET=. Then open init.lisp, or any file under =lisp/=, change a form
+and =C-c C-c= it: the compositor has the new definition. =C-c C-k=
+compiles and loads a whole file, and the REPL evaluates what you type.
+The =lisp= command of [[https://github.com/JonasThowsen/slynk-cli][slynk-cli]] speaks the same protocol, so a coding
+agent on the laptop can work in the session as in a development image.
+
+Two things to know:
+
+- The main thread :: wlroots is single-threaded, and SLY evaluates in
+  a thread of its own. A form that only sets a variable or defines
+  something is fine anywhere. A form that touches the compositor's
+  state, such as groups, frames, outputs, views, or anything in
+  =hrt:=, goes on the main thread:
+
+  #+BEGIN_SRC lisp
+    (in-main-thread (mahogany-group-name (state-current-group *compositor-state*)))
+  #+END_SRC
+
+  =in-main-thread= waits and returns the values; =hrt:with-main-thread=
+  hands the form over without waiting. A form that takes long there
+  stalls the session while it runs.
+- Errors :: an error in a form you evaluate from SLY lands in SLY's
+  debugger, as usual. Errors in the compositor's own callbacks are
+  not sent to Emacs: the session logs them, shows a message and goes
+  on, as it does without Slynk. (Slynk's global debugger is kept off
+  for that reason.)
+
+Anyone who can connect to the port has your shell. Slynk listens on
+127.0.0.1 only, and only when asked.
+
+*** From the launcher
+
+Without Emacs, the launcher (=s-SPC=) has two modes for this:
+
+- =Evaluate a Lisp form in the compositor= (=:eval=, also =C-t :=) ::
+  type a form, =Return= evaluates it on the main thread and shows the
+  values in a message; the forms evaluated before are listed.
+- =Load a Lisp file into the compositor= (=:load=) :: loads a file as
+  init.lisp is loaded; the Lisp files beside init.lisp are listed, and
+  a path can be typed.
+
+** What applies when
+
+Settings are variables read when they are used, so most changes
+apply to the next thing that happens: the next window, the next menu,
+the next key. The exceptions are listed as such. Settings whose value
+is pushed somewhere once, at startup, have a command that pushes it
+again.
+
+| Change                                                        | Applies                                          |
+|---------------------------------------------------------------+--------------------------------------------------|
+| =set-theme=, =set-wallpaper=                                  | at once                                          |
+| =define-theme=                                                | at the next =set-theme=                          |
+| =*default-theme*=                                             | at startup (=set-theme= now)                     |
+| =*mode-line-position*=, =*mode-line-segments*=, =*mode-line-height*=, =*mode-line-icons*= | at the next update, within a second |
+| =*mode-line-enabled*=                                         | the =mode-line= command toggles it               |
+| =*mode-line-timeout*=                                         | =mode-line= twice (the timer is made at start)   |
+| =*tab-bar-height*=, =*tab-width*=                             | at the next update                               |
+| =*menu-...*=, =*message-...*=, =*osd-...*=, =*notification-...*=, =*key-help-padding*= | at the next menu, message, OSD, notification, key list |
+| =define-key=, =define-keys=, =define-kmap=                    | at once                                          |
+| =defcommand=                                                  | at once                                          |
+| =define-layout=                                               | at the next =layout-set= or =layout-apply-now=   |
+| =*layout-main-ratio*=                                         | at the next change (=layout-apply-now= now)      |
+| =*default-layout*=, =*group-layout-defaults*=                 | for groups made from now on                      |
+| =*floating-rules*=                                            | for windows opened from now on                   |
+| =*floating-size*=, =*floating-drag-modifier*=                 | at the next float, the next drag                 |
+| =*remove-empty-groups*=, =*show-group-name*=, =*warp-pointer-to-focus*=, =*focus-on-activation*= | at once |
+| Input settings (touchpad, mouse, Num Lock, cursor theme, key repeat) | at once: their setters tell heart          |
+| =*idle-timeouts*=, =*idle-enabled*=                           | =restart-idle= (=toggle-idle= flips the latter)  |
+| =*idle-lock-command*=                                         | at once                                          |
+| =*lid-close-action*=, =*lid-close-action-docked*=, =*lid-switch-outputs*= | at once                              |
+| =*screenshot-...*=                                            | at once                                          |
+| =*scratchpad-command*=                                        | at the next scratchpad                           |
+| =*default-terminals*=, =*volume-step*=, =*brightness-step*=, =*backlight-device*= | at once                      |
+| =*wifi-interface*=, =*wifi-scan-wait*=                        | at once                                          |
+| =define-launcher-mode=                                        | at once                                          |
+| =define-output-config=                                        | when outputs change (=output-layout-rescan= now) |
+| =*autostart*=                                                 | at startup                                       |
+| =*xwayland*=, =*xwayland-display*=                            | at startup (=xwayland-restart= for the program)  |
+| =*slynk-port*=                                                | at startup (=slynk-start= now)                   |
+| =*notification-hooks*=                                        | at the next notification                         |
+
+A setting set with =set-config= in init.lisp goes back to its default
+when its line is taken out and the file reloaded; one set with =setf=
+keeps its value until the next login. =loadrc= adds and redefines but
+never removes: a key or command the file no longer defines is still
+there until then.

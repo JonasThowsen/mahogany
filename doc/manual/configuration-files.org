@@ -16,7 +16,9 @@ to Mahogany when starting it.
 
 The init file can be loaded again without restarting Mahogany, using
 the =loadrc= command. It has no default keybinding, and is run from the
-=colon= prompt.
+=colon= prompt or the launcher. A single form can be evaluated from
+the launcher too (=C-t :=), or from Emacs connected to the session;
+[[file:live-changes.org][Changing Things While It Runs]] has the ways in, and what applies when.
 
 Only the first load binds =mahogany::*initializing*= to true.
 Guard anything that should not run a second time with it,
