@@ -138,7 +138,9 @@
       ;; let the stdout handler deal with cleanup, stderr
       ;; being done shouldn't stop stdin from being read.
       ;; Wait until that is done to do the cleanup for stderr too.
-      (hrt-event-loop-remove stderr-source)))
+      (unless (cffi:null-pointer-p stderr-source)
+        (hrt-event-loop-remove stderr-source)
+        (setf stderr-source (cffi:null-pointer)))))
   0)
 
 (defparameter *subprocess-exit-wait-msec* 1000
@@ -157,6 +159,14 @@ without one.")
        (let ((result (collect-app-output-end info)))
          (funcall (collect-output-process-callback info) result)
          nil)
+    ;; The stderr source may still be registered: a child the process
+    ;; left behind can hold the pipe open after the process exited. It
+    ;; goes before DATA does, or its hangup would read freed memory
+    ;; (which it did, a memory fault at 0x48 in hrt_event_loop_remove).
+    (cffi:with-foreign-slots ((stderr-source) data (:struct app-output-data))
+      (unless (cffi:null-pointer-p stderr-source)
+        (hrt-event-loop-remove stderr-source)
+        (setf stderr-source (cffi:null-pointer))))
     (collect-app-output-cleanup info)
     (cffi:foreign-free data)))
 
@@ -191,6 +201,7 @@ up to *subprocess-exit-wait-msec*, then finished without a code."
       (when (or (plusp (logand mask +hrt-event-hangup+))
                 (plusp (logand mask +hrt-event-error+)))
         (hrt-event-loop-remove stdout-source)
+        (setf stdout-source (cffi:null-pointer))
         (silence-notes (remhash pid *subprocesses*))
         (%subprocess-finish-when-exited info data 0))))
   0)
