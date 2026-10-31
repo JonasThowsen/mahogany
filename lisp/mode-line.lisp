@@ -89,9 +89,15 @@ use another glyph or a plain character.")
   "Milliseconds between redraws of the mode-line, for the clock and
 window titles. Group and focus changes redraw it at once.")
 
+;; In tabs.lisp, which loads after this file:
+(declaim (ftype function tab-bar-height tabs-update))
+
 (defstruct (mode-line (:constructor %make-mode-line (output canvas)))
   (output nil :type hrt:output :read-only t)
   (canvas nil :type hrt:canvas :read-only t)
+  ;; The height reserved on the output: the bar's, and the tab strip's
+  ;; while a :tabs group is shown.
+  (reserved 0 :type fixnum)
   ;; What a click, the wheel or the pointer coming over does where: a
   ;; list of (X0 X1 ON-CLICK ON-SCROLL ON-HOVER), from the last draw.
   (hits '() :type list)
@@ -350,6 +356,10 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
          (canvas (mode-line-canvas mode-line))
          (theme *mode-line-theme*)
          (height *mode-line-height*))
+    (let ((wanted (+ height (tab-bar-height output))))
+      (unless (= wanted (mode-line-reserved mode-line))
+        (%mode-line-reserve output wanted)
+        (setf (mode-line-reserved mode-line) wanted)))
     (multiple-value-bind (width output-height) (hrt:output-logical-size output)
       (hrt:canvas-set-position canvas 0 (if (eq *mode-line-position* :bottom)
                                             (- output-height height)
@@ -423,6 +433,7 @@ an ON-HOVER, run that, once until it leaves the item."
                   (declare (ignore canvas))
                   (setf (mode-line-hovered mode-line) nil)))
           (%mode-line-reserve output *mode-line-height*)
+          (setf (mode-line-reserved mode-line) *mode-line-height*)
           (setf (gethash name *mode-lines*) mode-line)))))
 
 (defun %remove-mode-line (mode-line)
@@ -455,7 +466,8 @@ missing and dropping those of outputs that have gone."
         (handler-case (mode-line-draw (%ensure-mode-line output))
           (error (c)
             (log-string :error "Could not draw the mode-line of ~S: ~A"
-                        (hrt:output-full-name output) c)))))))
+                        (hrt:output-full-name output) c))))
+      (tabs-update outputs))))
 
 (defun %mode-line-timer-fired (timer)
   (declare (type hrt:timer-handle timer))

@@ -1041,14 +1041,16 @@ focused; hidden behind another window, it is shown in the current frame."
   (when (group-frame-p (state-current-frame state))
     (let ((group (state-current-group state)))
       (group-next-hidden group)
-      (%cur-frame-set-from-group state group))))
+      (%cur-frame-set-from-group state group)
+      (mode-line-update))))
 
 (defun state-prev-hidden-frame (state)
   (declare (type mahogany-state state))
   (when (group-frame-p (state-current-frame state))
     (let ((group (state-current-group state)))
       (group-previous-hidden group)
-      (%cur-frame-set-from-group state group))))
+      (%cur-frame-set-from-group state group)
+      (mode-line-update))))
 
 (config-system:defconfig grab-pointer-cursor "help"
   string

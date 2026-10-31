@@ -225,6 +225,9 @@ Nothing happens for :manual or under a fullscreen window."
                 (setf (state-%current-frame state) focused-slot)
                 (tree:mark-frame-focused focused-slot seat))))))
       (hrt:dirty-view-transaction)
+      ;; The tab strip names the windows:
+      (when (eq name :tabs)
+        (mode-line-update))
       t)))
 
 (defun group-views-changed (group &optional node after)
@@ -242,6 +245,7 @@ one replaced, see layout-apply."
   "Give GROUP the layout NAME and apply it."
   (setf (group-layout group) name)
   (toast-message *compositor-state* (format nil "Layout: ~(~A~)" name))
+  (mode-line-update)
   name)
 
 (defun cycle-layout (&optional (step 1))

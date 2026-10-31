@@ -15,6 +15,7 @@ previous one hiding behind it (=s-Tab= cycles). The layouts:
 | =grid=               | a grid                                                |
 | =dwindle=            | each window halves the last one, spiralling           |
 | =monocle=            | one window at a time, the others behind it (=s-Tab=)  |
+| =tabs=               | =monocle= with a strip under the mode-line naming every window of the group, the shown one marked; click a name, or the wheel over the strip, or =s-Tab=, to show another (=*tab-bar-height*=, =*tab-width*=) |
 
 - =layout-menu= (=s-C-r=) chooses one for the current group,
   =layout-next= (=s-r=) and =layout-previous= cycle, manual included;
