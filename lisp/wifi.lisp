@@ -67,23 +67,45 @@ the connected one."
                                :signal stars :connected connected)
                          networks)))))))))
 
-(defun wifi-refresh (&optional callback)
-  "Ask iwctl for the networks around, asynchronously, into
-*wifi-networks*; CALLBACK, if given, gets the list. A scan is started
-too, so the next refresh sees new networks."
+(config:defconfig *wifi-scan-wait* 3000
+  fixnum
+  "Milliseconds between asking iwd to scan and reading the networks it
+found: a scan takes a moment, and get-networks lists the last one.")
+
+(defun %wifi-get-networks (interface callback)
+  "Read the networks iwd knows on INTERFACE into *wifi-networks*, and
+give CALLBACK the list, when there is one."
+  (run-async (list "iwctl" "station" interface "get-networks")
+             (lambda (output code)
+               (setf *wifi-networks*
+                     (if (and output (eql code 0))
+                         (%parse-iwctl-networks output)
+                         '()))
+               (when callback (funcall callback *wifi-networks*)))))
+
+(defun wifi-refresh (&optional callback (scan t))
+  "Find the networks around, asynchronously, into *wifi-networks*;
+CALLBACK, if given, gets the list. With SCAN (the default) iwd scans
+first and the list is read *wifi-scan-wait* later, so new networks
+show; without, the last scan's list comes at once."
   (let ((interface (wifi-interface)))
     (cond
       ((null interface)
        (when callback (funcall callback nil)))
+      ((not scan)
+       (%wifi-get-networks interface callback))
       (t
-       (run-async (list "iwctl" "station" interface "get-networks")
+       (run-async (list "iwctl" "station" interface "scan")
                   (lambda (output code)
-                    (setf *wifi-networks*
-                          (if (and output (eql code 0))
-                              (%parse-iwctl-networks output)
-                              '()))
-                    (run-async (list "iwctl" "station" interface "scan"))
-                    (when callback (funcall callback *wifi-networks*))))))))
+                    ;; "Operation already in progress" is a scan too:
+                    (unless (eql code 0)
+                      (log-string :debug "iwctl scan: ~A (~A)" output code))
+                    (let ((timer (hrt:server-make-timer
+                                  (state-server *compositor-state*)
+                                  (lambda (timer)
+                                    (hrt:timer-handle-destroy timer)
+                                    (%wifi-get-networks interface callback)))))
+                      (hrt:timer-handle-update timer *wifi-scan-wait*))))))))
 
 (defun %wifi-report (text)
   "Tell the user TEXT, as a notification when the service runs, else a
@@ -174,7 +196,8 @@ disconnect, then the rest by signal."
   "Scan for networks and open the wifi menu."
   (if (wifi-interface)
       (progn
-        (toast-message *compositor-state* "Looking for networks…" :ms-delay 1500)
+        (toast-message *compositor-state* "Looking for networks…"
+                       :ms-delay (+ *wifi-scan-wait* 5000))
         (wifi-refresh (lambda (networks)
                         (close-message *compositor-state*)
                         (menu-open (menu-prompt-string "Wifi")

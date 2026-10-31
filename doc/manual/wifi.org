@@ -12,15 +12,24 @@ passphrase iwd does not have yet asks for it in a prompt that shows
 dots; iwd remembers it. The menu also offers =Disconnect= and
 =Rescan=. The outcome comes as a notification.
 
+Opening the menu, and =Rescan=, ask iwd to scan first and read the
+networks =*wifi-scan-wait*= milliseconds later (3 seconds), so new
+networks show; a message says it is looking meanwhile. The =:wifi=
+launcher mode lists the last scan at once; its =Rescan= scans.
+
 Everything runs =iwctl= without waiting, so the compositor never stalls
 on the network.
 
   + =*wifi-interface*= :: The wireless interface, such as ="wlan0"=.
     =NIL= (the default) takes the first one there is.
+  + =*wifi-scan-wait*= :: Milliseconds between the scan and reading
+    its result; 3000 by default.
 
 From Lisp: =(wifi-menu)=, =(wifi-connect "Name")= or
 =(wifi-connect "Name" :passphrase "…")=, =(wifi-disconnect)=,
-=(wifi-refresh)= (the networks seen land in =*wifi-networks*=).
+=(wifi-refresh)= (scans, then the networks seen land in
+=*wifi-networks*=; =(wifi-refresh callback nil)= reads the last scan
+without a new one).
 
 Only iwd is spoken to; NetworkManager users can bind their own command
 (=nmtui= in a terminal, say) to a key or add a launcher mode.
