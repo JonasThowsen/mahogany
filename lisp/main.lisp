@@ -99,10 +99,15 @@ every error before."
                   :theme *message-error-theme* :ms-delay 8000))
   ;; The nearest way out, and never one outside the event loop (that
   ;; would unwind through C): the work item's continue when the error
-  ;; is in one, else the callback's exit with a value of its type.
-  (let ((restart (find-if (lambda (r)
-                            (member (restart-name r) '(continue hrt::callback-exit-default)))
-                          (compute-restarts condition))))
+  ;; is in one, else the callback's exit with a value of its type. Not
+  ;; after a memory fault or exhausted storage, though: C was in the
+  ;; middle of something, and going on from there froze the session;
+  ;; exiting to the display manager is the lesser evil.
+  (let ((restart (and (not (typep condition '(or storage-condition
+                                             #+sbcl sb-sys:memory-fault-error)))
+                      (find-if (lambda (r)
+                                 (member (restart-name r) '(continue hrt::callback-exit-default)))
+                               (compute-restarts condition)))))
     (cond (restart
            (log-string :warn "Going on past the error with ~A" (restart-name restart))
            (invoke-restart restart))
