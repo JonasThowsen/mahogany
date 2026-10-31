@@ -27,6 +27,7 @@
            #:destroy-layer-container
            #:layer-container-transfer-view
            #:layer-container-layer
+           #:layer-container-fullscreen-layer
            #:tree-output-add
            #:root-tree
            #:tree-frame

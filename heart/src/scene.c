@@ -25,10 +25,12 @@ hrt_scene_root_create(struct wlr_scene_tree *scene_tree) {
     scene_root->background            = wlr_scene_tree_create(scene_tree);
     scene_root->bottom                = wlr_scene_tree_create(scene_tree);
     scene_root->normal                = wlr_scene_tree_create(scene_tree);
-    scene_root->fullscreen            = wlr_scene_tree_create(scene_tree);
     scene_root->top                   = wlr_scene_tree_create(scene_tree);
-    scene_root->overlay               = wlr_scene_tree_create(scene_tree);
-    scene_root->session_lock          = wlr_scene_tree_create(scene_tree);
+    // Above the top layer (the mode-line, panels), below the overlay
+    // (menus, messages): a fullscreen window covers the bar, as in sway.
+    scene_root->fullscreen   = wlr_scene_tree_create(scene_tree);
+    scene_root->overlay      = wlr_scene_tree_create(scene_tree);
+    scene_root->session_lock = wlr_scene_tree_create(scene_tree);
 
     scene_root->listeners.scene_destroy.notify = handle_scene_destroy;
     wl_signal_add(&scene_tree->node.events.destroy,
@@ -96,20 +98,39 @@ struct hrt_scene_group *hrt_scene_group_create(struct hrt_server *server) {
     group->layers = wlr_scene_tree_create(server->scene_root->normal);
     if (!group->layers) {
         wlr_log(WLR_ERROR, "Could not create wlr_scene_tree for scene group");
+        free(group);
+        return nullptr;
+    }
+    // The group's fullscreen windows live in the root's fullscreen layer,
+    // so they cover the top layer; shown and hidden with the group.
+    group->fullscreen = wlr_scene_tree_create(server->scene_root->fullscreen);
+    if (!group->fullscreen) {
+        wlr_log(
+            WLR_ERROR,
+            "Could not create the fullscreen wlr_scene_tree for scene group");
+        wlr_scene_node_destroy(&group->layers->node);
+        free(group);
         return nullptr;
     }
 
     return group;
 }
 
+struct wlr_scene_tree *
+hrt_scene_group_fullscreen_layer(struct hrt_scene_group *group) {
+    return group->fullscreen;
+}
+
 void hrt_scene_group_destroy(struct hrt_scene_group *group) {
     wlr_log(WLR_DEBUG, "Destroying scene group");
+    wlr_scene_node_destroy(&group->fullscreen->node);
     wlr_scene_node_destroy(&group->layers->node);
     free(group);
 }
 
 void hrt_scene_group_set_enabled(struct hrt_scene_group *group, bool enabled) {
     wlr_scene_node_set_enabled(&group->layers->node, enabled);
+    wlr_scene_node_set_enabled(&group->fullscreen->node, enabled);
     hrt_idle_inhibit_schedule(group->server);
 }
 

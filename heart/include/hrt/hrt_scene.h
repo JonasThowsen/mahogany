@@ -38,6 +38,9 @@ struct hrt_scene_output {
 
 struct hrt_scene_group {
     struct wlr_scene_tree *layers;
+    // In the root's fullscreen layer, above the top layer: the group's
+    // fullscreen windows. Enabled and disabled along with layers.
+    struct wlr_scene_tree *fullscreen;
     struct hrt_server *server;
 };
 
@@ -61,6 +64,12 @@ hrt_scene_output_get_layer(struct hrt_scene_output *output,
 void hrt_scene_group_destroy(struct hrt_scene_group *group);
 
 void hrt_scene_group_set_enabled(struct hrt_scene_group *group, bool enabled);
+
+/**
+ * The group's tree in the fullscreen layer, for hrt_scene_create_fullscreen_node.
+ **/
+struct wlr_scene_tree *
+hrt_scene_group_fullscreen_layer(struct hrt_scene_group *group);
 
 struct wlr_scene_tree *hrt_scene_layer_create(struct hrt_scene_group *group);
 

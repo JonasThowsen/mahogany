@@ -231,6 +231,7 @@
            #:hrt-scene-layer-destroy
            #:scene-layer-add-view
            #:hrt-scene-group-set-enabled
+           #:hrt-scene-group-fullscreen-layer
            #:hrt-scene-layer-transfer
            #:hrt-scene-group-set-dimensions
            #:hrt-scene-group-set-position

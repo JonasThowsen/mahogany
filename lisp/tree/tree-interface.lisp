@@ -75,7 +75,12 @@ should not be directly instantiated; inherit from it instead."))
 
 (defclass layer-container (tree-parent)
   ((hrt-layer :initarg :hrt-layer
-              :reader layer-container-layer))
+              :reader layer-container-layer)
+   (fullscreen-layer :initarg :fullscreen-layer
+                     :initform nil
+                     :reader layer-container-fullscreen-layer
+                     :documentation "The group's scene tree in the fullscreen
+layer, above the mode-line, where a fullscreen window goes."))
   (:documentation "A class that contains a frame-tree layer"))
 
 (defmacro foreach-frame ((var frame) &body body)
@@ -94,7 +99,8 @@ should not be directly instantiated; inherit from it instead."))
 (defun make-layer-container (hrt-group)
   (let ((hrt-tiled-layer (hrt:scene-layer-create hrt-group)))
     (make-instance 'layer-container
-	           :hrt-layer hrt-tiled-layer)))
+	           :hrt-layer hrt-tiled-layer
+                   :fullscreen-layer (hrt:hrt-scene-group-fullscreen-layer hrt-group))))
 
 (defun destroy-layer-container (layer-container)
   ;; It would make sense call cleanup-frame on each of the

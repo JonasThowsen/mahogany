@@ -43,8 +43,11 @@ view, if there was one."
               (hrt::view-container other-view) nil
               (hrt::view-container view) output-node)
         other-view)
-      ;; There is no fullscreen item:
-      (let* ((hrt-layer (layer-container-layer (frame-parent output-node)))
+      ;; There is no fullscreen item: it goes in the group's tree in the
+      ;; fullscreen layer, above the mode-line and the other top-layer
+      ;; surfaces, below menus and messages.
+      (let* ((hrt-layer (or (layer-container-fullscreen-layer (frame-parent output-node))
+                            (layer-container-layer (frame-parent output-node))))
              (fullscreen-node (hrt:scene-create-fullscreen-node hrt-layer view output)))
         (log-string :trace "Created new fullscreen node for output")
         (setf (output-node-fullscreen output-node) (%make-fullscreen-data view fullscreen-node)

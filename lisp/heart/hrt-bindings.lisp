@@ -522,6 +522,7 @@ Returns false if the output refused."
 
 (cffi:defcstruct hrt-scene-group
   (layers :pointer #| (:struct wlr-scene-tree) |#)
+  (fullscreen :pointer #| (:struct wlr-scene-tree) |#)
   (server (:pointer (:struct hrt-server))))
 
 (cffi:defcstruct hrt-scene-fullscreen-node
@@ -560,6 +561,12 @@ Returns false if the output refused."
 (cffi:defcfun ("hrt_scene_group_set_enabled" hrt-scene-group-set-enabled) :void
   (group (:pointer (:struct hrt-scene-group)))
   (enabled :bool))
+
+#-HRT-DEBUG
+(declaim (inline hrt-scene-group-fullscreen-layer))
+(cffi:defcfun ("hrt_scene_group_fullscreen_layer" hrt-scene-group-fullscreen-layer) :pointer #| (:struct wlr-scene-tree) |#
+  "The group's tree in the fullscreen layer, for hrt_scene_create_fullscreen_node."
+  (group (:pointer (:struct hrt-scene-group))))
 
 #-HRT-DEBUG
 (declaim (inline hrt-scene-layer-create))
