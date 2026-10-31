@@ -116,6 +116,12 @@ void hrt_view_set_hidden(struct hrt_view *view, bool hidden);
 void hrt_view_reparent(struct hrt_view *view, struct wlr_scene_tree *node);
 
 /**
+ * Put the view above its siblings in its scene layer: a floating window
+ * that was clicked, say.
+ **/
+void hrt_view_raise_to_top(struct hrt_view *view);
+
+/**
  * Request that the view be closed. This is the "nice" version
  * that is the same as clicking the close button on window decorations.
  * It does not garentee that the application actually closes, but
@@ -132,5 +138,18 @@ void hrt_view_send_configure(struct hrt_view *view);
  * Return the view's title.
  **/
 char *hrt_view_title(struct hrt_view *view);
+
+/**
+ * Return the view's application id (the client sets it before the view
+ * maps, so it may be NULL on a new view), such as "foot" or
+ * "com.gabm.satty".
+ **/
+char *hrt_view_app_id(struct hrt_view *view);
+
+/**
+ * Whether the view is a dialog of another view: its toplevel has a
+ * parent.
+ **/
+bool hrt_view_transient(struct hrt_view *view);
 
 #endif

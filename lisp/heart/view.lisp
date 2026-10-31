@@ -80,6 +80,22 @@
   (declare (type view view))
   (hrt-view-title (view-hrt-view view)))
 
+(defun view-app-id (view)
+  "The client's application id (\"foot\", \"com.gabm.satty\"), or NIL
+before the client has set it."
+  (declare (type view view))
+  (hrt-view-app-id (view-hrt-view view)))
+
+(defun view-transient-p (view)
+  "Whether VIEW is a dialog of another window: its toplevel has a parent."
+  (declare (type view view))
+  (hrt-view-transient (view-hrt-view view)))
+
+(defun view-raise-to-top (view)
+  "Put VIEW above the other views of its scene layer."
+  (declare (type view view))
+  (hrt-view-raise-to-top (view-hrt-view view)))
+
 (defmethod mh/interface:set-dimensions ((view view) width height)
   "Request that the given view change its size."
   ;; We don't need to dirty the view transaction here,

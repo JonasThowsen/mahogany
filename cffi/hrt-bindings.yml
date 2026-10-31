@@ -48,6 +48,7 @@ string-return:
   include:
     names:
       - "hrt_view_title"
+      - "hrt_view_app_id"
       - "hrt_output_name"
       - "hrt_output_make"
       - "hrt_output_model"

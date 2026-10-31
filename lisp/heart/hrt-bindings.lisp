@@ -329,6 +329,13 @@ it visible to the user."
   (node :pointer #| (:struct wlr-scene-tree) |#))
 
 #-HRT-DEBUG
+(declaim (inline hrt-view-raise-to-top))
+(cffi:defcfun ("hrt_view_raise_to_top" hrt-view-raise-to-top) :void
+  "Put the view above its siblings in its scene layer: a floating window
+that was clicked, say."
+  (view (:pointer (:struct hrt-view))))
+
+#-HRT-DEBUG
 (declaim (inline hrt-view-request-close))
 (cffi:defcfun ("hrt_view_request_close" hrt-view-request-close) :void
   "Request that the view be closed. This is the \"nice\" version
@@ -347,6 +354,21 @@ well behaved ones should."
 (declaim (inline hrt-view-title))
 (cffi:defcfun ("hrt_view_title" hrt-view-title) :string
   "Return the view's title."
+  (view (:pointer (:struct hrt-view))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-view-app-id))
+(cffi:defcfun ("hrt_view_app_id" hrt-view-app-id) :string
+  "Return the view's application id (the client sets it before the view
+maps, so it may be NULL on a new view), such as \"foot\" or
+\"com.gabm.satty\"."
+  (view (:pointer (:struct hrt-view))))
+
+#-HRT-DEBUG
+(declaim (inline hrt-view-transient))
+(cffi:defcfun ("hrt_view_transient" hrt-view-transient) :bool
+  "Whether the view is a dialog of another view: its toplevel has a
+parent."
   (view (:pointer (:struct hrt-view))))
 
 ;; next section imported from file heart/include/hrt/hrt_output.h

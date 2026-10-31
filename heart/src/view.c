@@ -94,6 +94,10 @@ void hrt_view_reparent(struct hrt_view *view, struct wlr_scene_tree *node) {
     hrt_idle_inhibit_schedule(view->server);
 }
 
+void hrt_view_raise_to_top(struct hrt_view *view) {
+    wlr_scene_node_raise_to_top(&view->scene_tree->node);
+}
+
 void hrt_view_request_close(struct hrt_view *view) {
     wlr_xdg_toplevel_send_close(view->xdg_toplevel);
 }
@@ -114,4 +118,12 @@ bool hrt_view_fullscreened(struct hrt_view *view) {
 
 char *hrt_view_title(struct hrt_view *view) {
     return view->xdg_toplevel->title;
+}
+
+char *hrt_view_app_id(struct hrt_view *view) {
+    return view->xdg_toplevel->app_id;
+}
+
+bool hrt_view_transient(struct hrt_view *view) {
+    return view->xdg_toplevel->parent != nullptr;
 }

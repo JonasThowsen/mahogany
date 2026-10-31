@@ -61,6 +61,9 @@
            #:view-destroyed
            #:view-mapped-p
            #:view-title
+           #:view-app-id
+           #:view-transient-p
+           #:view-raise-to-top
            ;; border box
            #:border-box-set-style
            #:border-box-style-create
