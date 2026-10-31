@@ -151,7 +151,8 @@ without one.")
 (defparameter *subprocess-exit-poll-msec* 5)
 
 ;; In server.lisp, which loads after this file:
-(declaim (ftype function server-make-timer timer-handle-update timer-handle-destroy %hrt-server))
+(declaim (ftype function server-make-timer timer-handle-update timer-handle-destroy %hrt-server
+                run-in-main-thread))
 
 (defun %subprocess-finish (info data)
   "Give INFO's output and exit code to its callback and clean up."
@@ -231,19 +232,10 @@ up to *subprocess-exit-wait-msec*, then finished without a code."
    (uiop:process-info-error-output
     (collect-output-process-process info))))
 
-(defun subprocess-collect (server args callback &optional stdin)
-  "Start a subprocess with args ARGS and call CALLBACK with when it has finished
-writing to stdout.
-
-SERVER: a hrt-server object
-ARGS:   A list of program arguments or the name of program; \"ls\"
-        or (list \"ls\" \"/\"
-CALLBACK: A function that takes a COLLECT-OUTPUT-RESULT object as an argument
-STDIN: A string to pass to the standard input of the command"
-  (declare (type (or null string) stdin)
-           (type cffi:foreign-pointer server))
-  (let ((info (collect-app-output-begin args callback stdin))
-        data)
+(defun %subprocess-register (server info)
+  "On the main thread: watch the output of INFO's process, started
+already, and remember it by its pid."
+  (let (data)
     (handler-case
         (let ((stdout-fd (extract-stdout-fd info))
               (stderr-fd (extract-stderr-fd info)))
@@ -263,16 +255,44 @@ STDIN: A string to pass to the standard input of the command"
                                  +hrt-event-readable+
                                  (cffi:callback handle-app-stderr)
                                  data))))
-
       (t (err)
-        ;; I'm not entirely sure how to cleanup here. We certainly need to
-        ;; free the data we allocated and close the streams, but do we really
-        ;; need to terminate the process?
-        ;; This gets handled in normal exectution by handle-app-output:
         (mahogany/log:log-string
-         :error "Process failed to start: ~S:~%" args err)
+         :error "Could not watch the process ~D: ~A" (collect-output-process-pid info) err)
         (uiop:terminate-process (collect-output-process-process info))
         (when data
           (cffi:foreign-free data))
         (remhash (collect-output-process-pid info) *subprocesses*)
         (collect-app-output-cleanup info)))))
+
+(defun subprocess-collect (server args callback &optional stdin)
+  "Start a subprocess with args ARGS and call CALLBACK when it has finished
+writing to stdout.
+
+SERVER: a hrt-server object
+ARGS:   A list of program arguments or the name of program; \"ls\"
+        or (list \"ls\" \"/\"
+CALLBACK: A function that takes a COLLECT-OUTPUT-RESULT object as an argument,
+        called on the main thread; with an empty result and no exit code
+        when the program could not be started.
+STDIN: A string to pass to the standard input of the command
+
+The process is started from a thread of its own: forking an image of
+hundreds of megabytes takes tens of milliseconds, which on the main
+thread held up input every time the bar asked wpctl something."
+  (declare (type (or null string) stdin)
+           (type cffi:foreign-pointer server))
+  (bt:make-thread
+   (lambda ()
+     (handler-case
+         (let ((info (collect-app-output-begin args callback stdin)))
+           (run-in-main-thread (lambda () (%subprocess-register server info))))
+       (error (err)
+         (run-in-main-thread
+          (lambda ()
+            (mahogany/log:log-string :error "Process failed to start: ~S: ~A" args err)
+            (handler-case
+                (funcall callback (make-collect-output-result :stdout "" :stderr "" :exit-code nil))
+              (error (c)
+                (mahogany/log:log-string :error "Subprocess callback for ~S: ~A" args c))))))))
+   :name "subprocess launch")
+  (values))
