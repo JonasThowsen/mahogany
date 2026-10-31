@@ -363,7 +363,17 @@
             dir="''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
             mkdir -p "$dir"
             [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
-            ${lib.optionalString (cfg.drmDevices != [ ]) ''export WLR_DRM_DEVICES=${lib.concatStringsSep ":" cfg.drmDevices}''}
+            ${lib.optionalString (cfg.drmDevices != [ ]) ''
+              # WLR_DRM_DEVICES is colon-separated, and a stable name such as
+              # /dev/dri/by-path/pci-0000:00:02.0-card has colons of its own:
+              # resolve each to its /dev/dri/cardN of this boot first.
+              devices=""
+              for device in ${lib.escapeShellArgs cfg.drmDevices}; do
+                resolved=$(readlink -f "$device" 2>/dev/null || echo "$device")
+                devices="''${devices:+$devices:}$resolved"
+              done
+              export WLR_DRM_DEVICES="$devices"
+            ''}
             exec ${lib.getExe cfg.package} -l ${cfg.logLevel} >> "$dir/session.log" 2>&1
           '';
           session = pkgs.runCommand "mahogany-session" { passthru.providedSessions = [ "mahogany" ]; } ''
