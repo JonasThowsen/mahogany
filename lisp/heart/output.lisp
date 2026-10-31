@@ -148,17 +148,18 @@ removed, before its hrt_output is freed."
 #-hrt-debug
 (declaim (inline output-resolution output-position))
 (defun output-resolution (output)
+  "OUTPUT's size in layout coordinates: its pixels divided by its scale."
   (declare (type output output))
   (with-return-by-value ((width :int) (height :int))
     (hrt-output-resolution (output-hrt-output output) width height)))
 
 (defun output-logical-size (output)
   "OUTPUT's size in layout coordinates, the pixels divided by the scale:
-what frames, canvases and the pointer are measured in."
+what frames, canvases and the pointer are measured in. (The same as
+output-resolution: heart's resolution is the effective one, already
+divided by the scale.)"
   (declare (type output output))
-  (multiple-value-bind (width height) (output-resolution output)
-    (let ((scale (output-scale output)))
-      (values (floor width scale) (floor height scale)))))
+  (output-resolution output))
 
 (defun output-position (output)
   (declare (type output output))
