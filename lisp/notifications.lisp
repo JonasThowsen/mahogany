@@ -308,11 +308,12 @@ history).")
   "(y0 y1 id) of the cards drawn, for clicks.")
 
 (defun %strip-markup (text)
-  "TEXT without its markup tags, entities resolved: bodies may carry
-markup, and bad markup must not break the drawing."
+  "TEXT (a string, or NIL for none) without its markup tags, entities
+resolved: bodies may carry markup, and bad markup must not break the
+drawing."
   (let ((out (make-string-output-stream))
         (in-tag nil))
-    (loop for char across text
+    (loop for char across (or text "")
           do (cond (in-tag (when (char= char #\>) (setf in-tag nil)))
                    ((char= char #\<) (setf in-tag t))
                    (t (write-char char out))))
@@ -334,7 +335,7 @@ markup, and bad markup must not break the drawing."
 (defun %escape-markup (text)
   (%replace-all (%replace-all (%replace-all text "&" "&amp;") "<" "&lt;") ">" "&gt;"))
 
-(defun notification-received (&key app replaces icon summary body actions (urgency 1) (timeout -1))
+(defun notification-received (&key app replaces icon (summary "") (body "") actions (urgency 1) (timeout -1))
   "A notification came in: show it (or replace the one REPLACES), keep
 it in the history, and return its id."
   (let* ((id (if (and replaces (plusp replaces)) replaces
