@@ -17,3 +17,7 @@ to configure the repeat rate and delay to start repeating key presses.
   (config-system:set-config keyboard-repeat-rate 40
                             keyboard-repeat-delay 300)
 #+END_SRC
+
+The same rate and delay apply to keys held down in Mahogany's own
+widgets, the launcher and the other menus, the key help, the prompts:
+a held Backspace keeps deleting there as it would in a program.

@@ -313,15 +313,57 @@ the settings set before then only remember the values."
   "A function of (key text) taking every key press while a widget has the
 keyboard, or NIL. TEXT is what the key types, a string, or NIL.")
 
+(defglobal *grab-repeat* nil
+  "The key held down in a grab, repeating: a plist (:timer TIMER :keysym
+KEYSYM), or NIL.")
+
+(defun %grab-repeat-stop ()
+  "The held key was let go, or the grab ended: no more repeats."
+  (alexandria:when-let ((repeat *grab-repeat*))
+    (setf *grab-repeat* nil)
+    (hrt:timer-handle-destroy (getf repeat :timer))))
+
+(defun %grab-repeat-start (grab key text)
+  "KEY was pressed into GRAB: send it again after *keyboard-repeat-delay*
+and then *keyboard-repeat-rate* times a second, as a client would
+repeat it, until it is released or the grab changes. A widget's
+Backspace has to repeat like a client's."
+  (%grab-repeat-stop)
+  (when (plusp *keyboard-repeat-rate*)
+    (let ((timer (hrt:server-make-timer
+                  (state-server *compositor-state*)
+                  (lambda (timer)
+                    (cond ((and (eq *key-grab* grab)
+                                *grab-repeat*
+                                (eq (getf *grab-repeat* :timer) timer))
+                           (handler-case (funcall grab key text)
+                             (error (c)
+                               (log-string :error "Key grab ~S (repeat): ~A" grab c)
+                               (ungrab-keys)))
+                           ;; The grab may have ended in there:
+                           (if (and *grab-repeat* (eq (getf *grab-repeat* :timer) timer))
+                               (hrt:timer-handle-update
+                                timer (max 1 (round 1000 *keyboard-repeat-rate*)))
+                               (hrt:timer-handle-destroy timer)))
+                          (t
+                           (when (and *grab-repeat* (eq (getf *grab-repeat* :timer) timer))
+                             (setf *grab-repeat* nil))
+                           (hrt:timer-handle-destroy timer)))))))
+      (setf *grab-repeat* (list :timer timer :keysym (key-keysym key)))
+      (hrt:timer-handle-update timer *keyboard-repeat-delay*))))
+
 (defun grab-keys (function)
   "Send every key press to FUNCTION, called with the key and the text it
-types (a string or NIL), until ungrab-keys. Returns the previous grab."
+types (a string or NIL), until ungrab-keys. A key held down repeats
+into it as it would into a client. Returns the previous grab."
   (declare (type function function))
+  (%grab-repeat-stop)
   (prog1 *key-grab*
     (setf *key-grab* function)))
 
 (defun ungrab-keys (&optional previous)
   "End the key grab, or go back to PREVIOUS, the grab there was before."
+  (%grab-repeat-stop)
   (setf *key-grab* previous))
 
 (defun key-text (key)
@@ -347,15 +389,24 @@ or NIL for keys that type nothing, such as Shift or F1."
                             info (:struct hrt:hrt-keypress-info))
     (when *close-message-on-key*
       (close-message *compositor-state*))
+    ;; A key let go stops its repeat into a grab, whichever key: a
+    ;; held key is the one that matters, and it goes when any does.
+    (when (and *grab-repeat* (/= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
+      (%grab-repeat-stop))
     ;; A widget has the keyboard: it gets the key, nothing else does.
     (when (and *key-grab* (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
       (when (plusp hrt:keysyms-len)
         (let ((key (make-key (cffi:mem-aref hrt:keysyms :uint32 0) hrt:modifiers)))
           (unless (key-modifier-key-p key)
-            (handler-case (funcall *key-grab* key (key-text key))
-              (error (c)
-                (log-string :error "Key grab ~S: ~A" *key-grab* c)
-                (ungrab-keys))))))
+            (let ((grab *key-grab*)
+                  (text (key-text key)))
+              (handler-case (funcall grab key text)
+                (error (c)
+                  (log-string :error "Key grab ~S: ~A" grab c)
+                  (ungrab-keys)))
+              ;; Still grabbed by the same widget: the key repeats while held.
+              (when (eq *key-grab* grab)
+                (%grab-repeat-start grab key text))))))
       (return-from keyboard-callback t))
     ;; don't check for key commands if we are collecting args:
     (when *collecting-args-p*
