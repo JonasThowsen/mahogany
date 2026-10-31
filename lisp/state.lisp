@@ -599,16 +599,27 @@ windows came back to, else its first group by number."
            output-layout
            (map 'list #'tree:output-container-output (state-cur-outputs state)))))
     (if config-map
-        (hrt::output-configure-atomic config-map)
+        (prog1 (hrt::output-configure-atomic config-map)
+          (%update-output-containers state))
         (let ((config-name (mh/output-config:output-layout-config-name output-layout)))
           (error 'mahogany/util:invalid-operation
                  :text (format nil
                                "Output layout ~S is not applicable to the current set of connected outputs"
                                config-name))))))
 
-(defun state-output-layouts-rescan (state)
+(defun %update-output-containers (state)
+  "After a configuration was applied: take the outputs it disabled out
+of use, and put the ones it enabled to use."
   (declare (type mahogany-state state))
-  (let ((outputs (map 'list #'tree:output-container-output (state-cur-outputs state))))
+  (map nil (lambda (output) (%update-output-enabled state output))
+       (copy-seq (state-outputs state))))
+
+(defun state-output-layouts-rescan (state)
+  "Apply the output configuration that fits the outputs connected,
+disabled ones included (so a configuration can turn them on again), and
+put the outputs to use, or out of it, as it says."
+  (declare (type mahogany-state state))
+  (let ((outputs (coerce (state-outputs state) 'list)))
     (multiple-value-bind (config-map layout)
         (find-output-configurations outputs)
       ;; Because we presumably already have a valid mode,
@@ -617,6 +628,7 @@ windows came back to, else its first group by number."
         (unless success
           (log-string :error "Failed to apply output configuration ~A"
                       layout))
+        (%update-output-containers state)
         success))))
 
 (defun process-output-changes (timer)
