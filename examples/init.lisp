@@ -49,6 +49,10 @@
 
 ;; (setf *default-terminals* '("foot" "alacritty"))
 ;; (setf *scratchpad-command* '("foot" "--app-id" "scratchpad"))
+;; Windows that float over the tiles (see Floating Windows in the manual):
+;; (push '("org.gnome.Calculator" :width 400 :height 600) *floating-rules*)
+;; Screenshots: open satty right away, instead of on a click on the message
+;; (setf *screenshot-edit* t)
 ;; (setf *autostart* '(("xwayland-satellite") "mako"))
 
 ;;; The lid: lock when it closes; with an external monitor, the

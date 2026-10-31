@@ -1,0 +1,60 @@
+* Floating Windows
+
+A floating window sits over the tiled frames of its group's output
+instead of taking a frame of its own: a screenshot editor, a mixer,
+the file chooser a program opens. It goes with its group (hidden and
+shown with it, along to another group when moved there) and has a
+border like the tiled frames, in the focus colour when it has the
+focus.
+
+** Which windows float
+
+New windows float by =*floating-rules*=, a list of rules:
+
+- an application id, as a string compared whole and ignoring case:
+  ="com.gabm.satty"=, ="pavucontrol"=;
+- =:transient= for a dialog of another window (a file chooser, a
+  "Save as");
+- a function of the view returning true;
+- any of these inside a list with a size: =("com.gabm.satty" :width
+  0.9 :height 0.9)=, fractions of the output's usable area (0 to 1)
+  or pixels above 1.
+
+The default list floats satty, swappy, pavucontrol, nm-connection-editor,
+blueman-manager and transient dialogs. A floating window with no size
+of its own gets =*floating-size*= (=(0.6 0.6)= of the usable area),
+centred.
+
+#+BEGIN_SRC lisp
+  ;; Add a program, with a size:
+  (push '("org.gnome.Calculator" :width 400 :height 600) *floating-rules*)
+  ;; Everything from one program, by a function:
+  (push (lambda (view) (search "Zoom" (hrt:view-title view))) *floating-rules*)
+#+END_SRC
+
+** Keys
+
+| Key       | Command                | What it does                                    |
+|-----------+------------------------+-------------------------------------------------|
+| =s-v=     | =float-toggle=         | float the focused window, or tile it again      |
+| =s-S-v=   | =float-focus-toggle=   | focus the floating window, or the tiled frames  |
+| =C-t v= / =C-t V= | the same       |                                                 |
+
+A click on a floating window focuses it and brings it to the front.
+With a floating window focused, =s-q= closes it, =s-C-1= and the group
+keys move it, and the frame keys (splits, =next-view=, moving by
+direction) act on the tiled frame that had the focus last, or say that
+the window floats. A window made fullscreen from floating comes back
+tiled.
+
+** From Lisp
+
+- =(toggle-floating &optional view)= :: what =s-v= does.
+- =(group-float-view group view &key width height x y focus)= :: float
+  VIEW over GROUP's output, with a size and place of your own.
+- =(group-unfloat-view group view)= :: tile it again.
+- =(view-floats-p view)= :: the rule a new window floats by, or NIL.
+- =(mahogany-group-floating-frames group)= :: the floating frames, the
+  one focused last first; each a =tree:floating-frame=, whose
+  =frame-x=, =frame-y=, =frame-width= and =frame-height= include the
+  border.

@@ -4,8 +4,9 @@ Mahogany comes with two sets of keys: SUPER chords laid out as niri
 has them (=h j k l= and the arrows are directions, Control moves the
 window, Shift goes to the next screen), and the =C-t= prefix map of
 StumpWM (=*root-map*=; =C-t ?= lists it). =s-S-SPC= (or
-=describe-bindings=) shows everything bound right now, until a key is
-pressed. Both live in =lisp/default-bindings.lisp= and
+=describe-bindings=) shows everything bound right now: typing narrows
+the list to the keys and commands that contain the text, Backspace
+takes it back, and Escape (or a click) closes it. Both live in =lisp/default-bindings.lisp= and
 =lisp/key-bindings.lisp=; init.lisp changes them with =define-key= and
 =undefine-key= on =*top-map*=, see
 [[file:kmap-keybindings.org][Customizing Keybindings]].
@@ -44,6 +45,7 @@ pressed. Both live in =lisp/default-bindings.lisp= and
 | =s-r= / =s-C-r= / =s-M-r=   | =layout-next= / =layout-menu= / =layout-manual= | tiling layouts, see [[file:layouts.org][Tiling Layouts]] |
 | =s-+= (=s-==) / =s--=       | =layout-main-ratio-increase= / =-decrease= | the main window's share     |
 | =s-`= / =s-S-`=             | =scratchpad-toggle= / =scratchpad-send= | the scratchpad, see [[file:scratchpad.org][Scratchpad]] |
+| =s-v= / =s-S-v=             | =float-toggle= / =float-focus-toggle= | float the window; focus the floating one, see [[file:floating.org][Floating Windows]] |
 
 ** Groups (workspaces)
 
@@ -76,7 +78,8 @@ See [[file:groups.org][Groups]].
 ** The C-t prefix
 
 The StumpWM keys, for when SUPER is taken (Mahogany nested in another
-compositor, say): =C-t= and then one of these. =C-t ?= lists them all.
+compositor, say): =C-t= and then one of these. =C-t ?= lists them all,
+with the same search as =s-S-SPC=.
 
 | Key                       | Command                                   | What it does                      |
 |---------------------------+-------------------------------------------+-----------------------------------|
@@ -100,6 +103,7 @@ compositor, say): =C-t= and then one of these. =C-t ?= lists them all.
 | =C-t k=                   | =close-current-view=                      | close the window                  |
 | =C-t s= / =C-t S= / =C-t R= | =split-frame-v= / =split-frame-h= / =remove-current-frame= | frames          |
 | =C-t Q= / =C-t f=         | =maximize-current-frame= / =fullscreen-toggle= | one frame; fullscreen        |
+| =C-t v= / =C-t V=         | =float-toggle= / =float-focus-toggle=     | float the window; focus the floating one |
 | =C-t a=                   | =show-time=                               | the date and time                 |
 | =C-t q q=                 | =shutdown-gracefully=                     | quit                              |
 

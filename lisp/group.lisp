@@ -1,14 +1,19 @@
 (in-package #:mahogany)
 
-;; In layouts.lisp, which loads after this file:
-(declaim (ftype function group-views-changed))
+;; In layouts.lisp and floating.lisp, which load after this file:
+(declaim (ftype function group-views-changed view-floats-p group-float-view
+                %destroy-floating-frame %group-tiled-frame))
 
 (defun make-mahogany-group (name number hrt-server)
   (let* ((hrt-group (hrt:server-group-create hrt-server))
-        (tiled-layer (tree:make-layer-container hrt-group)))
+         (tiled-layer (tree:make-layer-container hrt-group))
+         ;; Made after the tiled layer, so it is drawn above it:
+         (floating-layer (tree:make-layer-container hrt-group))
+         (group (%make-mahogany-group name number hrt-group tiled-layer)))
     (hrt:hrt-scene-group-set-enabled hrt-group nil)
+    (setf (mahogany-group-floating-container group) floating-layer)
     (log-string :debug "Created group ~A" name)
-    (%make-mahogany-group name number hrt-group tiled-layer)))
+    group))
 
 (defun destroy-mahogany-group (group scene-tree seat)
   (group-suspend group seat)
@@ -22,6 +27,8 @@
       (dolist (v views)
         (hrt:view-reparent v scene-tree)))
     (tree:destroy-layer-container tiled-layer)
+    (alexandria:when-let ((floating (mahogany-group-floating-container group)))
+      (tree:destroy-layer-container floating))
     (hrt:hrt-scene-group-destroy hrt-group)
     (log-string :debug "Destroyed group ~A" group-name)))
 
@@ -118,14 +125,21 @@ output. NIL while it waits for one."
 the current frame when that is empty, else kept hidden behind it."
   (declare (type mahogany-group destination source))
   (let ((dest-layer (mahogany-group-tiled-container destination))
-        (hidden-list (mahogany-group-hidden-views destination)))
+        (hidden-list (mahogany-group-hidden-views destination))
+        (floating (typep (hrt::view-container view) 'tree:floating-frame)))
     (group-remove-view source view)
     (tree:layer-container-transfer-view dest-layer view)
     (push view (mahogany-group-views destination))
     (when (hrt:view-mapped-p view)
-      (%add-hidden hidden-list view)
-      (%fill-frame-from-hidden destination (mahogany-group-current-frame destination))
-      (group-views-changed destination))))
+      (cond
+        ;; A floating window floats in its new group too, when that
+        ;; has an output to float over:
+        ((and floating (group-attached-p destination))
+         (group-float-view destination view :focus nil))
+        (t
+         (%add-hidden hidden-list view)
+         (%fill-frame-from-hidden destination (%group-tiled-frame destination))
+         (group-views-changed destination))))))
 
 (defun group-transfer-views (destination source)
   "Transfer the all views from the SOURCE group to the DESTINATION group"
@@ -138,7 +152,13 @@ the current frame when that is empty, else kept hidden behind it."
     (when current-frame
       (group-unfocus-frame group current-frame seat))
     (tree:mark-frame-focused frame seat)
-    (setf current-frame frame)))
+    (setf current-frame frame)
+    (cond ((typep frame 'tree:floating-frame)
+           ;; The one focused last comes first:
+           (setf (mahogany-group-floating-frames group)
+                 (cons frame (remove frame (mahogany-group-floating-frames group)))))
+          ((typep frame 'tree:view-frame)
+           (setf (mahogany-group-tiled-frame group) frame)))))
 
 (defun group-unfocus-frame (group frame seat)
   (with-accessors ((current-frame mahogany-group-current-frame)) group
@@ -206,6 +226,14 @@ to match."
         (group-unfocus-frame group (mahogany-group-current-frame group) seat)
         (alexandria:when-let ((other-tree (%first-hash-table-value output-map)))
           (setf cur-frame (tree:find-first-leaf other-tree))))
+      ;; The floating windows over this output go behind the tiled
+      ;; ones, to come out tiled where the group goes:
+      (dolist (frame (remove-if-not (lambda (f) (eq (tree:frame-parent f) tree))
+                                    (mahogany-group-floating-frames group)))
+        (let ((view (tree:frame-surface frame)))
+          (%destroy-floating-frame group frame)
+          (when view
+            (%add-hidden hidden-views view))))
       (tree:remove-frame tree (lambda (x) (alexandria:when-let ((v (tree:frame-surface x)))
 				                            (%add-hidden hidden-views v)))))))
 
@@ -241,15 +269,20 @@ to match."
 		   (outputs mahogany-group-output-map)
 		   (hidden mahogany-group-hidden-views))
       group
-    (alexandria:when-let ((current-frame (mahogany-group-current-frame group)))
-      ;; By default, add new views to the tiled layer:
-      (let* ((layer (mahogany-group-tiled-container group))
-             (hrt-layer (tree:layer-container-layer layer)))
-        (hrt:scene-layer-add-view hrt-layer view))
-      (alexandria:when-let ((to-hide (tree:frame-surface current-frame)))
-        (%add-hidden hidden to-hide))
-      (%swap-view-into-frame group current-frame view)
-      (group-views-changed group (tree:find-root-frame current-frame)))))
+    (when (mahogany-group-current-frame group)
+      (if (view-floats-p view)
+          ;; A window that floats, by the rules: over the tiled frames.
+          (group-float-view group view)
+          ;; Else into the tiled frame that has the focus, or had it last:
+          (let ((current-frame (%group-tiled-frame group))
+                (hrt-layer (tree:layer-container-layer (mahogany-group-tiled-container group))))
+            (hrt:scene-layer-add-view hrt-layer view)
+            (alexandria:when-let ((to-hide (tree:frame-surface current-frame)))
+              (%add-hidden hidden to-hide))
+            (%swap-view-into-frame group current-frame view)
+            (unless (eq current-frame (mahogany-group-current-frame group))
+              (group-focus-frame group current-frame (server-seat *compositor-state*)))
+            (group-views-changed group (tree:find-root-frame current-frame)))))))
 
 (defun group-unmap-view (group view)
   (declare (type mahogany-group group))
@@ -276,6 +309,8 @@ to match."
                              (not (tree:frame-surface to-focus)))
                     (setf (tree:frame-surface to-focus) (%pop-hidden-item hidden)))
                   (setf (mahogany-group-current-frame group) to-focus))))))
+          (tree:floating-frame
+           (%destroy-floating-frame group f))
           (tree:view-frame
            (setf (tree:frame-surface f) nil)
            (when (> (ring-list:ring-list-size hidden) 0)
@@ -296,9 +331,12 @@ to match."
       (or
        (ring-list:remove-item hidden view)
        (alexandria:when-let ((f (hrt::view-container view)))
-         (setf (tree:frame-surface f) nil)
-         (when (typep f 'tree:view-frame)
-           (group-views-changed group (tree:find-root-frame f))))))
+         (cond ((typep f 'tree:floating-frame)
+                (%destroy-floating-frame group f))
+               (t
+                (setf (tree:frame-surface f) nil)
+                (when (typep f 'tree:view-frame)
+                  (group-views-changed group (tree:find-root-frame f))))))))
     (setf view-list (remove view view-list :test #'equalp))))
 
 (defmethod tree:find-empty-frame ((group mahogany-group))
@@ -332,6 +370,9 @@ currently focused frame"
     (unless current-frame
       (error 'mahogany/util:invalid-operation
              :text "No frame to maximize!"))
+    (when (typep current-frame 'tree:floating-frame)
+      (error 'mahogany/util:invalid-operation
+             :text "The window floats; float-toggle (s-v) tiles it first"))
     (unless (%maximize-frame group current-frame)
       (error 'mahogany/util:invalid-operation
              :text "Frame is already maximized!"))))
@@ -374,7 +415,10 @@ currently focused frame"
       (unless output-node
         (mahogany/log:log-string :warn "Could not find output when making view fullscreen")
         (return-from %group-make-fullscreen nil))
-      (setf (tree:frame-surface frame) nil)
+      ;; A floating window comes back tiled from fullscreen:
+      (if (typep frame 'tree:floating-frame)
+          (%destroy-floating-frame group frame)
+          (setf (tree:frame-surface frame) nil))
       (let ((prev-fullscreen (tree:set-fullscreen output-node view)))
         (cond
           (prev-fullscreen
@@ -475,8 +519,16 @@ After this function is ran, the current frame needs to be set and focused."
           (setf (tree:frame-surface current-frame) view))))))
   (hrt:dirty-view-transaction))
 
+(defun %group-leave-floating (group)
+  "Move GROUP's focus from a floating window to the tiled frame focused
+last, for the commands that act on tiled frames."
+  (when (typep (mahogany-group-current-frame group) 'tree:floating-frame)
+    (alexandria:when-let ((tiled (%group-tiled-frame group)))
+      (group-focus-frame group tiled (server-seat *compositor-state*)))))
+
 (defun group-next-hidden (group)
   (declare (type mahogany-group group))
+  (%group-leave-floating group)
   (let ((current-frame (mahogany-group-current-frame group))
         (hidden-views (mahogany-group-hidden-views group))
         (next-view))
@@ -488,6 +540,7 @@ After this function is ran, the current frame needs to be set and focused."
 
 (defun group-previous-hidden (group)
   (declare (type mahogany-group group))
+  (%group-leave-floating group)
   (let ((current-frame (mahogany-group-current-frame group))
         (hidden-views (mahogany-group-hidden-views group))
         (next-view))

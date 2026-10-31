@@ -888,8 +888,10 @@ focused; hidden behind another window, it is shown in the current frame."
       (unless (or (eq group (state-current-group state))
                   (not (group-attached-p group)))
         (setf (state-current-group state) group))
-      (alexandria:if-let ((frame (tree:find-view-frame
-                                  (mahogany-group-tiled-container group) view)))
+      (alexandria:if-let ((frame (if (typep (hrt::view-container view) 'tree:floating-frame)
+                                     (hrt::view-container view)
+                                     (tree:find-view-frame
+                                      (mahogany-group-tiled-container group) view))))
         (state-focus-frame state frame (server-seat state))
         ;; Hidden behind another view: show it in the current frame, the
         ;; way next-view does, hiding what that frame showed.

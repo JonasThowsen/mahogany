@@ -9,6 +9,13 @@
   (active-p nil :type boolean)
   (hrt-group (cffi:null-pointer) :type cffi:foreign-pointer :read-only t)
   (tiled-container nil :type tree:layer-container :read-only t)
+  ;; The layer above the tiled one, for floating windows, and their
+  ;; frames, the one focused last first:
+  (floating-container nil :type (or null tree:layer-container))
+  (floating-frames '() :type list)
+  ;; The tiled frame focused last: where new windows go, and the focus
+  ;; returns, while a floating window has the focus.
+  (tiled-frame nil)
   (output-map (make-hash-table :test 'equal) :type hash-table :read-only t)
   (current-frame nil ;; :type (or tree:frame tree:output-node null)
    )

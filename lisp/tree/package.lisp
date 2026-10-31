@@ -54,6 +54,10 @@
            #:reconfigure-node
            ;; View-frame functions / objects
            #:view-frame
+           #:floating-frame
+           #:floating-frame-layer
+           #:cleanup-frame
+           #:in-frame-p
            #:frame-surface
            #:frame-next
            #:frame-prev

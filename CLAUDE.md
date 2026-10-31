@@ -157,6 +157,10 @@ mahogany, remote»):
   (battery, network, volume, brightness via subprocesses),
   `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
   canvas), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,
+  `lisp/floating.lisp` (floating windows: `tree:floating-frame`, a
+  view-frame whose parent is the output node without being its child,
+  in the group's floating layer above the tiled one; `*floating-rules*`
+  by app id),
   `lisp/outputs.lisp` (focus/windows between outputs),
   `lisp/directions.lisp` (focus, windows and outputs by direction:
   left/right/up/down, fullscreen toggle), `lisp/key-help.lisp` (the key

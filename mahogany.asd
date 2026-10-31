@@ -114,15 +114,16 @@
                (:file "message" :depends-on ("heart" "config" "objects"))
                (:file "group" :depends-on ("objects" "heart" "globals"))
                (:file "state" :depends-on ("objects" "keyboard" "heart" "group" "output-config"))
+               (:file "floating" :depends-on ("state" "group" "objects" "heart" "command" "message" "tree"))
                (:file "globals" :depends-on ("objects" "system"))
                (:file "kmap-modes"
                 :depends-on ("objects" "globals" "keyboard" "input" "command"))
                (:file "events"
                 :depends-on ("globals" "state" "objects" "heart" "util"))
                (:file "input"
-                :depends-on ("state" "keyboard" "heart" "command" "message"))
+                :depends-on ("state" "floating" "keyboard" "heart" "command" "message"))
                (:file "key-bindings"
-                :depends-on ("kmap-modes" "state" "tree" "input" "command"))
+                :depends-on ("kmap-modes" "state" "floating" "tree" "input" "command"))
                (:file "system-status"
                 :depends-on ("state" "globals" "heart"))
                (:file "mode-line"
@@ -142,14 +143,14 @@
                (:file "scratchpad"
                 :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree"))
                (:file "outputs"
-                :depends-on ("state" "group" "launcher" "key-bindings" "command" "tree" "scratchpad"))
+                :depends-on ("state" "group" "floating" "launcher" "key-bindings" "command" "tree" "scratchpad"))
                (:file "directions"
                 :depends-on ("state" "group" "outputs" "key-bindings" "command" "tree"))
                (:file "key-help"
                 :depends-on ("state" "outputs" "key-bindings" "menu" "themes" "input" "heart" "draw"))
                (:file "xwayland" :depends-on ("system" "config" "log"))
                (:file "default-bindings"
-                :depends-on ("key-bindings" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
+                :depends-on ("key-bindings" "floating" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
                (:file "layouts"
                 :depends-on ("group" "state" "launcher" "key-bindings" "default-bindings" "tree"))
                (:file "lid" :depends-on ("state" "idle" "command" "themes" "mode-line" "heart"))

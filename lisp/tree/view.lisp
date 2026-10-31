@@ -332,3 +332,43 @@ and position as the frame"
 ;;  (when (and hrt-view
 ;;       (equal (hrt:view-hrt-view (frame-surface frame)) view))
 ;;    frame)))
+
+;;; Floating frames
+
+(defclass floating-frame (view-frame)
+  ((layer :initarg :layer
+          :reader floating-frame-layer
+          :type layer-container
+          :documentation "The group's floating layer, above the tiled one,
+where the frame's border and its view are drawn."))
+  (:documentation
+   "A frame placed freely over the tiled frames of an output node: that
+node is its parent, but does not list it among its children, so the
+tree and the layouts leave it alone. Its next and previous frame are
+itself."))
+
+(defmethod frame-find-layer ((frame floating-frame))
+  (floating-frame-layer frame))
+
+(defmethod split-frame-v ((frame floating-frame) &key &allow-other-keys)
+  (error 'mahogany/util:invalid-operation
+         :text "A floating window's frame cannot be split"))
+
+(defmethod split-frame-h ((frame floating-frame) &key &allow-other-keys)
+  (error 'mahogany/util:invalid-operation
+         :text "A floating window's frame cannot be split"))
+
+(defmethod mark-frame-focused :after ((frame floating-frame) seat)
+  (declare (ignore seat))
+  ;; Above the other floating windows:
+  (alexandria:when-let ((view (frame-surface frame)))
+    (hrt:view-raise-to-top view)))
+
+(defmethod print-object ((object floating-frame) stream)
+  (print-unreadable-object (object stream :type t)
+    ;; The view prints its container, this frame: circle back to it.
+    (let ((*print-circle* t))
+      (format stream "~A,~A ~Ax~A view: ~S"
+              (round (frame-x object)) (round (frame-y object))
+              (round (frame-width object)) (round (frame-height object))
+              (frame-surface object)))))

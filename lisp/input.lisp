@@ -277,8 +277,9 @@ the settings set before then only remember the values."
          (found (silence-notes
                   (loop for group being the hash-values
                           of (state-output-groups *compositor-state*)
-                        thereis (tree:frame-at (mahogany-group-tiled-container group)
-                                               lx ly)))))
+                        thereis (or (group-floating-frame-at group lx ly)
+                                    (tree:frame-at (mahogany-group-tiled-container group)
+                                                   lx ly))))))
     (if found
         (state-focus-frame *compositor-state* found seat)
         nil)))

@@ -56,6 +56,8 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "s-S-r" #'remove-current-frame
   "s-grave" #'scratchpad-toggle
   "s-S-grave" #'scratchpad-send
+  "s-v" #'float-toggle
+  "s-S-v" #'float-focus-toggle
   ;; Groups (workspaces): d and u, or Page Down and Up, go down and up
   ;; the list; with Control the window comes along
   "s-d" #'gnext "s-Page_Down" #'gnext
@@ -100,7 +102,9 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "M-Up" #'move-window-up "M-Right" #'move-window-right
   "S-Left" #'focus-output-left "S-Down" #'focus-output-down
   "S-Up" #'focus-output-up "S-Right" #'focus-output-right
-  "f" #'fullscreen-toggle)
+  "f" #'fullscreen-toggle
+  "v" #'float-toggle
+  "V" #'float-focus-toggle)
 
 ;;; Autostart
 

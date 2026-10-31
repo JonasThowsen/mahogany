@@ -141,11 +141,6 @@ a specific output."))
                     :type split-frame-type))
   (:documentation "An inner node of a frame-tree that can be positioned."))
 
-(defclass floating-frame (frame)
-  ((top-frame :initarg :top-frame
-              :accessor top-frame
-              :type frame)))
-
 (defclass binary-tree-frame (tree-frame)
   ()
   (:documentation "An inner node of a frame-tree that can only have two children"))
@@ -260,10 +255,13 @@ multiple values.")
   (do ((cur-frame frame (frame-parent cur-frame)))
       ((root-frame-p cur-frame) cur-frame)))
 
-(defun frame-find-layer (frame)
-  (declare (type tree-node frame frame))
-  (do ((cur-frame frame (frame-parent cur-frame)))
-    ((typep cur-frame 'layer-container) cur-frame)))
+(defgeneric frame-find-layer (frame)
+  (:documentation "The layer container whose scene layer holds FRAME's
+nodes: the one above its tree, or a floating frame's own.")
+  (:method (frame)
+    (declare (type tree-node frame))
+    (do ((cur-frame frame (frame-parent cur-frame)))
+        ((typep cur-frame 'layer-container) cur-frame))))
 
 (defun tree-output-add (layer-container output-container
                         &aux (output (output-container-output

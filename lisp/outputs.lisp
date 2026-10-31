@@ -58,6 +58,9 @@ window if there is one. Returns VIEW."
          (target-group (state-frame-group state target)))
     (unless (typep source 'tree:view-frame)
       (error 'mahogany/util:invalid-operation :text "The window is not in a frame"))
+    (when (typep source 'tree:floating-frame)
+      (error 'mahogany/util:invalid-operation
+             :text "The window floats; float-toggle (s-v) tiles it first"))
     (unless (typep target 'tree:view-frame)
       (error 'mahogany/util:invalid-operation :text "There is no frame to move the window into"))
     (unless (and source-group target-group)
