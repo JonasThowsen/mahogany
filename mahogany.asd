@@ -148,7 +148,7 @@
                 :depends-on ("state" "group" "outputs" "key-bindings" "command" "tree"))
                (:file "key-help"
                 :depends-on ("state" "outputs" "key-bindings" "menu" "themes" "input" "heart" "draw"))
-               (:file "xwayland" :depends-on ("system" "config" "log"))
+               (:file "xwayland" :depends-on ("system" "config" "log" "state" "heart" "command" "message"))
                (:file "default-bindings"
                 :depends-on ("key-bindings" "floating" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
                (:file "layouts"

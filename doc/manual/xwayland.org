@@ -20,3 +20,10 @@ The NixOS module installs =xwayland-satellite=. What satellite cannot
 do (X11 programs that need to see each other's windows, some games,
 screen sharing from X11 programs) would need Xwayland built into the
 compositor, which is planned for later if it turns out to matter.
+
+What =xwayland-satellite= prints goes to
+=$XDG_STATE_HOME/mahogany/xwayland-satellite.log=. Mahogany watches
+the process: when it dies it is started again after a moment, up to
+=*xwayland-restarts*= times (5) within a minute of a start, each
+restart logged; after that =xwayland-restart= (a command) starts it
+by hand, and so does it whenever you want a fresh one.
