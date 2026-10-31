@@ -29,6 +29,9 @@ such as creating groups or launching startup programs:
 
 Re-loading adds and redefines, keybindings and commands that the init
 file no longer defines are still present until Mahogany is restarted.
+Settings are the exception: one the last load set with =set-config=
+and this one does not, its line taken out, goes back to its default.
+One set with a plain =setf= keeps its value until a restart.
 
 ** Authoring Init files
 

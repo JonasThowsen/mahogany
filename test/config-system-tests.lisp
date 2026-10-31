@@ -118,3 +118,16 @@
                        *bar* 11))
   (is *foo* "qwerty")
   (is *bar* "asdf"))
+
+(defconfig-test recording-settings-lists-what-was-set ()
+    ((defconfig *recorded-a* 1 integer "a")
+     (defconfig *recorded-b* 2 integer "b"))
+  (is (equal '(*recorded-a*) (recording-settings (set-config *recorded-a* 5))))
+  (is (= 5 *recorded-a*))
+  ;; Outside recording-settings nothing is recorded, and nothing breaks:
+  (set-config *recorded-b* 7)
+  (is (= 7 *recorded-b*))
+  (reset-setting '*recorded-a*)
+  (reset-setting '*recorded-b*)
+  (is (= 1 *recorded-a*))
+  (is (= 2 *recorded-b*)))

@@ -21,6 +21,8 @@
            set-config
            set-config-atomic
            reset-config
+           reset-setting
+           recording-settings
            with-atomic-update))
 
 (in-package #:config-system)
@@ -267,13 +269,34 @@ Example:
 (defun (setf config-value) (setting value)
   (declare (type symbol setting))
   (with-config-info (info) setting
-    (funcall (config-info-set-function info) value)))
+    (prog1 (funcall (config-info-set-function info) value)
+      (%record-setting setting))))
+
+(defvar *recorded-settings* nil
+  "Inside recording-settings, a list whose car holds the settings set.")
+
+(defun %record-setting (setting-name)
+  (when *recorded-settings*
+    (pushnew setting-name (car *recorded-settings*))))
+
+(defmacro recording-settings (&body body)
+  "Run BODY; the names of the settings set-config set while it ran."
+  `(let ((*recorded-settings* (list nil)))
+     ,@body
+     (car *recorded-settings*)))
+
+(defun reset-setting (setting-name)
+  "Set the setting SETTING-NAME back to its default value."
+  (declare (type symbol setting-name))
+  (with-config-info (info) setting-name
+    (funcall (config-info-set-function info) (config-info-default info))))
 
 (defmacro %set-config (setting-name value)
   (with-gensyms (actual-value info)
     `(let ((,actual-value ,value))
        (if-let ((,info (get-config-info (quote ,setting-name))))
-         (funcall (config-info-set-function ,info) ,actual-value)
+         (prog1 (funcall (config-info-set-function ,info) ,actual-value)
+           (%record-setting (quote ,setting-name)))
          (error 'config-not-found-error
                 :place (quote ,setting-name)
                 :alternatives (%find-possible-settings (quote ,setting-name) *config-vars*))))))

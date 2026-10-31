@@ -47,6 +47,18 @@ it starts inherit."
   #-sbcl (setf (uiop:getenv name) value)
   value)
 
+(defun %unsetenv (name)
+  "Take NAME away from this process's environment and from systemd
+--user's (the session D-Bus has no way to take one away)."
+  #+sbcl (sb-posix:unsetenv name)
+  #-sbcl (setf (uiop:getenv name) "")
+  (when (mahogany/system:find-program "systemctl")
+    (handler-case
+        (uiop:launch-program (list "systemctl" "--user" "unset-environment" name))
+      (error (c)
+        (log-string :warn "Could not unset ~A in systemd --user: ~A" name c))))
+  nil)
+
 (defun %update-activation-environment (&rest names)
   "Tell systemd --user and the session D-Bus the values of the
 environment variables NAMES, so services and activated programs get

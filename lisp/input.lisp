@@ -373,13 +373,21 @@ or NIL for keys that type nothing, such as Shift or F1."
 
 (defglobal *cursor-theme* nil)
 (defglobal *cursor-size* 24)
+(defglobal *cursor-theme-exported* nil
+  "True when XCURSOR_THEME holds a theme Mahogany set.")
 
-(declaim (ftype function %setenv %update-activation-environment))
+(declaim (ftype function %setenv %unsetenv %update-activation-environment))
 (defun %apply-cursor-theme ()
   (when (state-server *compositor-state*)
     (state-set-cursor-theme *compositor-state* *cursor-theme* *cursor-size*))
-  (when *cursor-theme*
-    (%setenv "XCURSOR_THEME" *cursor-theme*))
+  ;; No theme: take away the one Mahogany set before, so programs get
+  ;; the default (one from the session's own environment is left be):
+  (cond (*cursor-theme*
+         (%setenv "XCURSOR_THEME" *cursor-theme*)
+         (setf *cursor-theme-exported* t))
+        (*cursor-theme-exported*
+         (%unsetenv "XCURSOR_THEME")
+         (setf *cursor-theme-exported* nil)))
   (%setenv "XCURSOR_SIZE" (princ-to-string *cursor-size*))
   (%update-activation-environment "XCURSOR_THEME" "XCURSOR_SIZE"))
 

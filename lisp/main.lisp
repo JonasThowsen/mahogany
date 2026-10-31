@@ -12,6 +12,19 @@ be executed once, when mahogany starts up and loads the config file.")
                    :theme *message-error-theme*))
   (hrt:timer-handle-destroy timer))
 
+(defglobal *config-file-settings* '()
+  "The settings (set-config) the config file set when it last loaded.")
+
+(defun %load-config (file)
+  "Load the config FILE. Settings the last load set and this one did
+not, their lines taken out of the file, go back to their defaults."
+  (let ((settings (config-system:recording-settings (load file))))
+    (dolist (name (set-difference *config-file-settings* settings))
+      (log-string :info "~S is no longer in the config file: back to its default" name)
+      (handler-case (config-system:reset-setting name)
+        (error (c) (log-string :error "Could not reset ~S: ~A" name c))))
+    (setf *config-file-settings* settings)))
+
 (defun load-config-file (&optional (catch-errors nil))
   "Load the user's config file. Returns a values list: whether the file loaded (t if no
 rc files exist), the error if it didn't, and the config file that was
@@ -23,7 +36,7 @@ further up. "
         (progn
           (log-string :info "Found config file at ~a" config-file)
           (if catch-errors
-              (handler-case (load config-file)
+              (handler-case (%load-config config-file)
                 (error (c)
                   (let ((message (format nil "~a" c))
                         (timer (hrt:server-make-timer (state-server *compositor-state*)
@@ -33,7 +46,7 @@ further up. "
                     (values nil message config-file)))
                 (:no-error (&rest args) (declare (ignore args)) (values t nil config-file)))
               (progn
-                (load config-file)
+                (%load-config config-file)
                 (values t nil config-file))))
         (progn
           (log-string :info "Did not find config file at ~S" config-location)
