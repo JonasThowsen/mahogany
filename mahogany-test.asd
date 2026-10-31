@@ -21,6 +21,7 @@ This file is a part of mahogany.
                (:file "groups-tests")
                (:file "floating-tests")
                (:file "launcher-tests")
+               (:file "slynk-tests")
                (:file "system-status-tests")
 	           (:file "tree-tests" :depends-on ("util"))
 	           (:file "keyboard-tests")

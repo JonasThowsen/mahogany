@@ -375,7 +375,9 @@
               done
               export WLR_DRM_DEVICES="$devices"
             ''}
-            exec ${lib.getExe cfg.package} -l ${cfg.logLevel} >> "$dir/session.log" 2>&1
+            exec ${lib.getExe cfg.package} -l ${cfg.logLevel} ${
+              lib.optionalString (cfg.slynkPort != null) "--slynk ${toString cfg.slynkPort}"
+            } >> "$dir/session.log" 2>&1
           '';
           session = pkgs.runCommand "mahogany-session" { passthru.providedSessions = [ "mahogany" ]; } ''
             mkdir -p $out/share/wayland-sessions
@@ -409,6 +411,20 @@
                 one, name that one (see ls -l /dev/dri/by-path), or every
                 frame is drawn on the other GPU and copied over, which stalls
                 input and the cursor.
+              '';
+            };
+            slynkPort = lib.mkOption {
+              type = lib.types.nullOr lib.types.port;
+              default = null;
+              example = 4005;
+              description = ''
+                Start Slynk on this port (0: a free one), on 127.0.0.1 only,
+                so Emacs with SLY (M-x sly-connect) and the lisp command can
+                evaluate, compile and redefine in the running session; the
+                port in use is in $XDG_RUNTIME_DIR/mahogany/slynk-port.
+                Null leaves it off. A connection has full access to the
+                session, as a shell has. init.lisp can set
+                mahogany::*slynk-port* instead.
               '';
             };
             logLevel = lib.mkOption {

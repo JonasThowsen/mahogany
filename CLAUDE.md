@@ -172,7 +172,10 @@ mahogany, remote»):
   `lisp/lid.lisp` (lid switch: lock, internal screen off/on),
   `lisp/notifications.lisp` (the org.freedesktop.Notifications service
   over sd-bus, cards on a canvas), `lisp/wifi.lisp` (iwctl menu, from
-  the bar's network module). `lisp/input.lisp` holds the input settings
+  the bar's network module), `lisp/slynk.lisp` (Slynk in the session:
+  `*slynk-port*` / `--slynk PORT`, off by default; `in-main-thread`
+  for a waiting main-thread eval; the launcher's `:eval` and `:load`
+  modes are in `lisp/launcher.lisp`). `lisp/input.lisp` holds the input settings
   (touchpad, mouse, numlock, cursor theme) and pushes them to heart at
   startup. Each has a manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

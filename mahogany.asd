@@ -23,7 +23,9 @@
                #:cl-interactive
                #:closer-mop
                #:trivial-garbage
-               #:cffi)
+               #:cffi
+               ;; Slynk in the session, for SLY and the lisp command (lisp/slynk.lisp)
+               #:slynk)
   :in-order-to ((test-op (test-op mahogany-test)))
   :pathname #p"lisp/"
   :components ((:file "log")
@@ -159,7 +161,8 @@
                 :depends-on ("state" "command" "themes" "menu" "launcher" "default-bindings" "mode-line" "heart" "draw"))
                (:file "wifi"
                 :depends-on ("system-status" "menu" "launcher" "mode-line" "notifications" "command" "message"))
-               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "tabs" "xwayland" "lid" "notifications"))))
+               (:file "slynk" :depends-on ("config" "command" "message" "globals" "heart" "log"))
+               (:file "main" :depends-on ("heart" "keyboard" "input" "package" "mode-line" "idle" "launcher" "osd" "themes" "screenshot" "scratchpad" "outputs" "default-bindings" "layouts" "tabs" "xwayland" "lid" "notifications" "slynk"))))
 
 (asdf:defsystem #:mahogany/executable
   :build-operation program-op

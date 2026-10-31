@@ -5,6 +5,12 @@
 
 (in-package :mahogany)
 
+;;; Let Emacs (M-x sly-connect RET localhost RET 4005) and the lisp
+;;; command into the running session, on 127.0.0.1 only; see the
+;;; manual, "Changing Things While It Runs". Off without this line.
+
+;; (setf *slynk-port* 4005)
+
 ;;; Look
 
 (set-theme :tokyo-night)                ; theme-menu (s-C-SPC) lists them

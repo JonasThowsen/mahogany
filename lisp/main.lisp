@@ -170,10 +170,15 @@ every error before."
     (hrt:hrt-session-lock-set-callbacks server session-lock-callbacks)
     (hrt:canvas-callbacks-init server canvas-callbacks)
     (log-string :debug "Initialized mahogany state")
+    (alexandria:when-let ((port (gethash 'slynk args)))
+      (setf *slynk-port* port))
     (if (gethash 'no-init-file args)
         (log-string :info "Init file loading skipped")
         (let ((*initializing* t))
           (load-config-file (not (gethash 'enable-debugger args)))))
+    ;; After the config file, which may set the port:
+    (when *slynk-port*
+      (start-slynk))
     (apply-input-settings)
     (theme-start)
     (notifications-start)
@@ -184,6 +189,7 @@ every error before."
     (unwind-protect
          (hrt:server-start server)
       (log-string :debug "Cleaning up...")
+      (ignore-errors (stop-slynk))
       (server-stop *compositor-state*)
       (server-state-reset *compositor-state*)
       (log-string :debug "Shutdown reached."))))
@@ -209,6 +215,12 @@ every error before."
                           :short #\d
                           :help "Enabled the interactive CLI debugger"
                           :reduce (constantly t)))
+        (slynk (adopt:make-option
+                'slynk
+                :long "slynk"
+                :parameter "PORT"
+                :help "Start Slynk on PORT (0: a free port), on 127.0.0.1 only, so SLY and the lisp command can connect to the running compositor; init.lisp may set *slynk-port* instead"
+                :reduce (lambda (prev port) (declare (ignore prev)) port)))
         (loglevel (adopt:make-option
                    'loglevel
                    :long "loglevel"
@@ -226,7 +238,8 @@ every error before."
                 help-option
                 no-init-option
                 loglevel
-                enable-debugger))))
+                enable-debugger
+                slynk))))
 
 (defun %parse-cmd-line-args (args)
   (let ((parser (%build-cmd-line-parser)))
@@ -238,6 +251,11 @@ every error before."
              (adopt:print-help-and-exit parser))
             ((not (member (gethash 'loglevel found) +LOGLEVEL-SELECTIONS+ :test #'equalp))
              (adopt:print-error-and-exit (format nil "Invalid loglevel '~a'. Must be one of ~{~A~^|~}" (gethash 'loglevel found) +LOGLEVEL-SELECTIONS+)))
+            ((and (gethash 'slynk found)
+                  (not (setf (gethash 'slynk found)
+                             (let ((port (ignore-errors (parse-integer (gethash 'slynk found)))))
+                               (and port (<= 0 port 65535) port)))))
+             (adopt:print-error-and-exit (format nil "Invalid --slynk port '~a'. Must be a port number, 0 for a free one" (gethash 'slynk found))))
             (t
              found)
             ))
