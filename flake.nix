@@ -354,7 +354,12 @@
           # The session keeps a log in $XDG_STATE_HOME/mahogany/session.log
           # (the last run; the one before it in session.log.old), since
           # a display manager shows nothing of what the compositor says.
-          start = pkgs.writeShellScript "mahogany-session" ''
+          # The session file runs it by its path in the system profile,
+          # not in the store: a display manager such as ly reads the
+          # session files once, when it starts, so a store path there
+          # would run the build from before the last nixos-rebuild until
+          # the display manager is restarted.
+          start = pkgs.writeShellScriptBin "mahogany-session" ''
             dir="\''${XDG_STATE_HOME:-$HOME/.local/state}/mahogany"
             mkdir -p "$dir"
             [ -e "$dir/session.log" ] && mv -f "$dir/session.log" "$dir/session.log.old"
@@ -366,7 +371,7 @@
             [Desktop Entry]
             Name=Mahogany
             Comment=A tiling Wayland compositor in Common Lisp
-            Exec=${start}
+            Exec=/run/current-system/sw/bin/mahogany-session
             Type=Application
             DesktopNames=Mahogany
             DESKTOP
@@ -402,7 +407,7 @@
             };
           };
           config = lib.mkIf cfg.enable {
-            environment.systemPackages = [ cfg.package ] ++ cfg.extraPackages;
+            environment.systemPackages = [ cfg.package start ] ++ cfg.extraPackages;
             services.displayManager.sessionPackages = [ session ];
             # The mode-line's icons:
             fonts.packages = [ pkgs.nerd-fonts.symbols-only ];
