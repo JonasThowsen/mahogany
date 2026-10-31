@@ -127,15 +127,21 @@ keymap is listed once, with the binding that wins."
     (state-remove-cur-group-frame *compositor-state*)))
 
 (defcommand close-current-view ()
+  (:documentation "Close the window; an empty frame beside others goes instead")
   (:method ()
-    (alexandria:when-let*
-        ((frame (state-current-frame *compositor-state*))
-         (surface (tree:frame-surface frame)))
-      (typecase surface
-        (hrt:view
-         (hrt:view-request-close surface))
-        (hrt:layer-surface
-         (hrt:layer-surface-close surface))))))
+    (alexandria:when-let ((frame (state-current-frame *compositor-state*)))
+      (let ((surface (and (typep frame 'tree:frame) (tree:frame-surface frame))))
+        (typecase surface
+          (hrt:view
+           (hrt:view-request-close surface))
+          (hrt:layer-surface
+           (hrt:layer-surface-close surface))
+          (null
+           ;; Nothing to close: an empty frame of a split goes away, so
+           ;; the key undoes a split too.
+           (when (and (typep frame 'tree:view-frame)
+                      (not (tree:topmost-frame-p frame)))
+             (state-remove-cur-group-frame *compositor-state*))))))))
 
 (defcommand next-view ()
   (:documentation "Raise the next hidden view in the current group")

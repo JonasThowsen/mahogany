@@ -8,6 +8,7 @@
   (:export #:*frame-border-width*
            #:*window-gap*
            #:*output-gap*
+           #:*empty-frame-border*
            #:output-gap-margin
            #:unfocused-border-width
            #:*split-frame-hook*

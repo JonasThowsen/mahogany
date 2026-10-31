@@ -31,6 +31,23 @@ own border; without one, neighbours share theirs.")
   "Layout pixels between the windows and the edge of the output's
 usable area (the mode-line, say).")
 
+(defglobal *empty-frame-border* nil
+  "Whether a frame with no window in it draws its border when it is the
+only frame of its output: NIL leaves an empty screen bare. An empty
+frame beside other frames always shows its border, so a split can be
+seen.")
+
+(defun %frame-border-shown-p (frame)
+  "Whether FRAME's border is drawn: with a window in it, by
+*empty-frame-border*, or when it is not the only frame of its output."
+  (or (frame-surface frame)
+      *empty-frame-border*
+      (not (topmost-frame-p frame))))
+
+(defun %update-frame-border-shown (frame)
+  (alexandria:when-let ((box (slot-value frame 'border-box)))
+    (hrt:hrt-border-box-set-enabled box (and (%frame-border-shown-p frame) t))))
+
 (declaim (inline %half-gap))
 (defun %half-gap ()
   (floor *window-gap* 2))
@@ -148,6 +165,7 @@ leave; the width itself when every frame has a border of its own."
                               width
                               height)))))
       (hrt:hrt-border-box-lower-to-bottom border-box)
+      (%update-frame-border-shown frame)
       (when view
         (multiple-value-bind (width height)
             (%view-frame-get-dimensions frame adjust rounded-width rounded-height)
@@ -211,11 +229,15 @@ leave; the width itself when every frame has a border of its own."
   (multiple-value-call
       #'hrt:hrt-border-box-set-size
     (slot-value frame 'border-box)
-    (%border-box-get-dimensions frame adjust width height)))
+    (%border-box-get-dimensions frame adjust width height))
+  ;; A split or a removal resized the frame: alone on its output now,
+  ;; or not; the border follows.
+  (%update-frame-border-shown frame))
 
 (defmethod (setf frame-surface) :after (view (frame view-frame))
   "Place the view in the frame and make it have the same dimensions
 and position as the frame"
+  (%update-frame-border-shown frame)
   (with-slots (border-box focused) frame
     (cond
       (view
@@ -242,14 +264,19 @@ and position as the frame"
          (hrt:border-box-set-style (slot-value frame 'border-box)
                                    *frame-unfocus-empty-border-style*))))))
 
+(defmethod (setf frame-parent) :after (parent (frame view-frame))
+  (declare (ignore parent))
+  ;; Split off, or alone again after a removal: the border follows.
+  (%update-frame-border-shown frame))
+
 (defmethod mark-frame-focused :after ((frame view-frame) seat)
   (setf (slot-value frame 'seat) seat)
   (hrt:hrt-border-box-raise-to-top (slot-value frame 'border-box))
   (hrt:border-box-set-style (slot-value frame 'border-box) *frame-focus-border-style*)
+  (%update-frame-border-shown frame)
   (alexandria:when-let ((hrt-view (frame-surface frame)))
     (log-string :trace "view frame focused")
-    (hrt:focus-view hrt-view seat)
-    (hrt:hrt-border-box-set-enabled (slot-value frame 'border-box) t)))
+    (hrt:focus-view hrt-view seat)))
 
 (defmethod unmark-frame-focused :after ((frame view-frame) seat)
   (alexandria:if-let ((hrt-view (frame-surface frame)))

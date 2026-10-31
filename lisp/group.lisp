@@ -176,6 +176,10 @@ the current frame when that is empty, else kept hidden behind it."
                    (hidden-views mahogany-group-hidden-views))
       group
     (let ((new-tree (tree:tree-output-add tiled-container output-container)))
+      ;; The new tree covers the output; fit it to the usable area (the
+      ;; mode-line's and the layer shell's reserved space, the gaps) now,
+      ;; not at the next change of that area:
+      (tree:reconfigure-node new-tree output)
       (setf (gethash (hrt:output-full-name output) output-map) new-tree)
       (when (not current-frame)
         (let ((first-leaf (tree:find-first-leaf new-tree)))

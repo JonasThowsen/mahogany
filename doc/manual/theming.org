@@ -100,6 +100,11 @@ mode-line need a Nerd Font either way, see [[file:mode-line.org][The Mode-Line]]
 
 ** Gaps and borders
 
+An empty frame that is alone on its screen draws no border;
+=(setf tree:*empty-frame-border* t)= draws it, as StumpWM does. Empty
+frames beside others always show theirs.
+
+
 Windows keep a gap from each other and from the edge of the screen,
 and each has a border of its own, in the focused or unfocused border
 color of the theme (the look of Omarchy and Hyprland). The widths are

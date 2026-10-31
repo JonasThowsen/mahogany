@@ -29,7 +29,7 @@ takes it back, and Escape (or a click) closes it. Both live in =lisp/default-bin
 
 | Key                         | Command                      | What it does                              |
 |-----------------------------+------------------------------+-------------------------------------------|
-| =s-q=                       | =close-current-view=         | close the window                          |
+| =s-q=                       | =close-current-view=         | close the window; an empty split frame goes instead |
 | =s-h= =s-j= =s-k= =s-l=     | =focus-left= … =focus-right= | focus the frame in that direction         |
 | =s-Left= … =s-Right=        | the same                     | on this screen, or the next one over      |
 | =s-C-h= … =s-C-l=           | =move-window-left= …         | move the window into that frame           |
