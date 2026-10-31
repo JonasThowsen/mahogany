@@ -19,10 +19,16 @@
 :file stands for the screenshot's file; NIL for none.")
 
 (config:defconfig *screenshot-edit* :auto
-  (member t nil :auto)
-  "Whether the screenshot commands open the editor: T, NIL, or :auto
-for when *screenshot-editor*'s program is installed. The screenshot
-menu offers both either way.")
+  (member t nil :auto :click)
+  "What the screenshot commands do about the editor: :click shows a
+message that opens it when clicked, T opens it right away, NIL never,
+and :auto is :click when *screenshot-editor*'s program is installed,
+else NIL. The screenshot menu offers editing either way.")
+
+(config:defconfig *screenshot-message-delay* 8000
+  fixnum
+  "How long the message after a screenshot stays, in milliseconds: the
+time there is to click it and edit the screenshot.")
 
 (config:defconfig *screenshot-copy-command* '("wl-copy" "--type" "image/png")
   list
@@ -51,7 +57,11 @@ TIME."
        (mahogany/system:find-program (first *screenshot-editor*))))
 
 (defun %edit-wanted-p (edit)
-  (if (eq edit :auto) (%editor-available-p) edit))
+  "What to do about the editor for EDIT, a *screenshot-edit* value: T,
+:click or NIL."
+  (if (eq edit :auto)
+      (and (%editor-available-p) :click)
+      edit))
 
 (defun %screenshot-edit (file)
   (let ((args (substitute (uiop:native-namestring file) :file *screenshot-editor*)))
@@ -89,11 +99,15 @@ says so, open it in the editor."
                  (cond ((eql exit-code 0)
                         (log-string :info "Screenshot saved to ~A" file)
                         (%screenshot-copy file)
-                        (if (%edit-wanted-p edit)
-                            (%screenshot-edit file)
-                            (toast-message *compositor-state*
-                                           (format nil "Screenshot saved: ~A"
-                                                   (file-namestring file)))))
+                        (let ((edit (%edit-wanted-p edit)))
+                          (if (eq edit t)
+                              (%screenshot-edit file)
+                              (toast-message *compositor-state*
+                                             (format nil "Screenshot saved: ~A~:[~; — click to edit~]"
+                                                     (file-namestring file) (eq edit :click))
+                                             :ms-delay *screenshot-message-delay*
+                                             :on-click (and (eq edit :click)
+                                                            (lambda () (%screenshot-edit file)))))))
                        (t
                         (toast-message *compositor-state*
                                        (if exit-code

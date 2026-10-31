@@ -80,11 +80,14 @@ area (below the mode-line).")
 (defun toast-message (state text &key (gravity *message-gravity*)
                                    (ms-delay *message-delay*)
                                    (theme *message-theme*)
-                                   close-on-key)
+                                   close-on-key
+                                   on-click)
   "Show TEXT in a message on the current output for MS-DELAY
 milliseconds (0: until close-message, or a key when CLOSE-ON-KEY), in
 place of the message shown before. When CLOSE-ON-KEY is true, the next
-key press takes it down; the key still does what it does."
+key press takes it down; the key still does what it does. A click on
+the card takes it down too, and calls ON-CLICK, a function of no
+arguments, when there is one."
   (declare (type mahogany-state state))
   (let ((output (and (state-current-group state)
                      (group-current-output (state-current-group state)))))
@@ -122,6 +125,12 @@ key press takes it down; the key still does what it does."
               (draw:draw-text cr text (+ pad border) (+ pad border)
                               :font font :color (mh/theme:theme-font-color theme)
                               :width text-width)))
+          (setf (hrt:canvas-on-button canvas)
+                (lambda (canvas x y button pressed)
+                  (declare (ignore canvas x y button))
+                  (when pressed
+                    (close-message state)
+                    (when on-click (funcall on-click)))))
           (setf *message-canvas* canvas)
           (when (plusp ms-delay)
             (unless *message-timer*
