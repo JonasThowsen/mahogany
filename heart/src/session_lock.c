@@ -64,6 +64,14 @@ static void lock_focus(struct hrt_session_lock *lock,
 static void lock_output_reconfigure(struct hrt_session_lock_output *lo) {
     int width, height;
     wlr_output_effective_resolution(lo->output->wlr_output, &width, &height);
+    // The per-output scene trees sit at the layout's origin, so the lock
+    // tree goes where its output is in the layout; without that, every
+    // output's backdrop and lock surface landed on the first output and
+    // the others stayed open.
+    struct wlr_output_layout_output *l_output = wlr_output_layout_get(
+        lo->output->server->output_layout, lo->output->wlr_output);
+    wlr_scene_node_set_position(&lo->tree->node, l_output ? l_output->x : 0,
+                                l_output ? l_output->y : 0);
     wlr_scene_rect_set_size(lo->background, width, height);
     if (lo->surface) {
         wlr_session_lock_surface_v1_configure(lo->surface, width, height);
