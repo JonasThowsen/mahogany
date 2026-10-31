@@ -71,8 +71,10 @@ static uint32_t now_msec(void) {
 
 void hrt_debug_pointer_warp(struct hrt_server *server, double lx, double ly) {
     struct hrt_seat *seat = &server->seat;
+    double x = seat->cursor->x, y = seat->cursor->y;
     wlr_cursor_warp_closest(seat->cursor, NULL, lx, ly);
-    hrt_cursor_handle_motion(seat, now_msec());
+    hrt_cursor_handle_motion(seat, now_msec(), seat->cursor->x - x,
+                             seat->cursor->y - y);
 }
 
 void hrt_debug_pointer_button(struct hrt_server *server, uint32_t button,

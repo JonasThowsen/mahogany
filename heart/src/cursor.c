@@ -143,9 +143,35 @@ void hrt_seat_reset_view_under(struct hrt_seat *seat) {
     }
 }
 
-void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time) {
+/**
+ * While a button pressed on a client is held, the client keeps the
+ * pointer, wherever it goes (as an implicit grab): it hears the motion
+ * and the release, though the pointer is over another window, a gap or
+ * the bar. The surface is taken not to move under the drag, so its
+ * coordinates move by the cursor's own DX, DY. As in sway's and dwl's
+ * pressed state.
+ **/
+static bool pointer_held_by_client(struct hrt_seat *seat, uint32_t time,
+                                   double dx, double dy) {
+    struct wlr_seat_pointer_state *pointer = &seat->seat->pointer_state;
+    // A drag and drop has a grab of its own, which follows the pointer
+    // from window to window:
+    if (pointer->button_count == 0 || !pointer->focused_surface ||
+        wlr_seat_pointer_has_grab(seat->seat)) {
+        return false;
+    }
+    wlr_seat_pointer_notify_motion(seat->seat, time, pointer->sx + dx,
+                                   pointer->sy + dy);
+    return true;
+}
+
+void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time, double dx,
+                              double dy) {
     hrt_idle_notify_activity(seat);
     if (!seat->grabbed) {
+        if (pointer_held_by_client(seat, time, dx, dy)) {
+            return;
+        }
         if (!hrt_session_locked(seat->server) &&
             route_pointer_to_canvas(seat, true)) {
             return;
@@ -171,16 +197,20 @@ static void seat_motion(struct wl_listener *listener, void *data) {
     struct hrt_seat *seat = wl_container_of(listener, seat, motion);
     struct wlr_pointer_motion_event *ev = data;
 
+    double x = seat->cursor->x, y = seat->cursor->y;
     wlr_cursor_move(seat->cursor, &ev->pointer->base, ev->delta_x, ev->delta_y);
-    hrt_cursor_handle_motion(seat, ev->time_msec);
+    hrt_cursor_handle_motion(seat, ev->time_msec, seat->cursor->x - x,
+                             seat->cursor->y - y);
 }
 
 static void seat_motion_absolute(struct wl_listener *listener, void *data) {
     struct hrt_seat *seat = wl_container_of(listener, seat, motion_absolute);
     struct wlr_pointer_motion_absolute_event *ev = data;
 
+    double x = seat->cursor->x, y = seat->cursor->y;
     wlr_cursor_warp_absolute(seat->cursor, &ev->pointer->base, ev->x, ev->y);
-    hrt_cursor_handle_motion(seat, ev->time_msec);
+    hrt_cursor_handle_motion(seat, ev->time_msec, seat->cursor->x - x,
+                             seat->cursor->y - y);
 }
 
 void hrt_cursor_handle_button(struct hrt_seat *seat,
@@ -203,7 +233,14 @@ void hrt_cursor_handle_button(struct hrt_seat *seat,
         }
     } else if (!seat->grabbed) {
         /* Notify the client with pointer focus that a button press has occurred */
+        bool held = seat->seat->pointer_state.button_count > 0;
         seat->callbacks->button_event(seat, event);
+        // The last button of a drag let go: the pointer goes to what is
+        // under it now.
+        if (held && event->state == WL_POINTER_BUTTON_STATE_RELEASED &&
+            seat->seat->pointer_state.button_count == 0) {
+            hrt_seat_reset_view_under(seat);
+        }
     }
 }
 

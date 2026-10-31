@@ -31,10 +31,12 @@ void hrt_cursor_destroy(struct hrt_seat *seat);
 
 /**
  * Route the pointer's position and buttons: to the canvas or the client
- * under it. For the cursor's own events, and for debug tools that move
- * the pointer.
+ * under it, or, while a button pressed on a client is held, to that
+ * client. DX, DY is how far the cursor just moved. For the cursor's own
+ * events, and for debug tools that move the pointer.
  **/
-void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time_msec);
+void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time_msec,
+                              double dx, double dy);
 void hrt_cursor_handle_button(struct hrt_seat *seat,
                               struct wlr_pointer_button_event *event);
 
