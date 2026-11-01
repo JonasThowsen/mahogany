@@ -219,6 +219,7 @@
            #:modifiers
            #:keysyms-len
            #:wl-key-state
+           #:keycode
            ;; subprocesses:
            #:subprocess-collect
            #:collect-output-result

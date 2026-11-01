@@ -96,6 +96,32 @@ Modifiers by themselves cannot be set to the prefix key. This stops
 keys like =Super= from being used as the prefix key. If this is a
 problem, create an issue and we may be able to find a workaround.
 
+** Hold keys: press and release
+
+A hold key runs one thing when it is pressed and another when it is
+let go, for push-to-talk and the like (Sway's =bindsym --release=):
+
+#+BEGIN_SRC lisp
+  (mh::define-hold-key "s-z" "hex dictation start" "hex dictation stop")
+#+END_SRC
+
+Each action is a shell command as a string, a function of no
+arguments, or =nil=. The release is matched to the press by the key
+itself, so it runs whatever the modifiers are by then (Super let go
+before Z is fine). The key runs no other binding, and the window under
+it sees neither the press nor the release. =mh::undefine-hold-key=
+takes it back out. Hold keys do not fire while a menu has the
+keyboard or the session is locked.
+
+** Virtual keyboards
+
+Mahogany serves =zwp_virtual_keyboard_v1=, so =wtype= and on-screen
+keyboards can type into the focused window (=wtype hello=, =wtype -M
+ctrl v -m ctrl=), which is how dictation tools such as Hex paste what
+they heard. Virtual keys go straight to the window with its own
+keymap; they run no Mahogany keybinding. The protocol has no
+permission step: any program on the session can type with it.
+
 ** Passing Through key events
 
 Some applications may accept a keyboard shortcut that is shadowed by

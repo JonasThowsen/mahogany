@@ -22,6 +22,7 @@ This file is a part of mahogany.
                (:file "floating-tests")
                (:file "launcher-tests")
                (:file "slynk-tests")
+               (:file "hold-keys-tests")
                (:file "system-status-tests")
 	           (:file "tree-tests" :depends-on ("util"))
 	           (:file "keyboard-tests")

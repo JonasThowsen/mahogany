@@ -54,6 +54,9 @@
 
 ;;; Programs
 
+;; Push-to-talk with Hex: s-z held dictates, let go stops.
+;; (define-hold-key "s-z" "hex dictation start" "hex dictation stop")
+
 ;; (setf *default-terminals* '("foot" "alacritty"))
 ;; (setf *scratchpad-command* '("foot" "--app-id" "scratchpad"))
 ;; Windows that float over the tiles (see Floating Windows in the manual):

@@ -226,7 +226,10 @@ static void add_new_switch(struct hrt_input *input, struct hrt_seat *seat) {
 
 static uint32_t find_input_caps(struct hrt_seat *seat,
                                 struct hrt_input *input) {
-    uint32_t caps = 0;
+    // The keyboard group is always there, and a virtual keyboard
+    // (wtype, an on-screen keyboard) may be the only keyboard, so the
+    // seat always has a keyboard for clients to bind:
+    uint32_t caps = WL_SEAT_CAPABILITY_KEYBOARD;
     wl_list_for_each(input, &seat->inputs, link) {
         switch (input->wlr_input_device->type) {
             case WLR_INPUT_DEVICE_KEYBOARD:
@@ -472,6 +475,7 @@ bool hrt_seat_init(struct hrt_seat *seat, struct hrt_server *server,
     }
 
     hrt_keyboard_init(seat);
+    wlr_seat_set_capabilities(seat->seat, WL_SEAT_CAPABILITY_KEYBOARD);
 
     seat->request_selection.notify = handle_request_set_selection;
     wl_signal_add(&seat->seat->events.request_set_selection,

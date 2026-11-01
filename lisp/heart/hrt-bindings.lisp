@@ -47,6 +47,8 @@
   (request-set-shape (:struct wl-listener))
   (keyboard-key (:struct wl-listener))
   (keyboard-modifiers (:struct wl-listener))
+  (virtual-keyboard-manager :pointer #| (:struct wlr-virtual-keyboard-manager-v1) |#)
+  (new-virtual-keyboard (:struct wl-listener))
   (request-selection (:struct wl-listener))
   (request-primary-selection (:struct wl-listener))
   (request-start-drag (:struct wl-listener))
@@ -66,7 +68,8 @@
   (keysyms :pointer #| xkb-keysym-t |#)
   (modifiers :uint32)
   (keysyms-len :size)
-  (wl-key-state :unsigned-int #| enum wl-keyboard-key-state |#))
+  (wl-key-state :unsigned-int #| enum wl-keyboard-key-state |#)
+  (keycode :uint32))
 
 (cffi:defcstruct hrt-seat-callbacks
   (button-event :pointer #| function ptr void (struct hrt_seat *, struct wlr_pointer_button_event *) |#)

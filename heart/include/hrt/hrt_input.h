@@ -44,6 +44,10 @@ struct hrt_seat {
     // keyboard events:
     struct wl_listener keyboard_key;
     struct wl_listener keyboard_modifiers;
+    // zwp_virtual_keyboard_v1 (wtype, on-screen keyboards): each virtual
+    // keyboard keeps its own keymap and speaks to the seat directly.
+    struct wlr_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
+    struct wl_listener new_virtual_keyboard;
 
     // clipboard listeners
     struct wl_listener request_selection;
@@ -89,6 +93,9 @@ struct hrt_keypress_info {
     uint32_t modifiers;
     size_t keysyms_len;
     enum wl_keyboard_key_state wl_key_state;
+    // The key itself (evdev code): a release is matched to its press
+    // by this, since the modifiers may have changed in between.
+    uint32_t keycode;
 };
 
 struct hrt_seat_callbacks {

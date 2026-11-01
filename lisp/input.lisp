@@ -404,6 +404,69 @@ or NIL for keys that type nothing, such as Shift or F1."
               nil
               text))))))
 
+;;; Hold keys: a key that runs one thing when pressed and another when
+;;; let go, as push-to-talk wants (Sway's bindsym --release). The
+;;; release is matched to the press by the key's code, not its keysym:
+;;; the modifiers may be up by then (Super let go before Z), and the
+;;; client never saw the press, so it never sees the release either.
+
+(defglobal *hold-keys* '()
+  "The hold keys: each (KEY ON-PRESS ON-RELEASE), see define-hold-key.")
+
+(defglobal *held-keys* '()
+  "The hold keys down right now: each (KEYCODE . ON-RELEASE).")
+
+(defun %hold-action (action)
+  "ACTION as a function: a function stays one, a string is a shell
+command to start."
+  (etypecase action
+    (function action)
+    (string (lambda () (uiop:launch-program action)))
+    (null (lambda ()))))
+
+(defun define-hold-key (key on-press on-release)
+  "Make KEY (a key, or a string as kbd reads it: \"s-z\") a hold key:
+ON-PRESS runs when it is pressed and ON-RELEASE when it is let go,
+whatever the modifiers are by then. Each is a function of no
+arguments, a shell command as a string, or NIL. The key runs no other
+binding, and the client under it sees neither press nor release.
+
+  (define-hold-key \"s-z\" \"hex dictation start\" \"hex dictation stop\")"
+  (let ((key (if (stringp key) (kbd key) key)))
+    (check-type key key)
+    (setf *hold-keys*
+          (cons (list key (%hold-action on-press) (%hold-action on-release))
+                (remove key *hold-keys* :key #'first :test #'mahogany/keyboard::key-equal)))
+    key))
+
+(defun undefine-hold-key (key)
+  "KEY (a key or a string) is no hold key any more."
+  (let ((key (if (stringp key) (kbd key) key)))
+    (setf *hold-keys* (remove key *hold-keys* :key #'first :test #'mahogany/keyboard::key-equal))
+    nil))
+
+(defun %hold-key-press (key keycode)
+  "A press of KEY, the key with KEYCODE: T when it is a hold key, run
+and remembered (a repeat of one still down is only swallowed)."
+  (alexandria:when-let ((entry (find key *hold-keys* :key #'first
+                                                     :test #'mahogany/keyboard::key-equal)))
+    (destructuring-bind (hold-key on-press on-release) entry
+      (declare (ignore hold-key))
+      (unless (assoc keycode *held-keys*)
+        (push (cons keycode on-release) *held-keys*)
+        (handler-case (funcall on-press)
+          (error (c) (log-string :error "Hold key ~A, pressed: ~A" (key-text key) c)))))
+    t))
+
+(defun %hold-key-release (keycode)
+  "The key with KEYCODE went up: when a hold key, run its release and
+return T, so the release is swallowed like the press."
+  (alexandria:when-let ((held (assoc keycode *held-keys*)))
+    (setf *held-keys* (remove held *held-keys*))
+    (handler-case (funcall (cdr held))
+      (error (c) (log-string :error "Hold key released: ~A" c)))
+    t))
+
 (hrt:define-hrt-callback keyboard-callback :bool
     ((seat (:pointer (:struct hrt:hrt-seat)))
      (info (:pointer (:struct hrt:hrt-keypress-info))))
@@ -411,16 +474,17 @@ or NIL for keys that type nothing, such as Shift or F1."
   (declare (optimize (speed 3))
            #+sbcl
            (sb-ext:muffle-conditions sb-ext:compiler-note))
-  (cffi:with-foreign-slots ((hrt:keysyms hrt:modifiers hrt:keysyms-len hrt:wl-key-state)
+  (cffi:with-foreign-slots ((hrt:keysyms hrt:modifiers hrt:keysyms-len hrt:wl-key-state hrt:keycode)
                             info (:struct hrt:hrt-keypress-info))
     (when *close-message-on-key*
       (close-message *compositor-state*))
     ;; A key let go stops its repeat into a grab, whichever key: a
     ;; held key is the one that matters, and it goes when any does.
-    ;; That is all a release is for here; heart forwards it anyway.
+    ;; A hold key's release runs its release action and is swallowed;
+    ;; heart forwards every other release.
     (unless (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+)
       (%grab-repeat-stop)
-      (return-from keyboard-callback nil))
+      (return-from keyboard-callback (%hold-key-release hrt:keycode)))
     ;; A widget has the keyboard: it gets the key, nothing else does.
     (when (and *key-grab* (= hrt:wl-key-state wl:+wl-keyboard-key-state-pressed+))
       (when (plusp hrt:keysyms-len)
@@ -443,7 +507,8 @@ or NIL for keys that type nothing, such as Shift or F1."
     ;; I'm not sure why this is an array, but it's what tinywl does:
     (dotimes (i hrt:keysyms-len)
       (let ((key (make-key (cffi:mem-aref hrt:keysyms :uint32 i) hrt:modifiers)))
-        (when (handle-key-event *compositor-state* key seat hrt:wl-key-state)
+        (when (or (and *hold-keys* (%hold-key-press key hrt:keycode))
+                  (handle-key-event *compositor-state* key seat hrt:wl-key-state))
           (return t))))))
 
 ;;; The pointer's look: an xcursor theme and size, for Mahogany's own

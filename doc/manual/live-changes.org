@@ -99,7 +99,7 @@ again.
 | =*mode-line-timeout*=                                         | =mode-line= twice (the timer is made at start)   |
 | =*tab-bar-height*=, =*tab-width*=                             | at the next update                               |
 | =*menu-...*=, =*message-...*=, =*osd-...*=, =*notification-...*=, =*key-help-padding*= | at the next menu, message, OSD, notification, key list |
-| =define-key=, =define-keys=, =define-kmap=                    | at once                                          |
+| =define-key=, =define-keys=, =define-kmap=, =define-hold-key= | at once                                          |
 | =defcommand=                                                  | at once                                          |
 | =define-layout=                                               | at the next =layout-set= or =layout-apply-now=   |
 | =*layout-main-ratio*=                                         | at the next change (=layout-apply-now= now)      |

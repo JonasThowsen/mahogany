@@ -135,6 +135,11 @@ mahogany, remote»):
   thin wrapper, policy lives in Lisp. Bindings in
   `lisp/heart/hrt-bindings.lisp` are generated with cl-bindgen from
   `cffi/*.yml` (`make lisp/heart/hrt-bindings.lisp`) when headers change.
+- `heart/src/keyboard.c` — the keyboard group, keys to Lisp with their
+  keycode (presses and releases, Lisp may swallow either), and
+  zwp_virtual_keyboard_v1 (each virtual keyboard talks to the seat
+  with its own keymap; the next physical key gives the seat the group
+  back).
 - `heart/src/session_lock.c` — ext-session-lock: while a locker such as
   swaylock holds the session, heart shows only lock surfaces, routes input
   to them alone and refuses other focus; Lisp hears `locked`/`unlocked`
