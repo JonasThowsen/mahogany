@@ -56,3 +56,10 @@
   (is (equal '(a b c) (mahogany::%insert-before 'b 'c '(a c b))))
   (is (equal '(b c a) (mahogany::%insert-before 'b 'c '(c a b))))
   (is (equal '(a b) (mahogany::%insert-before 'a 'b '(b a)))))
+
+(fiasco:deftest views-go-back-in-their-order-after-a-maximize ()
+  ;; B was maximized: the layout sees B first, then the hidden A and C.
+  (is (equal '(a b c) (mahogany::%views-in-order '(b a c) '(a b c))))
+  ;; A window the order never saw (opened meanwhile) comes last, in place.
+  (is (equal '(a b c d e) (mahogany::%views-in-order '(c d a b e) '(a b c))))
+  (is (equal '(x y) (mahogany::%views-in-order '(x y) '()))))

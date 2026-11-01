@@ -155,6 +155,13 @@ tree do not apply it again.")
         when (eq x before) collect item
         collect x))
 
+(defun %views-in-order (views order)
+  "VIEWS sorted as ORDER has them; the ones ORDER lacks keep their
+place after those, in their own order."
+  (let ((n (length order)))
+    (stable-sort (copy-list views) #'<
+                 :key (lambda (view) (or (position view order) n)))))
+
 (defun %neighbour-view (leaves frame)
   "The window of the nearest frame before FRAME among LEAVES, or else
 after it: where focus goes when FRAME's window has closed."
@@ -185,7 +192,12 @@ Nothing happens for :manual or under a fullscreen window."
            (hidden (mahogany-group-hidden-views group))
            (leaves (%node-leaves node))
            (shown (remove nil (mapcar #'tree:frame-surface leaves)))
-           (views (append shown (set-difference (%hidden-views group) shown)))
+           (views (let ((views (append shown (set-difference (%hidden-views group) shown)))
+                        (order (gethash group *maximized-orders*)))
+                    ;; Back from a maximized frame (s-f): the order the
+                    ;; layout had before, not the maximized window first.
+                    (remhash group *maximized-orders*)
+                    (if order (%views-in-order views order) views)))
            (current (mahogany-group-current-frame group))
            (current-here (and current (member current leaves)))
            (focused (and current-here

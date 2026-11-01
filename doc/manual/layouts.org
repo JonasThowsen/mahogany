@@ -45,6 +45,8 @@ it, if it was the first).
 A window moved in from another group or output, or shown from the
 hidden ones, takes a place in the layout; windows beyond what the
 layout can show (a tiny output) wait hidden behind the last frame.
+=maximize-current-frame= (=s-f=) shows one window alone; the same key
+puts the layout back as it was, every window in its place.
 A fullscreen window is left alone: the frames under it stay as they
 are, a window that opens meanwhile waits hidden behind it, and when
 the fullscreen ends the layout takes the waiting windows in after

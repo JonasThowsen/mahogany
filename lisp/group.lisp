@@ -391,6 +391,23 @@ to match."
   (hrt:dirty-view-transaction)
   t)
 
+(defglobal *maximized-orders* (make-hash-table :test 'eq)
+  "For each group whose frame was maximized (s-f), its windows in the
+order the layout had them, shown then hidden: the next layout puts
+them back in that order, so maximizing and back moves nothing.")
+
+(defun %remember-layout-order (group frame)
+  "Remember the order of GROUP's windows in the tree FRAME is in,
+before it is maximized."
+  (let ((shown (remove nil (mapcar #'tree:frame-surface
+                                   (tree::get-populated-frames (tree:find-root-frame frame)))))
+        (hidden '()))
+    (ring-list:foreach-item (view (mahogany-group-hidden-views group))
+      (push view hidden))
+    ;; get-populated-frames gives the leaves last first:
+    (setf (gethash group *maximized-orders*)
+          (append (reverse shown) (nreverse hidden)))))
+
 (defun group-maximize-current-frame (group)
   "Remove all of the splits in the current window tree and replace it
 with the currently focused frame; when it is the only frame already,
@@ -404,6 +421,8 @@ has nothing to go back to)."
     (when (typep current-frame 'tree:floating-frame)
       (error 'mahogany/util:invalid-operation
              :text "The window floats; float-toggle (s-v) tiles it first"))
+    (unless (tree:topmost-frame-p current-frame)
+      (%remember-layout-order group current-frame))
     (unless (%maximize-frame group current-frame)
       (cond ((group-auto-layout-p group)
              (layout-apply group))
@@ -607,6 +626,8 @@ set and the tree without a focused frame."
   (alexandria:if-let ((frame (hrt::view-container view)))
     (progn
       (log-string :trace "maximizing view ~S" view)
+      (when (and (typep frame 'tree:view-frame) (not (tree:topmost-frame-p frame)))
+        (%remember-layout-order group frame))
       (%maximize-frame group frame))
     (hrt:view-configure view)))
 
