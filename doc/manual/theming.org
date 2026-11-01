@@ -10,9 +10,9 @@ wallpaper. Switching themes changes all of them at once, live.
 Mahogany comes with =tokyo-night= (the default), =catppuccin=,
 =catppuccin-latte= (light), =nord=, =gruvbox=, =everforest=,
 =kanagawa=, =rose-pine=, =matte-black=, =gavinok= (Gavin Freeborn's
-StumpWM: white on black, a white border on the focused window; his
-gaps are =(set-gaps :window 13 :output 7 :border 2)=) and =mahogany=
-(the colors it had before themes). The theme chosen last is remembered
+StumpWM, raw: white on black in a small monospace font, a thin bar
+without icons, the group in brackets, a white border on the focused
+window, his gaps) and =mahogany= (the colors it had before themes). The theme chosen last is remembered
 across restarts.
 
 - =theme-menu= (also the "Themes" mode of the launcher) lists the
@@ -50,6 +50,25 @@ defaults needs giving:
 (the accent and the surface by default), =:wallpaper-color= the
 color shown without a wallpaper (the background by default).
 Redefining the theme in use applies the change at once.
+
+=:from= names a theme whose values are the defaults, so a theme can
+be another with a change, or the same theme with something added:
+
+#+BEGIN_SRC lisp
+  (define-theme :nord-mine :from :nord :accent "#ebcb8b")
+  (define-theme :gavinok :from :gavinok :wallpaper "~/backgrounds/gavinok.png")
+#+END_SRC
+
+=:settings= is a plist of configuration variables and the values they
+have while the theme is in use; =set-theme= puts the previous values
+back when another theme comes. That is how a theme shapes the bar and
+the gaps, not only the colors:
+
+#+BEGIN_SRC lisp
+  (define-theme :sparse :from :matte-black
+    :settings '(*mode-line-icons* nil *mode-line-marker* :brackets
+                *mode-line-height* 20 tree:*window-gap* 0 tree:*output-gap* 0))
+#+END_SRC
 
 Files in =~/.config/mahogany/themes/= (=*theme-directories*=) that
 contain =define-theme= forms are loaded at startup, and again by

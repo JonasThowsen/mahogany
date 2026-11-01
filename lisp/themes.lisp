@@ -23,7 +23,11 @@
   (border-focus nil)
   (border-unfocus nil)
   (wallpaper nil)       ; a PNG file, or NIL for a plain color
-  (wallpaper-color nil))
+  (wallpaper-color nil)
+  ;; A plist of configuration variables and their values while the
+  ;; theme is in use: (*mode-line-icons* nil tree:*window-gap* 13).
+  ;; set-theme puts the previous values back when another theme comes.
+  (settings '() :type list))
 
 (defglobal *themes* (make-hash-table :test 'eq)
   "The themes known, by name.")
@@ -79,11 +83,12 @@ a machine without the first falls back to the next.")
     (or (and end (parse-integer font :start (1+ end) :junk-allowed t))
         default)))
 
-(defun define-theme (name &key (description "") (font *default-font*)
-                            (foreground "#ffffff") (background "#000000")
+(defun define-theme (name &key from description font
+                            foreground background
                             surface accent muted error
                             border-focus border-unfocus
-                            wallpaper wallpaper-color)
+                            (wallpaper nil wallpaper-p) wallpaper-color
+                            (settings nil settings-p))
   "Define (or redefine) the theme NAME, a keyword. Colors are strings
 such as \"#7aa2f7\" or cl-colors2 rgb. FOREGROUND is the text color,
 BACKGROUND that of panels, ACCENT marks what is current or selected
@@ -91,27 +96,55 @@ and, as BORDER-FOCUS by default, the focused frame; SURFACE (default
 BACKGROUND) is the unfocused border by default; MUTED (default
 FOREGROUND) draws details and empty frames; ERROR (default ACCENT)
 error messages. WALLPAPER is a PNG file shown on every output, and
-WALLPAPER-COLOR (default BACKGROUND) is shown without one. Returns the
-theme; set-theme puts it to use."
-  (let* ((foreground (color foreground))
-         (background (color background))
-         (surface (if surface (color surface) background))
-         (accent (if accent (color accent) foreground))
+WALLPAPER-COLOR (default BACKGROUND) is shown without one. SETTINGS is
+a plist of configuration variables and their values while the theme is
+in use, (*mode-line-icons* nil tree:*window-gap* 13) say; set-theme
+puts the previous values back when another theme comes. FROM names a
+theme whose values are the defaults, so a theme can be another with a
+change: (define-theme :mine :from :nord :wallpaper \"~/mine.png\"),
+or the same theme with a wallpaper added, (define-theme :gavinok
+:from :gavinok :wallpaper ...). Returns the theme; set-theme puts it
+to use."
+  (let* ((base (and from (find-theme from)))
+         (foreground (if foreground (color foreground)
+                         (if base (theme-foreground base) (color "#ffffff"))))
+         (background (if background (color background)
+                         (if base (theme-background base) (color "#000000"))))
+         (surface (cond (surface (color surface))
+                        (base (theme-surface base))
+                        (t background)))
+         (accent (cond (accent (color accent))
+                       (base (theme-accent base))
+                       (t foreground)))
+         (wallpaper (cond (wallpaper-p wallpaper)
+                          (base (theme-wallpaper base))))
          (theme (%make-theme :name name
-                             :description description
-                             :font font
+                             :description (or description
+                                              (and base (theme-description base))
+                                              "")
+                             :font (or font (and base (theme-font base)) *default-font*)
                              :foreground foreground
                              :background background
                              :surface surface
                              :accent accent
-                             :muted (if muted (color muted) foreground)
-                             :error (if error (color error) accent)
-                             :border-focus (if border-focus (color border-focus) accent)
-                             :border-unfocus (if border-unfocus (color border-unfocus) surface)
+                             :muted (cond (muted (color muted))
+                                          (base (theme-muted base))
+                                          (t foreground))
+                             :error (cond (error (color error))
+                                          (base (theme-error base))
+                                          (t accent))
+                             :border-focus (cond (border-focus (color border-focus))
+                                                 (base (theme-border-focus base))
+                                                 (t accent))
+                             :border-unfocus (cond (border-unfocus (color border-unfocus))
+                                                   (base (theme-border-unfocus base))
+                                                   (t surface))
                              :wallpaper (and wallpaper (uiop:native-namestring wallpaper))
-                             :wallpaper-color (if wallpaper-color
-                                                  (color wallpaper-color)
-                                                  background))))
+                             :wallpaper-color (cond (wallpaper-color (color wallpaper-color))
+                                                    (base (theme-wallpaper-color base))
+                                                    (t background))
+                             :settings (cond (settings-p settings)
+                                             (base (theme-settings base))))))
     (setf (gethash name *themes*) theme)
     ;; Redefining the theme in use shows the change:
     (when (and *theme* (eq (theme-name *theme*) name))
@@ -156,6 +189,24 @@ to the font's size."
                        :font-color font-color
                        :background-color (theme-background theme)
                        :border-color border-color))
+
+(defglobal *theme-settings-saved* '()
+  "The values the configuration variables had before the theme in use
+set them, as (symbol . value), so another theme can put them back.")
+
+(defun %apply-theme-settings (theme)
+  "Set the variables of THEME's settings, after putting back those the
+previous theme set. Returns true when a gap or border width changed."
+  (flet ((gaps () (list tree:*window-gap* tree:*output-gap* tree:*frame-border-width*)))
+    (let ((before (gaps)))
+      (loop for (symbol . value) in *theme-settings-saved*
+            do (setf (symbol-value symbol) value))
+      (setf *theme-settings-saved* '())
+      (loop for (symbol value) on (theme-settings theme) by #'cddr
+            do (check-type symbol symbol)
+               (push (cons symbol (symbol-value symbol)) *theme-settings-saved*)
+               (setf (symbol-value symbol) value))
+      (not (equal before (gaps))))))
 
 (defun %apply-frame-borders (theme)
   ;; The styles are shared by every frame and updated in place, so the
@@ -216,7 +267,8 @@ look Mahogany had before gaps."
   "Put the theme DESIGNATOR (a name or a theme) to use everywhere: the
 mode-line, menus, the on-screen display, messages, frame borders and
 the wallpaper, and remember it for the next start. Returns the theme."
-  (let ((theme (if (theme-p designator) designator (find-theme designator))))
+  (let* ((theme (if (theme-p designator) designator (find-theme designator)))
+         (gaps-changed (%apply-theme-settings theme)))
     (setf *theme* theme
           *mode-line-theme* (%widget-theme theme)
           *menu-theme* (%widget-theme theme :larger 2)
@@ -227,6 +279,8 @@ the wallpaper, and remember it for the next start. Returns the theme."
                                                      :border-color (theme-error theme)))
     (%apply-frame-borders theme)
     (when (state-server *compositor-state*)
+      (when gaps-changed
+        (set-gaps))
       (wallpaper-update)
       (mode-line-update)
       (hrt:dirty-view-transaction))
@@ -472,13 +526,18 @@ theme's; NIL goes back to the theme's."
   :foreground "#eaeaea" :background "#121212" :surface "#1f1f1f"
   :accent "#8a8a8d" :muted "#5c5c5c" :error "#d35f5f")
 
-;; Gavin Freeborn's StumpWM (github.com/Gavinok/stump-conf): a black
-;; mode-line with white text, the group number in steel blue, a thin
-;; white border on the focused window and none to be seen on the
-;; others, over black. He has gaps of 13 between windows and 7 to the
-;; edge: (set-gaps :window 13 :output 7 :border 2) gives them.
+;; Gavin Freeborn's StumpWM (github.com/Gavinok/stump-conf): a thin
+;; black mode-line with small white monospace text and no icons, the
+;; group in brackets in steel blue, a thin white border on the focused
+;; window and none to be seen on the others, over black; gaps of 13
+;; between windows and 7 to the edge. His wallpaper is a photo: give
+;; it with (define-theme :gavinok :from :gavinok :wallpaper "...").
 (define-theme :gavinok
-  :description "Gavin Freeborn's StumpWM: white on black"
+  :description "Gavin Freeborn's StumpWM: white on black, raw"
+  :font "Iosevka,Terminus,monospace 10"
   :foreground "#ffffff" :background "#000000"
   :accent "#7d8fa3" :muted "#6c6c6c" :error "#bf6262"
-  :border-focus "#ffffff" :border-unfocus "#000000")
+  :border-focus "#ffffff" :border-unfocus "#000000"
+  :settings '(*mode-line-icons* nil *mode-line-marker* :brackets
+              *mode-line-height* 20 *mode-line-padding* 8
+              tree:*window-gap* 13 tree:*output-gap* 7))

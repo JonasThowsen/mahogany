@@ -44,7 +44,11 @@ right. =*mode-line-padding*= (12) is the room between segments. The icons are Ne
 Nerd Font installed (Symbols Nerd Font is enough), and
 =(config-system:set-config mh::*mode-line-icons* nil)= turns them off.
 =mh::*icons*= maps their names to glyphs, for other glyphs or plain
-characters.
+characters. =*mode-line-marker*= is how the current group is marked:
+=:chip= (the default) writes its name on a rounded chip of the accent
+color, =:brackets= writes it as =[1]= in the accent color, as StumpWM
+does. A theme can set these with its =:settings=, see
+[[file:theming.org][Theming]].
 
 *** Modules of your own
 

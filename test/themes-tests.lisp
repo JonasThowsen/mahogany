@@ -41,3 +41,56 @@
 (fiasco:deftest find-theme-signals-for-unknown-names ()
   (signals error (mahogany::find-theme :no-such-theme-anywhere))
   (is (null (mahogany::find-theme :no-such-theme-anywhere :errorp nil))))
+
+(defvar *setting-under-test* :before)
+
+(fiasco:deftest theme-settings-are-set-and-put-back ()
+  (let ((with (mahogany::define-theme :test-settings
+                :settings '(mahogany-tests/themes::*setting-under-test* :themed)))
+        (without (mahogany::define-theme :test-no-settings))
+        (saved mahogany::*theme-settings-saved*))
+    (unwind-protect
+         (progn
+           (setf mahogany::*theme-settings-saved* '())
+           (is (not (mahogany::%apply-theme-settings with)))
+           (is (eq :themed *setting-under-test*))
+           ;; Another theme puts the value back:
+           (mahogany::%apply-theme-settings without)
+           (is (eq :before *setting-under-test*))
+           (is (null mahogany::*theme-settings-saved*))
+           ;; A theme that changes a gap says so:
+           (let ((gap mahogany/tree:*window-gap*))
+             (is (mahogany::%apply-theme-settings
+                  (mahogany::define-theme :test-settings
+                    :settings (list 'mahogany/tree:*window-gap* (1+ gap)))))
+             (is (= (1+ gap) mahogany/tree:*window-gap*))
+             (mahogany::%apply-theme-settings without)
+             (is (= gap mahogany/tree:*window-gap*))))
+      (setf mahogany::*theme-settings-saved* saved
+            *setting-under-test* :before)
+      (remhash :test-settings mahogany::*themes*)
+      (remhash :test-no-settings mahogany::*themes*))))
+
+(fiasco:deftest define-theme-from-takes-another-theme-as-defaults ()
+  (let* ((nord (mahogany::find-theme :nord))
+         (theme (mahogany::define-theme :test-from :from :nord
+                  :accent "#ff0000" :wallpaper "/tmp/test.png")))
+    (unwind-protect
+         (progn
+           (is (equalp (mahogany::theme-background nord) (mahogany::theme-background theme)))
+           (is (equalp (mahogany::theme-foreground nord) (mahogany::theme-foreground theme)))
+           (is (equalp (mahogany::theme-muted nord) (mahogany::theme-muted theme)))
+           (is (equal (mahogany::theme-font nord) (mahogany::theme-font theme)))
+           (is (equal (mahogany::theme-description nord) (mahogany::theme-description theme)))
+           (is (= 1 (colors:rgb-red (mahogany::theme-accent theme))))
+           ;; The inherited border-focus stays nord's, not the new accent:
+           (is (equalp (mahogany::theme-border-focus nord) (mahogany::theme-border-focus theme)))
+           (is (equal "/tmp/test.png" (mahogany::theme-wallpaper theme)))
+           ;; The same theme with a wallpaper added keeps its settings:
+           (let ((again (mahogany::define-theme :test-from :from :test-from
+                          :settings '(mahogany-tests/themes::*setting-under-test* 1))))
+             (is (equal "/tmp/test.png" (mahogany::theme-wallpaper again)))
+             (is (equal '(mahogany-tests/themes::*setting-under-test* 1)
+                        (mahogany::theme-settings
+                         (mahogany::define-theme :test-from :from :test-from))))))
+      (remhash :test-from mahogany::*themes*))))

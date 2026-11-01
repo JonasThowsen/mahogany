@@ -46,6 +46,12 @@ centred), :fill (the rest goes to the right end), a function of the
 output returning a string, or NIL for nothing. Modules with nothing to
 show, such as :battery on a desktop, take no room.")
 
+(config:defconfig *mode-line-marker* :chip
+  (member :chip :brackets)
+  "How the mode-line marks the current group: :chip writes its name on
+a rounded chip of the accent color, :brackets writes it in brackets, as
+[1], in the accent color, the way StumpWM's mode-line has it.")
+
 (config:defconfig *mode-line-icons* t
   boolean
   "Whether modules show their icons (Nerd Font glyphs, which need a Nerd
@@ -289,10 +295,16 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
                      '()))
          (right (if fill (subseq items (1+ fill)) '()))
          (hits '()))
-    (labels ((text-width (item)
-               (multiple-value-bind (w h) (draw:text-size cr (getf item :text) :font font)
+    (labels ((chip-p (item)
+               (and (getf item :marked) (eq *mode-line-marker* :chip)))
+             (item-text (item)
+               (if (and (getf item :marked) (eq *mode-line-marker* :brackets))
+                   (format nil "[~A]" (getf item :text))
+                   (getf item :text)))
+             (text-width (item)
+               (multiple-value-bind (w h) (draw:text-size cr (item-text item) :font font)
                  (declare (ignore h))
-                 (+ w (if (getf item :marked) (* 2 chip-pad) 0))))
+                 (+ w (if (chip-p item) (* 2 chip-pad) 0))))
              (fixed-width (items)
                (loop for item in items
                      unless (getf item :flexible)
@@ -302,22 +314,25 @@ of (X0 X1 ON-CLICK ON-SCROLL)."
                (destructuring-bind (&key text marked dim flexible on-click on-scroll on-hover color)
                    item
                  (let* ((room (if flexible (max 0 (- available pad)) nil))
-                        (chip (if marked chip-pad 0))
+                        (chip (if (chip-p item) chip-pad 0))
                         (font-color (mh/theme:theme-font-color theme))
                         (text-color (cond (color color)
-                                          ;; On the accent chip, the background color stands out:
-                                          (marked (mh/theme:theme-background-color theme))
+                                          ;; On the accent chip, the background color stands out;
+                                          ;; in brackets, the accent itself:
+                                          ((and marked (plusp chip))
+                                           (mh/theme:theme-background-color theme))
+                                          (marked (mh/theme:theme-border-color theme))
                                           (dim (list (colors:rgb-red font-color)
                                                      (colors:rgb-green font-color)
                                                      (colors:rgb-blue font-color)
                                                      0.45))
                                           (t font-color))))
-                   (draw:with-layout (layout cr :text text :font font
+                   (draw:with-layout (layout cr :text (item-text item) :font font
                                                 :width (when room (- room (* 2 chip)))
                                                 :ellipsize (when room :end))
                      (multiple-value-bind (w h) (draw:layout-pixel-size layout)
                        (let ((y (round (- height h) 2)))
-                         (when marked
+                         (when (plusp chip)
                            (draw:fill-rounded-rectangle
                             cr x (- y (round chip 2)) (+ w (* 2 chip)) (+ h chip) 5
                             (mh/theme:theme-border-color theme)))
