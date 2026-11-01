@@ -106,6 +106,8 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
   ;; Draw the filter as dots (a passphrase):
   (secret nil)
   (on-choose nil :type (or null function))
+  ;; Called in place of on-choose for C-Return:
+  (on-choose-alternate nil :type (or null function))
   (on-cancel nil :type (or null function))
   (canvas nil)
   (output nil)
@@ -116,13 +118,15 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
 (defglobal *menu* nil
   "The open menu, or NIL.")
 
-(defun menu-open (prompt items &key on-choose on-cancel allow-text secret (initial-filter ""))
+(defun menu-open (prompt items &key on-choose on-choose-alternate on-cancel
+                                    allow-text secret (initial-filter ""))
   "Show a menu with PROMPT and ITEMS (menu-items, or strings) on the
 current output, and return at once. When the user chooses, ON-CHOOSE is
 called with the menu-item, or with the typed string when ALLOW-TEXT is
-true and nothing matched; when they cancel, ON-CANCEL is called. Both
-run on the main thread. SECRET draws what is typed as dots, for a
-passphrase. An open menu is replaced."
+true and nothing matched; when they choose with C-Return,
+ON-CHOOSE-ALTERNATE is called instead, when there is one; when they
+cancel, ON-CANCEL is called. All run on the main thread. SECRET draws
+what is typed as dots, for a passphrase. An open menu is replaced."
   (menu-close)
   (let* ((output (group-current-output (state-current-group *compositor-state*)))
          (menu (%make-menu :prompt prompt
@@ -134,6 +138,7 @@ passphrase. An open menu is replaced."
                            :allow-text allow-text
                            :secret secret
                            :on-choose on-choose
+                           :on-choose-alternate on-choose-alternate
                            :on-cancel on-cancel
                            :output output)))
     (unless output
@@ -173,18 +178,22 @@ passphrase. An open menu is replaced."
     (when (menu-on-cancel menu)
       (funcall (menu-on-cancel menu)))))
 
-(defun %menu-choose (menu)
-  (let ((matches (menu-matches menu)))
+(defun %menu-choose (menu &optional alternate)
+  "Choose the selected item, or the typed text: with ALTERNATE (C-Return)
+through the menu's on-choose-alternate when it has one."
+  (let ((matches (menu-matches menu))
+        (choose (or (and alternate (menu-on-choose-alternate menu))
+                    (menu-on-choose menu))))
     (cond ((plusp (length matches))
            (let ((item (aref matches (menu-selected menu))))
              (menu-close)
-             (when (menu-on-choose menu)
-               (funcall (menu-on-choose menu) item))))
+             (when choose
+               (funcall choose item))))
           ((and (menu-allow-text menu) (plusp (length (menu-filter menu))))
            (let ((text (menu-filter menu)))
              (menu-close)
-             (when (menu-on-choose menu)
-               (funcall (menu-on-choose menu) text)))))))
+             (when choose
+               (funcall choose text)))))))
 
 (defun %menu-filter (menu)
   "Recompute the matches for the filter; the selection goes to the top."
@@ -235,7 +244,7 @@ passphrase. An open menu is replaced."
     (flet ((control-char (char)
              (and control (= keysym (char-code char)))))
       (cond ((= keysym +key-escape+) (menu-cancel))
-            ((or (= keysym +key-return+) (= keysym +key-kp-enter+)) (%menu-choose menu))
+            ((or (= keysym +key-return+) (= keysym +key-kp-enter+)) (%menu-choose menu control))
             ((or (= keysym +key-down+) (= keysym +key-tab+) (control-char #\n) (control-char #\j))
              (%menu-move menu 1))
             ((or (= keysym +key-up+) (control-char #\p) (control-char #\k))

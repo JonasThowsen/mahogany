@@ -15,6 +15,8 @@
   (items nil :type function)
   ;; A function of the chosen item's data:
   (action nil :type function)
+  ;; The same for a choice with C-Return, or NIL for ACTION again:
+  (alternate-action nil :type (or null function))
   ;; A function of typed text when nothing matched, or NIL to refuse:
   (text-action nil :type (or null function)))
 
@@ -24,7 +26,7 @@
 (defglobal *launcher-mode-order* '()
   "The modes in the order they were defined, for the top menu.")
 
-(defun register-launcher-mode (name &key prompt description items action text-action)
+(defun register-launcher-mode (name &key prompt description items action alternate-action text-action)
   "Add, or replace, the launcher mode NAME. See define-launcher-mode."
   (check-type name keyword)
   (setf (gethash name *launcher-modes*)
@@ -33,17 +35,20 @@
                              :description (or description (string-capitalize name))
                              :items items
                              :action action
+                             :alternate-action alternate-action
                              :text-action text-action))
   (unless (member name *launcher-mode-order*)
     (setf *launcher-mode-order* (append *launcher-mode-order* (list name))))
   name)
 
-(defmacro define-launcher-mode (name (&key prompt description) &key items action text-action)
+(defmacro define-launcher-mode (name (&key prompt description)
+                                &key items action alternate-action text-action)
   "Define a launcher mode. NAME is a keyword. ITEMS is a form evaluated
 when the menu opens, giving menu-items (make-menu-item) or strings.
 ACTION is a function of the chosen item's data (or its label, for a
-string item). TEXT-ACTION, when given, is a function of what was typed
-when it matched nothing, so the mode accepts free text.
+string item); ALTERNATE-ACTION, when given, is called instead for a
+choice made with C-Return. TEXT-ACTION, when given, is a function of
+what was typed when it matched nothing, so the mode accepts free text.
 
   (define-launcher-mode :projects (:prompt \"Project\" :description \"Open a project\")
     :items (mapcar (lambda (dir) (make-menu-item (file-namestring dir) :data dir))
@@ -54,6 +59,7 @@ when it matched nothing, so the mode accepts free text.
                            :description ,description
                            :items (lambda () ,items)
                            :action ,action
+                           :alternate-action ,alternate-action
                            :text-action ,text-action))
 
 (defun launcher (&optional (mode-name :menu))
@@ -62,19 +68,22 @@ when it matched nothing, so the mode accepts free text.
     (unless mode
       (error 'mahogany/util:recoverable-error
              :text (format nil "No launcher mode ~S" mode-name)))
-    (menu-open (menu-prompt-string (launcher-mode-prompt mode))
-               (funcall (launcher-mode-items mode))
-               :allow-text (not (null (launcher-mode-text-action mode)))
-               :on-choose (lambda (choice)
-                            (handler-case
-                                (if (menu-item-p choice)
-                                    (funcall (launcher-mode-action mode)
-                                             (or (menu-item-data choice) (menu-item-label choice)))
-                                    (funcall (launcher-mode-text-action mode) choice))
-                              (error (c)
-                                (toast-message *compositor-state*
-                                               (format nil "~A: ~A" mode-name c)
-                                               :theme *message-error-theme*)))))))
+    (flet ((chooser (action)
+             (lambda (choice)
+               (handler-case
+                   (if (menu-item-p choice)
+                       (funcall action (or (menu-item-data choice) (menu-item-label choice)))
+                       (funcall (launcher-mode-text-action mode) choice))
+                 (error (c)
+                   (toast-message *compositor-state*
+                                  (format nil "~A: ~A" mode-name c)
+                                  :theme *message-error-theme*))))))
+      (menu-open (menu-prompt-string (launcher-mode-prompt mode))
+                 (funcall (launcher-mode-items mode))
+                 :allow-text (not (null (launcher-mode-text-action mode)))
+                 :on-choose (chooser (launcher-mode-action mode))
+                 :on-choose-alternate (alexandria:when-let ((action (launcher-mode-alternate-action mode)))
+                                        (chooser action))))))
 
 (defun menu-prompt-string (prompt)
   "PROMPT ending in a colon, as menus show it: \"Run\" and \"Run: \" both
@@ -122,8 +131,13 @@ give \"Run:\"."
 
 ;;; Applications: .desktop files
 
-(defstruct (desktop-entry (:constructor make-desktop-entry (id name &key generic comment exec terminal keywords categories)))
-  id name generic comment exec terminal keywords categories)
+(defstruct (desktop-entry (:constructor make-desktop-entry
+                              (id name &key generic comment exec terminal keywords categories
+                                        actions wm-class)))
+  "An application from a .desktop file. ACTIONS are its [Desktop Action]
+groups, each (ID NAME EXEC); WM-CLASS its StartupWMClass, the app id
+its windows have when it is not the file's name."
+  id name generic comment exec terminal keywords categories actions wm-class)
 
 (defun %desktop-directories ()
   (append (list (uiop:xdg-data-home "applications/"))
@@ -132,7 +146,9 @@ give \"Run:\"."
 
 (defun %parse-desktop-file (file)
   "The desktop-entry of FILE, or NIL when it is not an application to show."
-  (let ((in-entry nil) (fields (make-hash-table :test 'equal)))
+  (let* ((fields (make-hash-table :test 'equal))
+         (group nil)                    ; the table of the group being read
+         (actions '()))                 ; (id . table) of the action groups, in file order
     (with-open-file (stream file :external-format :utf-8 :if-does-not-exist nil)
       (unless stream (return-from %parse-desktop-file nil))
       (loop for line = (read-line stream nil)
@@ -141,11 +157,21 @@ give \"Run:\"."
                  (cond ((zerop (length line)))
                        ((char= (char line 0) #\#))
                        ((char= (char line 0) #\[)
-                        (setf in-entry (string= line "[Desktop Entry]")))
-                       (in-entry
+                        (setf group
+                              (cond ((string= line "[Desktop Entry]") fields)
+                                    ((and (alexandria:starts-with-subseq "[Desktop Action " line)
+                                          (alexandria:ends-with #\] line))
+                                     (let ((table (make-hash-table :test 'equal)))
+                                       (setf actions
+                                             (append actions
+                                                     (list (cons (subseq line 16 (1- (length line)))
+                                                                 table))))
+                                       table))
+                                    (t nil))))
+                       (group
                         (let ((eq (position #\= line)))
                           (when eq
-                            (setf (gethash (string-right-trim " " (subseq line 0 eq)) fields)
+                            (setf (gethash (string-right-trim " " (subseq line 0 eq)) group)
                                   (string-left-trim " " (subseq line (1+ eq)))))))))))
     (flet ((field (name) (gethash name fields))
            (truep (value) (and value (string-equal value "true"))))
@@ -159,7 +185,27 @@ give \"Run:\"."
                             :exec (%strip-exec-field-codes (field "Exec"))
                             :terminal (truep (field "Terminal"))
                             :keywords (uiop:split-string (or (field "Keywords") "") :separator ";")
-                            :categories (uiop:split-string (or (field "Categories") "") :separator ";"))))))
+                            :categories (uiop:split-string (or (field "Categories") "") :separator ";")
+                            :wm-class (field "StartupWMClass")
+                            :actions (loop for (id . table) in actions
+                                           for name = (gethash "Name" table)
+                                           for exec = (gethash "Exec" table)
+                                           when (and name exec)
+                                             collect (list id name (%strip-exec-field-codes exec))))))))
+
+(defun desktop-entry-new-window-action (entry)
+  "The action of ENTRY that opens a new window, as (ID NAME EXEC), or
+NIL: browsers and editors have one, named new-window or \"New Window\";
+a private or incognito window is not it."
+  (flet ((says (string &rest words)
+           (every (lambda (word) (search word string :test #'char-equal)) words)))
+    (find-if (lambda (action)
+               (destructuring-bind (id name exec) action
+                 (declare (ignore exec))
+                 (and (or (says id "new" "window") (says name "new" "window"))
+                      (notany (lambda (word) (or (says id word) (says name word)))
+                              '("private" "incognito" "anonym")))))
+             (desktop-entry-actions entry))))
 
 (defun %strip-exec-field-codes (exec)
   "EXEC without the %f %u ... placeholders of the desktop entry spec."
@@ -187,10 +233,15 @@ directory with a given file wins."
               (push entry entries))))))
     (sort entries #'string-lessp :key #'desktop-entry-name)))
 
-(defun launch-desktop-entry (entry)
-  "Start the application of ENTRY, in a terminal when it wants one."
-  (let ((exec (desktop-entry-exec entry)))
-    (log-string :info "Starting ~A: ~A" (desktop-entry-name entry) exec)
+(defun launch-desktop-entry (entry &key new-window)
+  "Start the application of ENTRY, in a terminal when it wants one. With
+NEW-WINDOW, through its new-window action when it has one, so an
+application already running opens another window instead of showing
+the one it has."
+  (let* ((action (and new-window (desktop-entry-new-window-action entry)))
+         (exec (if action (third action) (desktop-entry-exec entry))))
+    (log-string :info "Starting ~A~@[ (~A)~]: ~A" (desktop-entry-name entry)
+                (and action (second action)) exec)
     (if (desktop-entry-terminal entry)
         (let ((terminal (loop for name in mahogany/system::*default-terminals*
                               thereis (mh-sys:find-program name))))
@@ -198,6 +249,32 @@ directory with a given file wins."
               (uiop:launch-program (list terminal "-e" "sh" "-c" exec))
               (error 'mahogany/util:recoverable-error :text "No terminal found")))
         (uiop:launch-program exec))))
+
+(defun desktop-entry-of-view (view)
+  "The desktop-entry of VIEW's application, by its app id: the file's
+name, its StartupWMClass, or the program its Exec starts. NIL when
+none fits."
+  (alexandria:when-let ((app-id (hrt:view-app-id view)))
+    (let ((entries (desktop-entries)))
+      (or (find app-id entries :key #'desktop-entry-id :test #'string-equal)
+          (find app-id entries :key #'desktop-entry-wm-class :test #'equalp)
+          (find-if (lambda (entry)
+                     (let ((program (first (uiop:split-string (desktop-entry-exec entry)
+                                                              :separator " "))))
+                       (and program
+                            (string-equal app-id (file-namestring program)))))
+                   entries)))))
+
+(defun launch-view-application (view)
+  "Start another window of VIEW's application: through its desktop
+entry, with its new-window action when it has one."
+  (let ((entry (desktop-entry-of-view view)))
+    (unless entry
+      (error 'mahogany/util:recoverable-error
+             :text (format nil "No application found for ~A"
+                           (or (hrt:view-app-id view) (hrt:view-title view) "the window"))))
+    (%remember-choice (desktop-entry-name entry))
+    (launch-desktop-entry entry :new-window t)))
 
 ;;; What was chosen before comes first
 
@@ -252,7 +329,10 @@ directory with a given file wins."
           (lambda (item) (desktop-entry-name (menu-item-data item))))
   :action (lambda (entry)
             (%remember-choice (desktop-entry-name entry))
-            (launch-desktop-entry entry)))
+            (launch-desktop-entry entry))
+  :alternate-action (lambda (entry)
+                      (%remember-choice (desktop-entry-name entry))
+                      (launch-desktop-entry entry :new-window t)))
 
 (define-launcher-mode :commands (:prompt "Command" :description "Mahogany commands")
   :items (let ((keys (make-hash-table :test 'equalp)))
@@ -292,7 +372,8 @@ directory with a given file wins."
                             collect (make-menu-item (or (hrt:view-title view) "(untitled)")
                                                     :data view
                                                     :detail (%group-label group))))
-  :action (lambda (view) (mahogany-state-show-view *compositor-state* view)))
+  :action (lambda (view) (mahogany-state-show-view *compositor-state* view))
+  :alternate-action #'launch-view-application)
 
 (define-launcher-mode :groups (:prompt "Group" :description "Groups of this output")
   :items (loop for group in (%listed-groups)
@@ -473,9 +554,21 @@ applications, windows, groups, screens, commands, modes."
          (execute-command command nil (server-seat *compositor-state*))))
       (:mode (launcher payload)))))
 
+(defun %all-choose-anew (data)
+  "The :all mode's choice with C-Return: a window starts another window
+of its application, an application starts in a new window; the rest
+as with Return."
+  (destructuring-bind (kind payload) data
+    (case kind
+      (:app (%remember-choice (desktop-entry-name payload))
+       (launch-desktop-entry payload :new-window t))
+      (:window (launch-view-application payload))
+      (t (%all-choose data)))))
+
 (define-launcher-mode :all (:prompt "Go" :description "Everything: apps, windows, commands, groups, screens")
   :items (%all-items)
-  :action #'%all-choose)
+  :action #'%all-choose
+  :alternate-action #'%all-choose-anew)
 
 (defcommand launcher-all ()
   (:documentation "Everything in one list: applications, windows, commands, groups, screens")

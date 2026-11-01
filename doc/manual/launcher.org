@@ -12,6 +12,7 @@ you type must appear in order in an item, so =nvi= finds =Neovim= and
 | =Up= / =C-p= / =C-k=     | previous item                          |
 | =PageDown= / =PageUp=    | a page of items                        |
 | =Return=                 | choose the selected item               |
+| =C-Return=               | choose it anew (see below)             |
 | =BackSpace=, =C-w=, =C-u= | delete a character, a word, everything |
 | =Escape=                 | cancel                                 |
 
@@ -27,12 +28,19 @@ The launcher is a set of menus, called modes. The commands:
   this screen, the other screens, every Mahogany command with its key,
   and the launcher's modes; each item says what it is, and typing
   narrows all of them at once. Applications and commands chosen before
-  come first within their kind.
+  come first within their kind. A window comes before its application,
+  so =Return= on =helium= goes to the Helium window that is open:
+  =C-Return= starts another one instead, through the window's
+  application (its =.desktop= file, found by the window's app id).
 - =launcher-apps= :: start an application, from the =.desktop= files of
   the installed programs (=XDG_DATA_DIRS= and =~/.local/share/applications=).
-  Applications that were started before come first.
+  Applications that were started before come first. =C-Return= starts
+  it through the =.desktop= file's "New Window" action when it has one
+  (browsers and editors do), so a running application opens another
+  window instead of showing the one it has.
 - =launcher-commands= :: run any Mahogany command, with its keybinding shown.
-- =launcher-windows= :: go to a window, in any group.
+- =launcher-windows= :: go to a window, in any group; =C-Return= starts
+  another window of its application.
 - =launcher-groups= :: go to a group.
 - =move-window-to-group-menu= :: move the focused window to a group.
 - =launcher-run= :: run a shell command, with the commands run before to choose from.
@@ -72,8 +80,10 @@ with the choice. The items are rebuilt every time the menu opens.
 =make-menu-item= takes the label shown, =:data= handed to the action,
 =:detail= shown dimmer at the right, and =:keywords= matched as well as
 the label. A mode with a =:text-action= accepts what was typed when no
-item matches. Modes appear in =launcher-menu= in the order they were
-defined; redefining a mode replaces it.
+item matches; one with an =:alternate-action= does that instead of
+the =:action= for a choice made with =C-Return=. Modes appear in
+=launcher-menu= in the order they were defined; redefining a mode
+replaces it.
 
 *** Matching
 
