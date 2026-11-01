@@ -8,20 +8,20 @@
 (defconstant +wheel-mask+ (ash 1 1))
 (defconstant +sloppy-mask+ (ash 1 2))
 
-(defglobal *keyboard-focus-bits* +click-mask+)
+(defglobal *keyboard-focus-bits* (logior +click-mask+ +wheel-mask+ +sloppy-mask+))
 
 (config-system:define-setf-config
-    (keyboard-focus-type :click
+    (keyboard-focus-type :sloppy
      :type (member :click-and-wheel :click :ignore :sloppy))
     "How keyboard focus is changed based on mouse input.
 Values:
+  :sloppy (the default)
+     Focus follows the pointer: the frame it moves into, a window or
+     an empty one, is focused, as are clicked and scrolled ones.
   :click
      Change when a button on the mouse is clicked
   :click-and-wheel
      Change when a button is clicked or the scroll whell is used.
-  :sloppy (not implemented)
-     Change focus when the mouse is moved over surface, is clicked,
-     or the wheel is used.
   :ignore
      Do not change focus after the mouse is used."
   (:setter (val)
@@ -270,20 +270,43 @@ the settings set before then only remember the values."
 (defun %focus-frame-under-cursor (seat)
   (declare (optimize (speed 2)))
   (declare (type cffi:foreign-pointer seat))
-  (let* ((lx (hrt:hrt-seat-cursor-lx seat))
-         (ly (hrt:hrt-seat-cursor-ly seat))
-         ;; The frame under the cursor is in the group shown on the
-         ;; output there:
-         (found (silence-notes
-                  (loop for group being the hash-values
-                          of (state-output-groups *compositor-state*)
-                        thereis (or (group-floating-frame-at group lx ly)
-                                    (tree:frame-at (mahogany-group-tiled-container group)
-                                                   lx ly))))))
-    (if found
-        (let ((hrt:*in-pointer-event* t))
-          (state-focus-frame *compositor-state* found seat))
-        nil)))
+  (alexandria:when-let ((found (%frame-under-cursor seat)))
+    (let ((hrt:*in-pointer-event* t))
+      (state-focus-frame *compositor-state* found seat))))
+
+(defun %frame-under-cursor (seat)
+  "The frame under the cursor, tiled or floating, in the group shown
+on the output there; NIL over nothing."
+  (let ((lx (hrt:hrt-seat-cursor-lx seat))
+        (ly (hrt:hrt-seat-cursor-ly seat)))
+    (silence-notes
+      (loop for group being the hash-values
+              of (state-output-groups *compositor-state*)
+            thereis (or (group-floating-frame-at group lx ly)
+                        (tree:frame-at (mahogany-group-tiled-container group)
+                                       lx ly))))))
+
+(hrt:define-hrt-callback handle-pointer-motion :void
+    ((seat (:pointer (:struct hrt:hrt-seat))))
+    ()
+  "Focus follows the pointer (:sloppy): the frame the pointer moved
+into becomes the focused one. Heart calls this for motion over the
+desktop only, not over a menu or the bar, and not while a button is
+held or a menu has the input. The pointer is not warped back: the
+focus came from it."
+  (declare (optimize (speed 3))
+           #+sbcl
+           (sb-ext:muffle-conditions sb-ext:compiler-note))
+  (when (not (zerop (logand *keyboard-focus-bits* +sloppy-mask+)))
+    (let ((current (state-current-frame *compositor-state*))
+          (lx (hrt:hrt-seat-cursor-lx seat))
+          (ly (hrt:hrt-seat-cursor-ly seat)))
+      ;; Still in the focused frame: nothing to look up.
+      (unless (and current (tree:in-frame-p current lx ly))
+        (alexandria:when-let ((found (%frame-under-cursor seat)))
+          (unless (eq found current)
+            (let ((hrt:*in-pointer-event* t))
+              (state-focus-frame *compositor-state* found seat))))))))
 
 (hrt:define-hrt-callback handle-mouse-wheel-event :void
     ((seat (:pointer (:struct hrt:hrt-seat)))

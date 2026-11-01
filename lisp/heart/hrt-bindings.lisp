@@ -72,7 +72,8 @@
   (button-event :pointer #| function ptr void (struct hrt_seat *, struct wlr_pointer_button_event *) |#)
   (wheel-event :pointer #| function ptr void (struct hrt_seat *, struct wlr_pointer_axis_event *) |#)
   (keyboard-keypress-event :pointer #| function ptr _Bool (struct hrt_seat *, struct hrt_keypress_info *) |#)
-  (switch-event :pointer #| function ptr void (struct hrt_seat *, int, _Bool) |#))
+  (switch-event :pointer #| function ptr void (struct hrt_seat *, int, _Bool) |#)
+  (pointer-motion :pointer #| function ptr void (struct hrt_seat *) |#))
 
 (cffi:defcstruct hrt-input
   (wlr-input-device :pointer #| (:struct wlr-input-device) |#)

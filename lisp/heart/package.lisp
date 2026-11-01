@@ -192,7 +192,7 @@
            #:with-view-transaction
            ;; seat callbacks
            #:button-event #:wheel-event #:keyboard-keypress-event
-           #:switch-event
+           #:switch-event #:pointer-motion
            ;; Server-related symbols
            #:hrt-server
            #:server-init

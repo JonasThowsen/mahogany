@@ -177,5 +177,8 @@ mahogany, remote»):
   for a waiting main-thread eval; the launcher's `:eval` and `:load`
   modes are in `lisp/launcher.lisp`). `lisp/input.lisp` holds the input settings
   (touchpad, mouse, numlock, cursor theme) and pushes them to heart at
-  startup. Each has a manual page in `doc/manual/`.
+  startup, and the seat callbacks: buttons, wheel, keys, and
+  `pointer-motion` (heart calls it for motion over the desktop, not
+  over canvases or during a client's button hold; focus follows the
+  pointer with it, `keyboard-focus-type` `:sloppy`, the default). Each has a manual page in `doc/manual/`.
 - `doc/manual/` — user manual (org); `doc/devel/` — design notes.

@@ -190,6 +190,9 @@ void hrt_cursor_handle_motion(struct hrt_seat *seat, uint32_t time, double dx,
         } else {
             wlr_seat_pointer_clear_focus(seat->seat);
         }
+        if (seat->callbacks && seat->callbacks->pointer_motion) {
+            seat->callbacks->pointer_motion(seat);
+        }
     }
 }
 

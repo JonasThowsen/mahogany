@@ -13,12 +13,18 @@ settings that control how focus moves from one surface to another.
 *** Setting how focus is controlled
   + =(config-system:set-config keyboard-focus-type type)= :: Sets the way the keyboard
     focus is set. The valid values are:
-    - =:click= :: /Default/ Switch the keyboard focus to
+    - =:sloppy= :: /Default/ Focus follows the pointer: the frame the
+      pointer moves into is focused, a window or an empty frame, tiled
+      or floating, as are frames clicked or scrolled in. Moving over
+      the bar or a menu changes nothing, nor does moving while a
+      button is held. Focusing from the keyboard still warps the
+      pointer to the frame (=mh::*warp-pointer-to-focus*=), so the two
+      agree.
+    - =:click= :: Switch the keyboard focus to
       windows that are clicked on in addition to wm commands.
     - =:click-and-wheel= :: Switch the keyboard focus when the cursor is clicked
       or scrolled.
     - =:ignore= :: Ignore the mouse, and just use commands.
-    - =:sloppy= :: Set the keyboard focus to whatever surface the cursors is over.
 *** Focus requests from clients
   A client can ask for one of its windows to be focused through the
   xdg-activation protocol, with a token it got from a recent user

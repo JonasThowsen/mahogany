@@ -113,6 +113,13 @@ struct hrt_seat_callbacks {
      * entered. May be NULL.
      **/
     void (*switch_event)(struct hrt_seat *seat, int switch_type, bool on);
+    /**
+     * The pointer moved over the desktop: not grabbed, not held by a
+     * client's button, not over a canvas, the session not locked. The
+     * surface under it has already been told. For focus that follows
+     * the pointer. May be NULL.
+     **/
+    void (*pointer_motion)(struct hrt_seat *seat);
 };
 
 struct hrt_input {

@@ -26,6 +26,7 @@
 ;; (setf *group-layout-defaults* '(("1" . :master-stack) ("2" . :manual)))
 
 ;;; Input: the touchpad, the mouse, Num Lock, the cursor
+;; (config:set-config keyboard-focus-type :click)   ; focus follows the pointer (:sloppy) by default
 
 ;; (config:set-config touchpad-tap-to-click t          ; the default
 ;;                    touchpad-natural-scroll t
