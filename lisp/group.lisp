@@ -275,20 +275,31 @@ to match."
 		   (hidden mahogany-group-hidden-views))
       group
     (when (mahogany-group-current-frame group)
-      (if (view-floats-p view)
-          ;; A window that floats, by the rules: over the tiled frames.
-          (group-float-view group view)
-          ;; Else into the tiled frame that has the focus, or had it last:
-          (let ((current-frame (%group-tiled-frame group))
-                (hrt-layer (tree:layer-container-layer (mahogany-group-tiled-container group))))
-            (hrt:scene-layer-add-view hrt-layer view)
-            (let ((to-hide (tree:frame-surface current-frame)))
-              (when to-hide
-                (%add-hidden hidden to-hide))
-              (%swap-view-into-frame group current-frame view)
-              (unless (eq current-frame (mahogany-group-current-frame group))
-                (group-focus-frame group current-frame (server-seat *compositor-state*)))
-              (group-views-changed group (tree:find-root-frame current-frame) to-hide)))))))
+      (cond
+        ((view-floats-p view)
+         ;; A window that floats, by the rules: over the tiled frames.
+         (group-float-view group view))
+        ((typep (mahogany-group-current-frame group) 'tree:output-node)
+         ;; A window is fullscreen here: the new one waits behind it,
+         ;; hidden like the frames under it, and joins the layout when
+         ;; the fullscreen ends (%group-unfullscreen). The fullscreen
+         ;; window keeps the focus.
+         (log-string :debug "New window ~S behind the fullscreen one" view)
+         (hrt:scene-layer-add-view (tree:layer-container-layer (mahogany-group-tiled-container group))
+                                   view)
+         (%add-hidden hidden view))
+        (t
+         ;; Else into the tiled frame that has the focus, or had it last:
+         (let ((current-frame (%group-tiled-frame group))
+               (hrt-layer (tree:layer-container-layer (mahogany-group-tiled-container group))))
+           (hrt:scene-layer-add-view hrt-layer view)
+           (let ((to-hide (tree:frame-surface current-frame)))
+             (when to-hide
+               (%add-hidden hidden to-hide))
+             (%swap-view-into-frame group current-frame view)
+             (unless (eq current-frame (mahogany-group-current-frame group))
+               (group-focus-frame group current-frame (server-seat *compositor-state*)))
+             (group-views-changed group (tree:find-root-frame current-frame) to-hide))))))))
 
 (defun group-unmap-view (group view)
   (declare (type mahogany-group group))
@@ -314,16 +325,27 @@ to match."
                   (when (and to-replace
                              (not (tree:frame-surface to-focus)))
                     (setf (tree:frame-surface to-focus) (%pop-hidden-item hidden)))
-                  (setf (mahogany-group-current-frame group) to-focus))))))
+                  (setf (mahogany-group-current-frame group) to-focus)
+                  ;; The windows left fill the layout again, as after
+                  ;; any window has gone:
+                  (group-views-changed group f))))))
           (tree:floating-frame
            (%destroy-floating-frame group f))
           (tree:view-frame
            (setf (tree:frame-surface f) nil)
+           ;; Under a fullscreen window the view is hidden and in a
+           ;; frame at once: out of the hidden list first, or it would
+           ;; be popped right back into its frame.
+           (ring-list:remove-item hidden view)
            (when (> (ring-list:ring-list-size hidden) 0)
              (%swap-view-into-frame group f (%pop-hidden-item hidden)))
            (group-views-changed group (tree:find-root-frame f))))
-        (hrt:dirty-view-transaction))
-      (ring-list:remove-item hidden view))))
+        (hrt:dirty-view-transaction)))
+    ;; Whether it had a frame or not: a destroyed view left in the
+    ;; hidden list or the map of views under a fullscreen window is
+    ;; touched later (hrt_view_set_hidden on freed memory).
+    (ring-list:remove-item hidden view)
+    (remhash view (mahogany-group-hidden-view-map group))))
 
 (defun group-remove-view (group view)
   (declare (type mahogany-group group))
@@ -343,6 +365,7 @@ to match."
                 (setf (tree:frame-surface f) nil)
                 (when (typep f 'tree:view-frame)
                   (group-views-changed group (tree:find-root-frame f))))))))
+    (remhash view (mahogany-group-hidden-view-map group))
     (setf view-list (remove view view-list :test #'equalp))))
 
 (defmethod tree:find-empty-frame ((group mahogany-group))
@@ -481,7 +504,10 @@ After this function is ran, the current frame needs to be set and focused."
          (setf (mahogany-group-current-frame group) to-focus)
          (alexandria:when-let ((prev (tree:frame-surface to-focus)))
            (%add-hidden (mahogany-group-hidden-views group) prev))
-         (setf (tree:frame-surface to-focus) view)))
+         (setf (tree:frame-surface to-focus) view)
+         ;; Windows that opened while it was fullscreen waited hidden:
+         ;; the layout takes them in now, after the ones that were there.
+         (group-views-changed group frame)))
       (t
        ;; We aren't doing anything; communicate that to the calling code
        nil))
@@ -537,9 +563,20 @@ last, for the commands that act on tiled frames."
     (alexandria:when-let ((tiled (%group-tiled-frame group)))
       (group-focus-frame group tiled (server-seat *compositor-state*)))))
 
+(defun %group-leave-fullscreen (group)
+  "Take the fullscreen window of GROUP's current output out of
+fullscreen, for the commands that cycle or swap windows in a frame:
+swapping into the fullscreen slot left the window's fullscreen flag
+set and the tree without a focused frame."
+  (let ((current (mahogany-group-current-frame group)))
+    (when (typep current 'tree:output-node)
+      (alexandria:when-let ((data (tree::output-node-fullscreen current)))
+        (%group-unfullscreen group (tree::%fullscreen-data-view data))))))
+
 (defun group-next-hidden (group)
   (declare (type mahogany-group group))
   (%group-leave-floating group)
+  (%group-leave-fullscreen group)
   (let ((current-frame (mahogany-group-current-frame group))
         (hidden-views (mahogany-group-hidden-views group))
         (next-view))
@@ -552,6 +589,7 @@ last, for the commands that act on tiled frames."
 (defun group-previous-hidden (group)
   (declare (type mahogany-group group))
   (%group-leave-floating group)
+  (%group-leave-fullscreen group)
   (let ((current-frame (mahogany-group-current-frame group))
         (hidden-views (mahogany-group-hidden-views group))
         (next-view))
