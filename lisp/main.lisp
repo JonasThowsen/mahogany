@@ -139,6 +139,10 @@ every error before."
          (enable-debugger))
         (t
          #+sbcl (setf sb-ext:*invoke-debugger-hook* #'%recover-from-error)))
+  ;; On exit SBCL waits for the other threads to end, a minute by
+  ;; default: a Slynk connection sitting in a read made quitting the
+  ;; session take that long before the display manager came back.
+  #+sbcl (setf sb-ext:*exit-timeout* 3)
   (cffi:with-foreign-objects ((output-callbacks '(:struct hrt:hrt-output-callbacks))
 		              (seat-callbacks '(:struct hrt:hrt-seat-callbacks))
 		              (view-callbacks '(:struct hrt:hrt-view-callbacks))
