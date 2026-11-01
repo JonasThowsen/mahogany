@@ -471,3 +471,14 @@ theme's; NIL goes back to the theme's."
   :description "Matte black"
   :foreground "#eaeaea" :background "#121212" :surface "#1f1f1f"
   :accent "#8a8a8d" :muted "#5c5c5c" :error "#d35f5f")
+
+;; Gavin Freeborn's StumpWM (github.com/Gavinok/stump-conf): a black
+;; mode-line with white text, the group number in steel blue, a thin
+;; white border on the focused window and none to be seen on the
+;; others, over black. He has gaps of 13 between windows and 7 to the
+;; edge: (set-gaps :window 13 :output 7 :border 2) gives them.
+(define-theme :gavinok
+  :description "Gavin Freeborn's StumpWM: white on black"
+  :foreground "#ffffff" :background "#000000"
+  :accent "#7d8fa3" :muted "#6c6c6c" :error "#bf6262"
+  :border-focus "#ffffff" :border-unfocus "#000000")

@@ -30,7 +30,8 @@
     (remhash :test-defaults mahogany::*themes*)))
 
 (fiasco:deftest built-in-themes-are-complete ()
-  (dolist (name '(:mahogany :tokyo-night :catppuccin :nord :gruvbox))
+  (dolist (name '(:mahogany :tokyo-night :catppuccin :nord :gruvbox
+                  :matte-black :gavinok))
     (let ((theme (mahogany::find-theme name)))
       (is (typep (mahogany::theme-foreground theme) 'colors:rgb))
       (is (typep (mahogany::theme-background theme) 'colors:rgb))

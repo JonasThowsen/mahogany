@@ -9,9 +9,11 @@ wallpaper. Switching themes changes all of them at once, live.
 
 Mahogany comes with =tokyo-night= (the default), =catppuccin=,
 =catppuccin-latte= (light), =nord=, =gruvbox=, =everforest=,
-=kanagawa=, =rose-pine=, =matte-black= and =mahogany= (the colors it
-had before themes). The theme chosen last is remembered across
-restarts.
+=kanagawa=, =rose-pine=, =matte-black=, =gavinok= (Gavin Freeborn's
+StumpWM: white on black, a white border on the focused window; his
+gaps are =(set-gaps :window 13 :output 7 :border 2)=) and =mahogany=
+(the colors it had before themes). The theme chosen last is remembered
+across restarts.
 
 - =theme-menu= (also the "Themes" mode of the launcher) lists the
   themes; choosing one applies it.
