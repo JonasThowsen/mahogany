@@ -95,7 +95,8 @@ there has another layout."
                          for x from pad by tab-width
                          for shown-p = (eq view shown)
                          do (when shown-p
-                              (draw:fill-rounded-rectangle cr x 3 (- tab-width (round pad 2)) (- height 6) 6
+                              (draw:fill-rounded-rectangle cr x 3 (- tab-width (round pad 2)) (- height 6)
+                                                           (%overlay-radius 6)
                                                            (mh/theme:theme-border-color theme)))
                             (draw:draw-text cr (%tab-title view)
                                             (+ x (round pad 2)) (round (- height 16) 2)

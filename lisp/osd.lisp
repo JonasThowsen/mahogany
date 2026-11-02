@@ -67,19 +67,24 @@ shown is replaced."
           (hrt:canvas-set-position canvas x y)
           (hrt:with-canvas-frame (cr canvas width height)
             (draw:clear cr '(0 0 0 0))
-            (draw:fill-rounded-rectangle cr 0 0 width height 10
+            (draw:fill-rounded-rectangle cr 0 0 width height (%overlay-radius 10)
                                          (mh/theme:theme-background-color theme))
+            ;; A plain display has an edge, as the message cards do:
+            (when (eq *overlay-style* :plain)
+              (draw:stroke-rounded-rectangle cr 0 0 width height 0
+                                             :color (mh/theme:theme-border-color theme)
+                                             :line-width (%overlay-border)))
             (draw:draw-text cr text pad pad :font font
                                             :color (mh/theme:theme-font-color theme)
                                             :width (- width (* 2 pad)) :ellipsize :end)
             (when percent
               (let ((bar-y (+ pad text-height 10))
                     (bar-width (- width (* 2 pad))))
-                (draw:fill-rounded-rectangle cr pad bar-y bar-width bar-height 3
+                (draw:fill-rounded-rectangle cr pad bar-y bar-width bar-height (%overlay-radius 3)
                                              (%dim (mh/theme:theme-font-color theme) 0.25))
                 (draw:fill-rounded-rectangle cr pad bar-y
                                              (round (* bar-width (max 0 (min 100 percent))) 100)
-                                             bar-height 3
+                                             bar-height (%overlay-radius 3)
                                              (mh/theme:theme-border-color theme)))))))
       ;; (Re)start the timer that takes it down:
       (unless *osd-timer*

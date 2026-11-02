@@ -538,6 +538,6 @@ theme's; NIL goes back to the theme's."
   :foreground "#ffffff" :background "#000000"
   :accent "#7d8fa3" :muted "#6c6c6c" :error "#bf6262"
   :border-focus "#ffffff" :border-unfocus "#000000"
-  :settings '(*mode-line-icons* nil *mode-line-marker* :brackets
-              *mode-line-height* 20 *mode-line-padding* 8
+  :settings '(*mode-line-marker* :brackets *overlay-style* :plain
+              *mode-line-height* 20 *mode-line-padding* 8 *menu-padding* 10
               tree:*window-gap* 13 tree:*output-gap* 7))

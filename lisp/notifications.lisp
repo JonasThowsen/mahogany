@@ -469,8 +469,14 @@ canvas down when there are none."
                                        (2 (theme-error theme))
                                        (0 (theme-muted theme))
                                        (t (theme-accent theme)))))
-                         (draw:fill-rounded-rectangle cr 0 cy width h 8 (theme-background theme))
-                         (draw:fill-rounded-rectangle cr 0 cy 4 h 2 border)
+                         ;; A card with a stripe of the urgency's color
+                         ;; at its left; plain, a box edged in it:
+                         (draw:fill-rounded-rectangle cr 0 cy width h (%overlay-radius 8)
+                                                      (theme-background theme))
+                         (if (eq *overlay-style* :plain)
+                             (draw:stroke-rounded-rectangle cr 0 cy width h 0
+                                                            :color border :line-width 1)
+                             (draw:fill-rounded-rectangle cr 0 cy 4 h 2 border))
                          (draw:draw-text cr (format nil "<b>~A</b>" (%escape-markup (notification-summary n)))
                                          pad (+ cy pad) :font font :markup t
                                          :color (theme-foreground theme)

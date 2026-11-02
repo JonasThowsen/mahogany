@@ -103,7 +103,11 @@ by prefix only:
 
 =mh::*menu-theme*= (font and colors; the border color marks the
 selection), =mh::*menu-width*= (a fraction of the output's width, 0.4),
-=mh::*menu-rows*= (12) and =mh::*menu-padding*= (10).
+=mh::*menu-rows*= (12), =mh::*menu-padding*= (14) and
+=mh::*menu-radius*= (12, the corners). =mh::*overlay-style*= =:plain=
+makes menus, and everything else drawn over the desktop, square with a
+thin border and the selection as a bar across the box; see
+[[file:theming.org][Themes]].
 
 ** Interactive commands
 

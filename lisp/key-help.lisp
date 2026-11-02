@@ -76,10 +76,11 @@ over OUTPUT, centred."
         (hrt:canvas-set-position canvas (max 0 x) (max 0 y))
         (hrt:with-canvas-frame (cr canvas width height)
           (draw:clear cr '(0 0 0 0))
-          (draw:fill-rounded-rectangle cr 0 0 width height *menu-radius*
+          (draw:fill-rounded-rectangle cr 0 0 width height (%overlay-radius *menu-radius*)
                                        (mh/theme:theme-background-color theme))
-          (draw:stroke-rounded-rectangle cr 0 0 width height *menu-radius*
-                                         :color (mh/theme:theme-border-color theme) :line-width 2)
+          (draw:stroke-rounded-rectangle cr 0 0 width height (%overlay-radius *menu-radius*)
+                                         :color (mh/theme:theme-border-color theme)
+                                         :line-width (%overlay-border))
           (draw:draw-text cr title pad pad :font font
                           :color (mh/theme:theme-font-color theme)
                           :width (- width (* 2 pad)) :ellipsize :end)

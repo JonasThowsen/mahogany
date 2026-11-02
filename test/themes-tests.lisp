@@ -94,3 +94,11 @@
                         (mahogany::theme-settings
                          (mahogany::define-theme :test-from :from :test-from))))))
       (remhash :test-from mahogany::*themes*))))
+
+(fiasco:deftest plain-overlays-are-square-with-a-thin-border ()
+  (let ((mahogany::*overlay-style* :card))
+    (is (= 12 (mahogany::%overlay-radius 12)))
+    (is (= 2 (mahogany::%overlay-border))))
+  (let ((mahogany::*overlay-style* :plain))
+    (is (= 0 (mahogany::%overlay-radius 12)))
+    (is (= 1 (mahogany::%overlay-border)))))

@@ -29,7 +29,8 @@
 
 (config:defconfig *menu-radius* 12
   fixnum
-  "How much a menu's corners are rounded, in layout pixels.")
+  "How much a menu's corners are rounded, in layout pixels, when
+*overlay-style* is :card; plain menus are square.")
 
 (config:defconfig *menu-match-function* 'fuzzy-match-score
   (or symbol function)
@@ -308,10 +309,11 @@ through the menu's on-choose-alternate when it has one."
           (hrt:canvas-set-position canvas (max 0 x) (max 0 y))
           (hrt:with-canvas-frame (cr canvas width height)
             (draw:clear cr '(0 0 0 0))
-            (draw:fill-rounded-rectangle cr 0 0 width height *menu-radius*
+            (draw:fill-rounded-rectangle cr 0 0 width height (%overlay-radius *menu-radius*)
                                          (mh/theme:theme-background-color theme))
-            (draw:stroke-rounded-rectangle cr 0 0 width height *menu-radius*
-                                           :color (mh/theme:theme-border-color theme) :line-width 2)
+            (draw:stroke-rounded-rectangle cr 0 0 width height (%overlay-radius *menu-radius*)
+                                           :color (mh/theme:theme-border-color theme)
+                                           :line-width (%overlay-border))
             ;; The prompt line: PROMPT filter▏ and how many match:
             (let* ((count (if (menu-items menu)
                               (format nil "~D/~D" (length matches) (length (menu-items menu)))
@@ -339,12 +341,16 @@ through the menu's on-choose-alternate when it has one."
                   for selected = (= index (menu-selected menu))
                   ;; The selected row is a block of the accent, its
                   ;; text in the background color to stand out on it:
+                  ;; a chip inset by the padding, or, plain, a bar
+                  ;; from border to border.
                   for text-color = (if selected
                                        (mh/theme:theme-background-color theme)
                                        (mh/theme:theme-font-color theme))
                   do (when selected
-                       (draw:fill-rounded-rectangle cr pad row-y (- width (* 2 pad)) row-height 6
-                                                    (mh/theme:theme-border-color theme)))
+                       (let ((inset (if (eq *overlay-style* :plain) (%overlay-border) pad)))
+                         (draw:fill-rounded-rectangle cr inset row-y (- width (* 2 inset)) row-height
+                                                      (%overlay-radius 6)
+                                                      (mh/theme:theme-border-color theme))))
                      (let* ((detail (menu-item-detail item))
                             ;; A detail takes at most half the row:
                             (detail-width (if detail

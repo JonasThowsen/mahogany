@@ -2,9 +2,9 @@
 
 ;;; Messages (toasts): a card drawn by Lisp on a canvas, the way mako
 ;;; shows notifications: at the top right of the current output by
-;;; default, rounded, with a border in the theme's accent, or in its
-;;; error color for an error. It goes after *message-delay*
-;;; milliseconds, or at the next key press when asked.
+;;; default, rounded (see *overlay-style*), with a border in the
+;;; theme's accent, or in its error color for an error. It goes after
+;;; *message-delay* milliseconds, or at the next key press when asked.
 
 ;; In group.lisp and canvas.lisp, which load after this file:
 ;; group.lisp, which loads after this file, defines it with this type:
@@ -27,6 +27,27 @@ area (below the mode-line).")
 (config:defconfig *message-width* 420
   fixnum
   "The width of a message card in layout pixels; longer text wraps.")
+
+;;; The style of everything Lisp draws over the desktop: here, since
+;;; this file loads before the menu, the OSD, the key help, the
+;;; notifications and the tab bar.
+
+(config:defconfig *overlay-style* :card
+  (member :card :plain)
+  "How menus, messages, the OSD, the key help, notifications and the
+tab bar are drawn. :card rounds their corners, gives them a two-pixel
+border and marks the selection on a chip inside the box. :plain draws
+them square with a one-pixel border, and the selection as a bar across
+the whole box, the way StumpWM's windows look.")
+
+(defun %overlay-radius (radius)
+  "RADIUS, the corner radius a rounded overlay would have, or 0 when
+overlays are plain."
+  (if (eq *overlay-style* :plain) 0 radius))
+
+(defun %overlay-border ()
+  "The width of an overlay's border, in layout pixels."
+  (if (eq *overlay-style* :plain) 1 2))
 
 (config:defconfig *message-theme* (mh/theme:make-theme)
   mh/theme:theme
@@ -99,8 +120,8 @@ arguments, when there is one."
     (setf *close-message-on-key* close-on-key)
     (let ((font (mh/theme:theme-font theme))
           (pad 14)
-          (border 2)
-          (radius 10)
+          (border (%overlay-border))
+          (radius (%overlay-radius 10))
           (canvas (hrt:make-canvas output :layer :layer-overlay)))
       (multiple-value-bind (area-x area-y area-width area-height) (hrt:output-usable-area output)
         (let* ((width (min *message-width* (max 100 (- area-width (* 2 *message-margin*)))))

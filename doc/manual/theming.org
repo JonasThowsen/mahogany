@@ -11,8 +11,8 @@ Mahogany comes with =tokyo-night= (the default), =catppuccin=,
 =catppuccin-latte= (light), =nord=, =gruvbox=, =everforest=,
 =kanagawa=, =rose-pine=, =matte-black=, =gavinok= (Gavin Freeborn's
 StumpWM, raw: white on black in a small monospace font, a thin bar
-without icons, the group in brackets, a white border on the focused
-window, his gaps) and =mahogany= (the colors it had before themes). The theme chosen last is remembered
+with the group in brackets, square menus and messages with a thin
+border, a white border on the focused window, his gaps) and =mahogany= (the colors it had before themes). The theme chosen last is remembered
 across restarts.
 
 - =theme-menu= (also the "Themes" mode of the launcher) lists the
@@ -67,8 +67,16 @@ the gaps, not only the colors:
 #+BEGIN_SRC lisp
   (define-theme :sparse :from :matte-black
     :settings '(*mode-line-icons* nil *mode-line-marker* :brackets
+                *overlay-style* :plain
                 *mode-line-height* 20 tree:*window-gap* 0 tree:*output-gap* 0))
 #+END_SRC
+
+=*overlay-style*= is how everything Mahogany draws over the desktop
+looks: =:card= (the default) rounds the corners of menus, messages,
+the OSD, the key help, notifications and the tab bar, and marks the
+selection on a chip inside the box; =:plain= draws them square with a
+one-pixel border and the selection as a bar across the whole box, the
+way StumpWM's windows look.
 
 Files in =~/.config/mahogany/themes/= (=*theme-directories*=) that
 contain =define-theme= forms are loaded at startup, and again by
