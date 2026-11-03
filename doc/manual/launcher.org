@@ -81,7 +81,11 @@ with the choice. The items are rebuilt every time the menu opens.
 =:detail= shown dimmer at the right, and =:keywords= matched as well as
 the label. A mode with a =:text-action= accepts what was typed when no
 item matches; one with an =:alternate-action= does that instead of
-the =:action= for a choice made with =C-Return=. Modes appear in
+the =:action= for a choice made with =C-Return=. A =:select-action=
+is called with the selected item's data each time the selection
+moves, for a preview, a =:cancel-action= (no arguments) when the menu
+is cancelled, and =:initial=, a function of an item's data, picks the
+item selected when the menu opens: the theme menu previews that way. Modes appear in
 =launcher-menu= in the order they were defined; redefining a mode
 replaces it.
 

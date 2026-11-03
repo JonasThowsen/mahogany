@@ -15,17 +15,26 @@ with the group in brackets, square menus and messages with a thin
 border, a white border on the focused window, his gaps) and =mahogany= (the colors it had before themes). The theme chosen last is remembered
 across restarts.
 
-- =theme-menu= (also the "Themes" mode of the launcher) lists the
-  themes; choosing one applies it.
-- =next-theme= and =previous-theme= cycle through them, for a key:
+Themes change on the fly, with no restart:
+
+- =theme-menu= (=s-C-SPC=, also the "Themes" mode of the launcher)
+  lists the themes and opens on the one in use. Moving the selection
+  previews each theme at once, the menu included; =Return= keeps the
+  one shown, =Escape= goes back to the one from before.
+- =next-theme= and =previous-theme= cycle through them; =next-theme=
+  is on =s-C-S-SPC=.
+- =(set-theme :nord)= from the REPL or =launcher-eval= does the same.
+  In init.lisp it pins the theme: every start then uses it, whatever
+  was chosen in the menu. To start with a theme and still have the
+  menu's choice remembered, set =*default-theme*= instead, which is
+  used until a theme has been chosen:
 
 #+BEGIN_SRC lisp
-  (define-key *top-map* (kbd "s-C-S-SPC") #'next-theme)
+  (config-system:set-config mh::*default-theme* :gavinok)
 #+END_SRC
 
-- =(set-theme :nord)= from init.lisp or the REPL does the same. In
-  init.lisp it also pins the theme: the remembered one is then ignored.
-- =*default-theme*= is used at the very first start.
+=*theme-hooks*= are functions called with the theme each time one is
+chosen (not while the menu previews), for theming other programs.
 
 *** Defining a theme
 

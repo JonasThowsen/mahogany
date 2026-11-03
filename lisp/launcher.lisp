@@ -18,7 +18,14 @@
   ;; The same for a choice with C-Return, or NIL for ACTION again:
   (alternate-action nil :type (or null function))
   ;; A function of typed text when nothing matched, or NIL to refuse:
-  (text-action nil :type (or null function)))
+  (text-action nil :type (or null function))
+  ;; A function of the selected item's data, called as the selection
+  ;; moves, for a preview, or NIL:
+  (select-action nil :type (or null function))
+  ;; A function of no arguments called when the menu is cancelled, or NIL:
+  (cancel-action nil :type (or null function))
+  ;; A function of an item's data, true of the item to select first, or NIL:
+  (initial nil :type (or null function)))
 
 (defglobal *launcher-modes* (make-hash-table)
   "The launcher's modes, by name.")
@@ -26,7 +33,8 @@
 (defglobal *launcher-mode-order* '()
   "The modes in the order they were defined, for the top menu.")
 
-(defun register-launcher-mode (name &key prompt description items action alternate-action text-action)
+(defun register-launcher-mode (name &key prompt description items action alternate-action
+                                         text-action select-action cancel-action initial)
   "Add, or replace, the launcher mode NAME. See define-launcher-mode."
   (check-type name keyword)
   (setf (gethash name *launcher-modes*)
@@ -36,19 +44,28 @@
                              :items items
                              :action action
                              :alternate-action alternate-action
-                             :text-action text-action))
+                             :text-action text-action
+                             :select-action select-action
+                             :cancel-action cancel-action
+                             :initial initial))
   (unless (member name *launcher-mode-order*)
     (setf *launcher-mode-order* (append *launcher-mode-order* (list name))))
   name)
 
 (defmacro define-launcher-mode (name (&key prompt description)
-                                &key items action alternate-action text-action)
+                                &key items action alternate-action text-action
+                                  select-action cancel-action initial)
   "Define a launcher mode. NAME is a keyword. ITEMS is a form evaluated
 when the menu opens, giving menu-items (make-menu-item) or strings.
 ACTION is a function of the chosen item's data (or its label, for a
 string item); ALTERNATE-ACTION, when given, is called instead for a
 choice made with C-Return. TEXT-ACTION, when given, is a function of
 what was typed when it matched nothing, so the mode accepts free text.
+SELECT-ACTION, when given, is a function of the selected item's data,
+called each time the selection moves (a preview); CANCEL-ACTION a
+function of no arguments called when the menu is cancelled (to undo
+the preview); INITIAL a function of an item's data, true of the item
+selected when the menu opens.
 
   (define-launcher-mode :projects (:prompt \"Project\" :description \"Open a project\")
     :items (mapcar (lambda (dir) (make-menu-item (file-namestring dir) :data dir))
@@ -60,7 +77,10 @@ what was typed when it matched nothing, so the mode accepts free text.
                            :items (lambda () ,items)
                            :action ,action
                            :alternate-action ,alternate-action
-                           :text-action ,text-action))
+                           :text-action ,text-action
+                           :select-action ,select-action
+                           :cancel-action ,cancel-action
+                           :initial ,initial))
 
 (defun launcher (&optional (mode-name :menu))
   "Open the launcher in the mode MODE-NAME (:menu lists the modes)."
@@ -72,7 +92,7 @@ what was typed when it matched nothing, so the mode accepts free text.
              (lambda (choice)
                (handler-case
                    (if (menu-item-p choice)
-                       (funcall action (or (menu-item-data choice) (menu-item-label choice)))
+                       (funcall action (menu-item-value choice))
                        (funcall (launcher-mode-text-action mode) choice))
                  (error (c)
                    (toast-message *compositor-state*
@@ -83,7 +103,16 @@ what was typed when it matched nothing, so the mode accepts free text.
                  :allow-text (not (null (launcher-mode-text-action mode)))
                  :on-choose (chooser (launcher-mode-action mode))
                  :on-choose-alternate (alexandria:when-let ((action (launcher-mode-alternate-action mode)))
-                                        (chooser action))))))
+                                        (chooser action))
+                 :on-select (alexandria:when-let ((action (launcher-mode-select-action mode)))
+                              (lambda (item) (funcall action (menu-item-value item))))
+                 :on-cancel (launcher-mode-cancel-action mode)
+                 :initial-selection (alexandria:when-let ((initial (launcher-mode-initial mode)))
+                                      (lambda (item) (funcall initial (menu-item-value item))))))))
+
+(defun menu-item-value (item)
+  "What a launcher mode's actions get for ITEM: its data, or its label."
+  (or (menu-item-data item) (menu-item-label item)))
 
 (defun menu-prompt-string (prompt)
   "PROMPT ending in a colon, as menus show it: \"Run\" and \"Run: \" both

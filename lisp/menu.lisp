@@ -110,6 +110,11 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
   ;; Called in place of on-choose for C-Return:
   (on-choose-alternate nil :type (or null function))
   (on-cancel nil :type (or null function))
+  ;; Called with the selected item whenever the selection moves to
+  ;; another one, and with the first one when the menu opens:
+  (on-select nil :type (or null function))
+  ;; The item on-select was last called with:
+  (reported nil)
   (canvas nil)
   (output nil)
   (previous-grab nil)
@@ -120,14 +125,19 @@ scores lower. NIL when FILTER is not found; 0 for an empty FILTER."
   "The open menu, or NIL.")
 
 (defun menu-open (prompt items &key on-choose on-choose-alternate on-cancel
+                                    on-select initial-selection
                                     allow-text secret (initial-filter ""))
   "Show a menu with PROMPT and ITEMS (menu-items, or strings) on the
 current output, and return at once. When the user chooses, ON-CHOOSE is
 called with the menu-item, or with the typed string when ALLOW-TEXT is
 true and nothing matched; when they choose with C-Return,
 ON-CHOOSE-ALTERNATE is called instead, when there is one; when they
-cancel, ON-CANCEL is called. All run on the main thread. SECRET draws
-what is typed as dots, for a passphrase. An open menu is replaced."
+cancel, ON-CANCEL is called. ON-SELECT, when given, is called with the
+selected menu-item each time the selection moves to another item, as
+the menu opens too, for a preview. INITIAL-SELECTION, a function of a
+menu-item, selects the first item it is true of when the menu opens.
+All run on the main thread. SECRET draws what is typed as dots, for a
+passphrase. An open menu is replaced."
   (menu-close)
   (let* ((output (group-current-output (state-current-group *compositor-state*)))
          (menu (%make-menu :prompt prompt
@@ -141,6 +151,7 @@ what is typed as dots, for a passphrase. An open menu is replaced."
                            :on-choose on-choose
                            :on-choose-alternate on-choose-alternate
                            :on-cancel on-cancel
+                           :on-select on-select
                            :output output)))
     (unless output
       (log-string :error "No output to show a menu on")
@@ -161,8 +172,26 @@ what is typed as dots, for a passphrase. An open menu is replaced."
     (setf *menu* menu
           (menu-previous-grab menu) (grab-keys (lambda (key text) (%menu-key menu key text))))
     (%menu-filter menu)
+    (when initial-selection
+      (alexandria:when-let ((index (position-if initial-selection (menu-matches menu))))
+        (setf (menu-selected menu) index
+              (menu-scroll menu) (max 0 (1+ (- index (menu-rows menu)))))))
     (%menu-draw menu)
     menu))
+
+(defun %menu-report-selection (menu)
+  "Call the menu's on-select with the selected item when it is another
+than the one it was called with last."
+  (alexandria:when-let ((on-select (menu-on-select menu)))
+    (let* ((matches (menu-matches menu))
+           (item (and (< (menu-selected menu) (length matches))
+                      (aref matches (menu-selected menu)))))
+      (when (and item (not (eq item (menu-reported menu))))
+        (setf (menu-reported menu) item)
+        (handler-case (funcall on-select item)
+          (error (c)
+            (log-string :error "Menu ~S: selecting ~S failed: ~A"
+                        (menu-prompt menu) (menu-item-label item) c)))))))
 
 (defun menu-close ()
   "Take the open menu down, without choosing or cancelling."
@@ -283,6 +312,10 @@ through the menu's on-choose-alternate when it has one."
 ;;; Drawing
 
 (defun %menu-draw (menu)
+  ;; Every change of the selection redraws the menu, so this is where
+  ;; on-select hears of it; before drawing, so that a preview that
+  ;; changes the menu's own look (the theme menu) shows in this frame.
+  (%menu-report-selection menu)
   (let* ((theme *menu-theme*)
          (font (mh/theme:theme-font theme))
          (pad *menu-padding*)

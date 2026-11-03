@@ -102,3 +102,35 @@
   (let ((mahogany::*overlay-style* :plain))
     (is (= 0 (mahogany::%overlay-radius 12)))
     (is (= 1 (mahogany::%overlay-border)))))
+
+(defun call-with-theme-globals-kept (function)
+  "Call FUNCTION, then put back what set-theme changes."
+  (let* ((symbols '(mahogany::*theme* mahogany::*mode-line-theme* mahogany::*menu-theme*
+                    mahogany::*osd-theme* mahogany::*message-theme*
+                    mahogany::*message-error-theme* mahogany::*theme-settings-saved*
+                    mahogany::*theme-before-preview* mahogany::*theme-hooks*))
+         (values (mapcar #'symbol-value symbols)))
+    (unwind-protect (funcall function)
+      (mapc #'(setf symbol-value) values symbols))))
+
+(fiasco:deftest a-theme-preview-shows-and-goes-back ()
+  (call-with-theme-globals-kept
+   (lambda ()
+     ;; Two themes without settings, so nothing but the globals change;
+     ;; a preview neither remembers the theme nor runs the hooks.
+     (let* ((before (mahogany::find-theme :tokyo-night))
+            (calls 0))
+       (setf mahogany::*theme-hooks* (list (lambda (theme) (declare (ignore theme)) (incf calls)))
+             mahogany::*theme* before
+             mahogany::*theme-before-preview* nil)
+       (mahogany::preview-theme :nord)
+       (is (eq :nord (mahogany::theme-name mahogany::*theme*)))
+       (mahogany::preview-theme :gruvbox)
+       (is (eq :gruvbox (mahogany::theme-name mahogany::*theme*)))
+       (is (eq before mahogany::*theme-before-preview*))
+       (is (= 0 calls))
+       ;; Escape:
+       (mahogany::end-theme-preview)
+       (is (eq before mahogany::*theme*))
+       (is (null mahogany::*theme-before-preview*))
+       (is (= 0 calls))))))

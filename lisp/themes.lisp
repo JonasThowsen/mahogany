@@ -146,9 +146,10 @@ to use."
                              :settings (cond (settings-p settings)
                                              (base (theme-settings base))))))
     (setf (gethash name *themes*) theme)
-    ;; Redefining the theme in use shows the change:
+    ;; Redefining the theme in use shows the change (it is remembered
+    ;; by name already):
     (when (and *theme* (eq (theme-name *theme*) name))
-      (set-theme theme))
+      (set-theme theme :remember nil))
     theme))
 
 (defun find-theme (name &key (errorp t))
@@ -263,10 +264,12 @@ look Mahogany had before gaps."
          (let ((name (read in nil)))
            (and (keywordp name) name)))))))
 
-(defun set-theme (designator)
+(defun set-theme (designator &key (remember t) (hooks t))
   "Put the theme DESIGNATOR (a name or a theme) to use everywhere: the
 mode-line, menus, the on-screen display, messages, frame borders and
-the wallpaper, and remember it for the next start. Returns the theme."
+the wallpaper, remember it for the next start unless REMEMBER is NIL,
+and call *theme-hooks* unless HOOKS is NIL (a preview passes both NIL).
+Returns the theme."
   (let* ((theme (if (theme-p designator) designator (find-theme designator)))
          (gaps-changed (%apply-theme-settings theme)))
     (setf *theme* theme
@@ -284,11 +287,13 @@ the wallpaper, and remember it for the next start. Returns the theme."
       (wallpaper-update)
       (mode-line-update)
       (hrt:dirty-view-transaction))
-    (%save-theme-name (theme-name theme))
-    (dolist (hook *theme-hooks*)
-      (handler-case (funcall hook theme)
-        (error (c)
-          (log-string :error "Theme hook ~S failed: ~A" hook c))))
+    (when remember
+      (%save-theme-name (theme-name theme)))
+    (when hooks
+      (dolist (hook *theme-hooks*)
+        (handler-case (funcall hook theme)
+          (error (c)
+            (log-string :error "Theme hook ~S failed: ~A" hook c)))))
     theme))
 
 (defun theme-start ()
@@ -331,6 +336,32 @@ STEP). Returns it."
   (:documentation "Choose a theme")
   (:method () (launcher :theme)))
 
+;;; The theme menu previews: each theme the selection reaches is put to
+;;; use at once, without being remembered or running *theme-hooks*;
+;;; Return keeps the one selected, Escape goes back to the theme the
+;;; menu opened with.
+
+(defglobal *theme-before-preview* nil
+  "The theme in use when the theme menu opened, while it previews.")
+
+(defun preview-theme (name)
+  "Show the theme NAME, as the theme menu does while its selection
+moves: put to use, but neither remembered nor told to *theme-hooks*.
+end-theme-preview keeps it or goes back."
+  (unless *theme-before-preview*
+    (setf *theme-before-preview* *theme*))
+  (unless (and *theme* (eq name (theme-name *theme*)))
+    (set-theme name :remember nil :hooks nil)))
+
+(defun end-theme-preview (&optional keep)
+  "End a preview: with KEEP, the theme shown stays, remembered and told
+to *theme-hooks*; without, the theme from before the preview comes back."
+  (let ((before *theme-before-preview*))
+    (setf *theme-before-preview* nil)
+    (cond (keep (set-theme *theme*))
+          ((and before (not (eq before *theme*)))
+           (set-theme before :remember nil :hooks nil)))))
+
 (define-launcher-mode :theme (:prompt "Theme" :description "Themes")
   :items (loop for name in (theme-names)
                for theme = (gethash name *themes*)
@@ -339,8 +370,12 @@ STEP). Returns it."
                                        :detail (if (eq theme *theme*)
                                                    "current"
                                                    (theme-description theme))))
+  :initial (lambda (name) (and *theme* (eq name (theme-name *theme*))))
+  :select-action #'preview-theme
+  :cancel-action #'end-theme-preview
   :action (lambda (name)
-            (set-theme name)
+            (set-theme name :remember nil :hooks nil)
+            (end-theme-preview t)
             (toast-message *compositor-state* (format nil "Theme: ~(~A~)" name))))
 
 ;;; The wallpaper: a canvas on the background layer of each output,
