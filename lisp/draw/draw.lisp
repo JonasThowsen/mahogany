@@ -167,6 +167,10 @@ from 0 at the start of the line to 1 at its end."
   "Move the origin of CR by X,Y."
   (cairo-translate cr (float x 1d0) (float y 1d0)))
 
+(defun scale (cr sx &optional (sy sx))
+  "Scale the coordinates of CR by SX and SY."
+  (cairo-scale cr (float sx 1d0) (float sy 1d0)))
+
 (defun clip-rectangle (cr x y width height)
   "Restrict drawing on CR to the rectangle at X,Y of WIDTH x HEIGHT,
 until the enclosing save-restore ends."
@@ -274,6 +278,27 @@ draw again and again than IMAGE. Destroy it with cairo-surface-destroy."
       (draw-image-cover cr image width height))
     surface))
 
+(defun paint-image (cr image x y width height &optional (alpha 1))
+  "Draw the image surface IMAGE stretched to WIDTH x HEIGHT at X,Y, with
+ALPHA. Cheap when IMAGE has the size it is drawn at in pixels, as a
+cached rendering does; scaled, it is filtered bilinearly, fast enough
+for every frame of an animation (cairo's default, box filtering when
+shrinking, takes some thirty times longer)."
+  (multiple-value-bind (iw ih) (image-size image)
+    (when (and (plusp iw) (plusp ih) (plusp width) (plusp height))
+      (save-restore (cr)
+        (cairo-translate cr (float x 1d0) (float y 1d0))
+        (cairo-scale cr (float (/ width iw) 1d0) (float (/ height ih) 1d0))
+        (cairo-set-source-surface cr image 0d0 0d0)
+        (cairo-pattern-set-filter (cairo-get-source cr) +filter-bilinear+)
+        (cairo-pattern-set-extend (cairo-get-source cr) +extend-pad+)
+        ;; Padded, the source covers everything: paint the box only.
+        (cairo-rectangle cr 0d0 0d0 (float iw 1d0) (float ih 1d0))
+        (cairo-clip cr)
+        (if (< alpha 1)
+            (cairo-paint-with-alpha cr (float alpha 1d0))
+            (cairo-paint cr))))))
+
 (defun draw-image-cover (cr image width height)
   "Draw the image surface IMAGE scaled to cover WIDTH x HEIGHT at the
 origin, keeping its proportions, centered, cropping what does not fit."
@@ -287,5 +312,8 @@ origin, keeping its proportions, centered, cropping what does not fit."
           (cairo-translate cr (float dx 1d0) (float dy 1d0))
           (cairo-scale cr (float scale 1d0) (float scale 1d0))
           (cairo-set-source-surface cr image 0d0 0d0)
-          (cairo-pattern-set-filter (cairo-get-source cr) +filter-good+)
+          (cairo-pattern-set-filter (cairo-get-source cr) +filter-best+)
+          ;; The edge pixels repeated outward, so scaling does not fade
+          ;; the edges into transparency:
+          (cairo-pattern-set-extend (cairo-get-source cr) +extend-pad+)
           (cairo-paint cr))))))

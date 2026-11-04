@@ -167,3 +167,43 @@
              ;; a gradient of the wallpaper color, not a window:
              (is (not (close-to (pixel 250 185) (mahogany::theme-background theme))))))
       (remhash :test-card mahogany::*themes*))))
+
+(fiasco:deftest a-theme-card-is-rendered-once-and-redone-when-the-theme-changes ()
+  (mahogany/draw:load-libraries)
+  (let ((theme (mahogany::define-theme :test-card-cache :background "#000000")))
+    (unwind-protect
+         (let ((first (mahogany::%theme-card-image theme 160 100 2)))
+           ;; At the scale's size in pixels:
+           (is (equal '(320 200) (multiple-value-list (mahogany/draw:image-size first))))
+           (is (eq first (mahogany::%theme-card-image theme 160 100 2)))
+           ;; Redefined, the theme is another object, and its card is redone:
+           (let* ((again (mahogany::define-theme :test-card-cache :background "#ffffff"))
+                  (second (mahogany::%theme-card-image again 160 100 2)))
+             (is (not (eq first second)))
+             (is (eq second (mahogany::%theme-card-image again 160 100 2)))))
+      (let ((entry (gethash (list :test-card-cache 160 100 2) mahogany::*theme-cards*)))
+        (when entry
+          (mahogany/draw:cairo-surface-destroy (cddr entry))
+          (remhash (list :test-card-cache 160 100 2) mahogany::*theme-cards*)))
+      (remhash :test-card-cache mahogany::*themes*))))
+
+(fiasco:deftest rendered-wallpapers-are-kept-and-the-oldest-let-go ()
+  (mahogany/draw:load-libraries)
+  (let ((saved mahogany::*wallpaper-renderings*)
+        (kept mahogany::*wallpaper-renderings-kept*))
+    (setf mahogany::*wallpaper-renderings* '()
+          mahogany::*wallpaper-renderings-kept* 2)
+    (unwind-protect
+         (flet ((render (color)
+                  (mahogany::%wallpaper-rendering nil (colors:rgb color 0 0) 8 4 1)))
+           (let ((red (render 1)))
+             (is (eq red (render 1)))
+             (render 0.5)
+             (render 0.25)
+             ;; Two kept, the first rendering let go:
+             (is (= 2 (length mahogany::*wallpaper-renderings*)))
+             (is (not (eq red (render 1))))))
+      (loop for (nil . surface) in mahogany::*wallpaper-renderings*
+            do (mahogany/draw:cairo-surface-destroy surface))
+      (setf mahogany::*wallpaper-renderings* saved
+            mahogany::*wallpaper-renderings-kept* kept))))

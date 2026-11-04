@@ -29,6 +29,7 @@ so those coordinates are layout pixels.")
    #:fill-linear-gradient
    #:color-components
    #:translate
+   #:scale
    #:clip-rectangle
    #:clip-rounded-rectangle
    ;; text
@@ -43,13 +44,14 @@ so those coordinates are layout pixels.")
    #:draw-image-cover
    #:make-image-surface
    #:scaled-image
+   #:paint-image
    #:cairo-surface-destroy
    ;; the bindings, for what the helpers don't cover
    #:cairo-create #:cairo-destroy #:cairo-save #:cairo-restore
    #:cairo-set-source-rgba #:cairo-set-operator #:cairo-set-line-width
    #:cairo-rectangle #:cairo-arc #:cairo-move-to #:cairo-line-to
    #:cairo-close-path #:cairo-new-path #:cairo-fill #:cairo-stroke
-   #:cairo-paint #:cairo-clip #:cairo-translate
+   #:cairo-paint #:cairo-paint-with-alpha #:cairo-clip #:cairo-translate
    #:cairo-image-surface-create #:cairo-surface-destroy #:cairo-surface-flush
    #:cairo-image-surface-get-data #:cairo-image-surface-get-stride
    #:cairo-surface-write-to-png

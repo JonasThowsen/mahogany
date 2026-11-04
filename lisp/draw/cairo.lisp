@@ -101,6 +101,10 @@ register its types again and hangs. So a loaded library is left alone."
 (cffi:defcfun ("cairo_paint" cairo-paint) :void
   (cr :pointer))
 
+(cffi:defcfun ("cairo_paint_with_alpha" cairo-paint-with-alpha) :void
+  (cr :pointer)
+  (alpha :double))
+
 (cffi:defcfun ("cairo_clip" cairo-clip) :void
   (cr :pointer))
 
@@ -181,7 +185,16 @@ register its types again and hangs. So a loaded library is left alone."
   (pattern :pointer)
   (filter :int))
 
-(defconstant +filter-good+ 2)
+(cffi:defcfun ("cairo_pattern_set_extend" cairo-pattern-set-extend) :void
+  (pattern :pointer)
+  (extend :int))
+
+;; cairo_extend_t: NONE, REPEAT, REFLECT, PAD
+(defconstant +extend-pad+ 3)
+
+;; cairo_filter_t: FAST, GOOD, BEST, NEAREST, BILINEAR, GAUSSIAN
+(defconstant +filter-best+ 2)
+(defconstant +filter-bilinear+ 4)
 
 ;;; pango
 

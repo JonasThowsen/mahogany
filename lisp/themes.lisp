@@ -455,15 +455,53 @@ accent at the top left, darker at the bottom right."
       (let ((key (list file color (and *theme* (theme-name *theme*)) width height
                        (multiple-value-list (hrt:output-position output)))))
         (unless (equal key (wallpaper-drawn wallpaper))
-          (let ((image (%wallpaper-image file)))
+          (let ((rendered (%wallpaper-rendering file color width height
+                                                (hrt:output-scale output))))
             (hrt:canvas-set-position canvas 0 0)
             (hrt:with-canvas-frame (cr canvas width height)
-              (draw:clear cr color)
-              (if image
-                  (draw:draw-image-cover cr image width height)
-                  (draw:fill-linear-gradient cr 0 0 width height
-                                             (%wallpaper-gradient-stops color)))))
+              (draw:paint-image cr rendered 0 0 width height)))
           (setf (wallpaper-drawn wallpaper) key))))))
+
+;;; Wallpapers rendered at an output's size in pixels, kept: scaling a
+;;; large PNG to a 4K screen, or filling it with a gradient, takes long
+;;; enough to make switching themes stutter, and the theme picker
+;;; switches back and forth.
+
+(defglobal *wallpaper-renderings* '()
+  "The wallpapers rendered last, most recent first: ((file color width
+height scale) . image surface).")
+
+(config:defconfig *wallpaper-renderings-kept* 4
+  fixnum
+  "How many rendered wallpapers are kept for switching back to them: a
+few outputs times the themes switched between. One at 4K takes 33 MB.")
+
+(defun %wallpaper-rendering (file color width height scale)
+  "An image surface of WIDTH x HEIGHT layout pixels at SCALE with the
+wallpaper FILE covering it, or, without one, the gradient of COLOR."
+  ;; The file's date too, so a file written anew is read anew:
+  (let* ((key (list file (and file (ignore-errors (file-write-date file)))
+                    color width height scale))
+         (entry (assoc key *wallpaper-renderings* :test #'equalp)))
+    (if entry
+        (setf *wallpaper-renderings*
+              (cons entry (remove entry *wallpaper-renderings*)))
+        (let* ((image (%wallpaper-image file))
+               (surface (draw:make-image-surface (ceiling (* width scale))
+                                                 (ceiling (* height scale)))))
+          (draw:with-context (cr surface)
+            (draw:scale cr scale)
+            (draw:clear cr color)
+            (if image
+                (draw:draw-image-cover cr image width height)
+                (draw:fill-linear-gradient cr 0 0 width height
+                                           (%wallpaper-gradient-stops color))))
+          (setf entry (cons key surface))
+          (push entry *wallpaper-renderings*)
+          (loop while (> (length *wallpaper-renderings*) (max 1 *wallpaper-renderings-kept*))
+                do (draw:cairo-surface-destroy (cdr (car (last *wallpaper-renderings*))))
+                   (setf *wallpaper-renderings* (butlast *wallpaper-renderings*)))))
+    (cdr entry)))
 
 (defun wallpaper-update ()
   "Draw the wallpaper on the outputs in use, where it is not drawn as
@@ -493,7 +531,10 @@ it should be, dropping those of outputs that have gone."
   (clrhash *wallpapers*)
   (when *wallpaper-image*
     (draw:cairo-surface-destroy (cdr *wallpaper-image*))
-    (setf *wallpaper-image* nil)))
+    (setf *wallpaper-image* nil))
+  (loop for (nil . surface) in *wallpaper-renderings*
+        do (draw:cairo-surface-destroy surface))
+  (setf *wallpaper-renderings* '()))
 
 (defun set-wallpaper (file)
   "Show the PNG FILE as the wallpaper on every output, in place of the

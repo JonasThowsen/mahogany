@@ -66,3 +66,32 @@ and the surface, cairo and pango loaded."
       (multiple-value-bind (width height) (layout-pixel-size layout)
         (is (<= width 60))
         (is (plusp height))))))
+
+(fiasco:deftest paint-image-stretches-an-image-into-its-box ()
+  ;; A 4x4 green image painted into 8x8 at 2,2 covers that box, nothing
+  ;; outside it; and scaled-image makes such an image from another.
+  (load-libraries)
+  (let ((image (make-image-surface 4 4)))
+    (unwind-protect
+         (progn
+           (with-context (cr image)
+             (clear cr (colors:rgb 0 1 0)))
+           (with-drawing (cr surface 12 12)
+             (clear cr '(0 0 0 0))
+             (paint-image cr image 2 2 8 8)
+             (multiple-value-bind (r g b a) (image-surface-pixel surface 6 6)
+               (is (= r 0)) (is (= g 255)) (is (= b 0)) (is (= a 255)))
+             (multiple-value-bind (r g b a) (image-surface-pixel surface 0 0)
+               (declare (ignore r g b))
+               (is (= a 0)))
+             (multiple-value-bind (r g b a) (image-surface-pixel surface 11 11)
+               (declare (ignore r g b))
+               (is (= a 0))))
+           (let ((thumbnail (scaled-image image 2 2)))
+             (unwind-protect
+                  (progn
+                    (is (equal '(2 2) (multiple-value-list (image-size thumbnail))))
+                    (multiple-value-bind (r g b a) (image-surface-pixel thumbnail 1 1)
+                      (is (= r 0)) (is (= g 255)) (is (= b 0)) (is (= a 255))))
+               (cairo-surface-destroy thumbnail))))
+      (cairo-surface-destroy image))))

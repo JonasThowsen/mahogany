@@ -163,7 +163,9 @@ mahogany, remote»):
   modes), `lisp/message.lisp` (toast cards), `lisp/osd.lisp`, `lisp/idle.lisp`, `lisp/system-status.lisp`
   (battery, network, volume, brightness via subprocesses),
   `lisp/themes.lisp` (`define-theme`/`set-theme`, presets, wallpaper
-  canvas), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,
+  canvas, rendered wallpapers kept), `lisp/theme-picker.lisp` (the
+  carousel of theme cards on s-C-SPC: cards rendered once into images,
+  slid on a 16 ms timer, the theme applied when it comes to rest), `lisp/screenshot.lisp`, `lisp/scratchpad.lisp`,
   `lisp/floating.lisp` (floating windows: `tree:floating-frame`, a
   view-frame whose parent is the output node without being its child,
   in the group's floating layer above the tiled one; `*floating-rules*`

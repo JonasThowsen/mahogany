@@ -22,10 +22,12 @@ Themes change on the fly, with no restart:
   middle. Each card is a small desktop drawn in its theme: the
   wallpaper, the bar, a focused and an unfocused window with the
   theme's borders, gaps and text colors. =Left= / =Right= (or =Tab=,
-  =C-n= / =C-p=) move along, and each theme the selection reaches is
-  put to use at once, on the whole desktop; a letter goes to the next
-  theme whose name starts with it; =Return= keeps the theme shown,
-  =Escape= goes back to the one from before. A click on a card selects
+  =C-n= / =C-p=) slide along; the band takes the colors of the card in
+  the middle as it slides, and once it comes to rest that theme is put
+  to use on the whole desktop, so holding a key runs through the
+  themes without waiting for each. A letter goes to the next theme
+  whose name starts with it; =Return= keeps the theme shown, =Escape=
+  goes back to the one from before. A click on a card selects
   it, a second click keeps it; the wheel moves along.
   =*theme-picker-card-width*= (320) is the size of the middle card.
 - =theme-menu= (the "Themes" mode of the launcher) does the same as a
@@ -111,6 +113,10 @@ any theme, until =(set-wallpaper nil)=:
 #+BEGIN_SRC lisp
   (set-wallpaper "~/Pictures/today.png")
 #+END_SRC
+
+Each wallpaper is scaled to its output once and kept, so switching
+back to a theme shows its wallpaper at once; =*wallpaper-renderings-kept*=
+(4) is how many are kept, about 33 MB each at 4K.
 
 *** Theming other programs
 
