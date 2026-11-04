@@ -134,3 +134,36 @@
        (is (eq before mahogany::*theme*))
        (is (null mahogany::*theme-before-preview*))
        (is (= 0 calls))))))
+
+(defun rgb-255 (color)
+  (mapcar (lambda (c) (round (* 255 c)))
+          (list (colors:rgb-red color) (colors:rgb-green color) (colors:rgb-blue color))))
+
+(defun close-to (pixel color)
+  (every (lambda (a b) (<= (abs (- a b)) 2)) pixel (rgb-255 color)))
+
+(fiasco:deftest a-theme-card-is-drawn-in-its-colors ()
+  (mahogany/draw:load-libraries)
+  (let ((theme (mahogany::define-theme :test-card
+                 :foreground "#ffffff" :background "#102030" :accent "#ff8000"
+                 :border-focus "#00ff00" :border-unfocus "#0000ff"
+                 :wallpaper-color "#ff00ff"
+                 :settings '(mahogany/tree:*window-gap* 10 mahogany/tree:*output-gap* 10
+                             mahogany/tree:*frame-border-width* 2 mahogany::*mode-line-height* 28))))
+    (unwind-protect
+         (mahogany/draw:with-image-surface (surface 320 200)
+           (mahogany/draw:with-context (cr surface)
+             (mahogany::draw-theme-card cr theme 320 200))
+           (flet ((pixel (x y)
+                    (subseq (multiple-value-list (mahogany/draw:image-surface-pixel surface x y)) 0 3)))
+             ;; The bar is the background; the focused window's left edge
+             ;; the focus border, the other window's the unfocused border.
+             ;; scale 0.32: bar 11, outer gap 5, border 1, gap 5, so the left
+             ;; window is 177 wide and the right one starts at 187.
+             (is (close-to (pixel 100 0) (mahogany::theme-background theme)))
+             (is (close-to (pixel 5 100) (mahogany::theme-border-focus theme)))
+             (is (close-to (pixel 187 20) (mahogany::theme-border-unfocus theme)))
+             ;; Below that window, the empty frame shows the wallpaper,
+             ;; a gradient of the wallpaper color, not a window:
+             (is (not (close-to (pixel 250 185) (mahogany::theme-background theme))))))
+      (remhash :test-card mahogany::*themes*))))

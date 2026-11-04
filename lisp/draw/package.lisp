@@ -30,6 +30,7 @@ so those coordinates are layout pixels.")
    #:color-components
    #:translate
    #:clip-rectangle
+   #:clip-rounded-rectangle
    ;; text
    #:with-layout
    #:layout-pixel-size
@@ -40,6 +41,8 @@ so those coordinates are layout pixels.")
    #:load-png
    #:image-size
    #:draw-image-cover
+   #:make-image-surface
+   #:scaled-image
    #:cairo-surface-destroy
    ;; the bindings, for what the helpers don't cover
    #:cairo-create #:cairo-destroy #:cairo-save #:cairo-restore

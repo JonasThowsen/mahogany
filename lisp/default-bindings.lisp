@@ -88,7 +88,7 @@ KMAP: (define-keys *top-map* \"s-RET\" #'open-terminal \"s-w\" #'close-current-v
   "s-M-p" #'screenshot-window
   ;; The desktop
   "s-b" #'mode-line
-  "s-C-SPC" #'theme-menu
+  "s-C-SPC" #'theme-picker
   "s-C-S-SPC" #'next-theme)
 
 ;;; The same on the C-t prefix map, StumpWM style, for a session where

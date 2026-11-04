@@ -73,7 +73,7 @@ See [[file:groups.org][Groups]].
 | =s-n= / =s-S-n=              | =notification-dismiss= / =-all=          | notifications, see [[file:notifications.org][Notifications]] |
 | =s-C-n= / =s-M-n=            | =notifications-toggle= / =notification-history= | do not disturb; the history      |
 | =s-b=                        | =mode-line=                              | the bar on and off                      |
-| =s-C-SPC= / =s-C-S-SPC=      | =theme-menu= / =next-theme=              | themes, see [[file:theming.org][Theming]] |
+| =s-C-SPC= / =s-C-S-SPC=      | =theme-picker= / =next-theme=            | themes, see [[file:theming.org][Theming]] |
 | =XF86Audio*=, =XF86MonBrightness*= | volume and brightness              | with an on-screen display               |
 
 ** The C-t prefix

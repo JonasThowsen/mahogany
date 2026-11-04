@@ -125,6 +125,12 @@ RADIUS, with COLOR or the current source."
   (%rounded-rectangle-path cr x y width height radius)
   (cairo-fill cr))
 
+(defun clip-rounded-rectangle (cr x y width height radius)
+  "Restrict drawing on CR to the rectangle at X,Y of WIDTH x HEIGHT with
+corners rounded by RADIUS, until the enclosing save-restore ends."
+  (%rounded-rectangle-path cr x y width height radius)
+  (cairo-clip cr))
+
 (defun stroke-rounded-rectangle (cr x y width height radius &key color (line-width 1))
   "Draw the outline of the rectangle at X,Y of WIDTH x HEIGHT with
 corners rounded by RADIUS, LINE-WIDTH wide and inside the rectangle,
@@ -253,6 +259,20 @@ cairo-surface-destroy, or NIL when it cannot be read."
   "The width and height of the image SURFACE, as two values."
   (values (cairo-image-surface-get-width surface)
           (cairo-image-surface-get-height surface)))
+
+(defun make-image-surface (width height)
+  "A new, transparent ARGB32 image surface of WIDTH x HEIGHT pixels, to
+destroy with cairo-surface-destroy."
+  (cairo-image-surface-create +format-argb32+ width height))
+
+(defun scaled-image (image width height)
+  "A new image surface of WIDTH x HEIGHT with the image surface IMAGE
+scaled to cover it, as draw-image-cover does: a thumbnail, cheaper to
+draw again and again than IMAGE. Destroy it with cairo-surface-destroy."
+  (let ((surface (make-image-surface width height)))
+    (with-context (cr surface)
+      (draw-image-cover cr image width height))
+    surface))
 
 (defun draw-image-cover (cr image width height)
   "Draw the image surface IMAGE scaled to cover WIDTH x HEIGHT at the

@@ -17,10 +17,19 @@ across restarts.
 
 Themes change on the fly, with no restart:
 
-- =theme-menu= (=s-C-SPC=, also the "Themes" mode of the launcher)
-  lists the themes and opens on the one in use. Moving the selection
-  previews each theme at once, the menu included; =Return= keeps the
-  one shown, =Escape= goes back to the one from before.
+- =theme-picker= (=s-C-SPC=) shows the themes as a row of cards across
+  the screen, as Omarchy's theme menu does, the one in use in the
+  middle. Each card is a small desktop drawn in its theme: the
+  wallpaper, the bar, a focused and an unfocused window with the
+  theme's borders, gaps and text colors. =Left= / =Right= (or =Tab=,
+  =C-n= / =C-p=) move along, and each theme the selection reaches is
+  put to use at once, on the whole desktop; a letter goes to the next
+  theme whose name starts with it; =Return= keeps the theme shown,
+  =Escape= goes back to the one from before. A click on a card selects
+  it, a second click keeps it; the wheel moves along.
+  =*theme-picker-card-width*= (320) is the size of the middle card.
+- =theme-menu= (the "Themes" mode of the launcher) does the same as a
+  list, which can be narrowed by typing.
 - =next-theme= and =previous-theme= cycle through them; =next-theme=
   is on =s-C-S-SPC=.
 - =(set-theme :nord)= from the REPL or =launcher-eval= does the same.

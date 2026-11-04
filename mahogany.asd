@@ -140,6 +140,8 @@
                 :depends-on ("menu" "key-bindings" "command" "system"))
                (:file "themes"
                 :depends-on ("mode-line" "menu" "osd" "message" "launcher" "tree" "globals"))
+               (:file "theme-picker"
+                :depends-on ("themes" "menu" "input" "message" "command" "state" "tree" "heart" "draw"))
                (:file "screenshot"
                 :depends-on ("themes" "menu" "launcher" "key-bindings" "system-status" "tree"))
                (:file "scratchpad"
@@ -152,7 +154,7 @@
                 :depends-on ("state" "outputs" "key-bindings" "menu" "themes" "input" "heart" "draw"))
                (:file "xwayland" :depends-on ("system" "config" "log" "state" "heart" "command" "message"))
                (:file "default-bindings"
-                :depends-on ("key-bindings" "floating" "launcher" "osd" "idle" "themes" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
+                :depends-on ("key-bindings" "floating" "launcher" "osd" "idle" "themes" "theme-picker" "screenshot" "scratchpad" "outputs" "directions" "xwayland"))
                (:file "layouts"
                 :depends-on ("group" "state" "launcher" "key-bindings" "default-bindings" "tree"))
                (:file "tabs" :depends-on ("layouts" "mode-line" "state" "group" "themes" "menu" "draw" "heart"))
