@@ -13,6 +13,7 @@
 #include "hrt/hrt_view.h"
 #include "view_impl.h"
 
+#include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/edges.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
@@ -101,9 +102,40 @@ static void handle_request_activate(struct wl_listener *listener, void *data) {
     }
 }
 
+/**
+ * Cut off what the view's client draws outside its window geometry (and
+ * outside the size the view was given): a client that draws its own
+ * decorations, such as Chromium or GTK, draws a shadow around the
+ * window, and says where the window is in its buffer with
+ * xdg_surface.set_window_geometry. wlr_scene_xdg_surface_create already
+ * places the surface so the geometry is at the view's position; without
+ * the clip the shadow lies over the gaps, the borders and the windows
+ * next to it.
+ */
+static void view_apply_geometry(struct hrt_view *view) {
+    struct wlr_scene_tree *xdg_scene = view->xdg_scene;
+    const struct wlr_box *geometry   = &view->xdg_surface->geometry;
+    // Popups are children of the same tree; clip only the toplevel's own
+    // surfaces, the first child wlr_scene_xdg_surface_create made:
+    if (!xdg_scene || wl_list_empty(&xdg_scene->children)) {
+        return;
+    }
+    struct wlr_scene_node *surface_tree =
+        wl_container_of(xdg_scene->children.next, surface_tree, link);
+    struct wlr_box clip = *geometry;
+    if (view->width > 0 && view->width < clip.width) {
+        clip.width = view->width;
+    }
+    if (view->height > 0 && view->height < clip.height) {
+        clip.height = view->height;
+    }
+    wlr_scene_subsurface_tree_set_clip(surface_tree, &clip);
+}
+
 static void handle_xdg_toplevel_map(struct wl_listener *listener, void *data) {
     wlr_log(WLR_DEBUG, "XDG Toplevel Mapped!");
     struct hrt_view *view = wl_container_of(listener, view, map);
+    view_apply_geometry(view);
     // The callback should be sending a configure event:
     view->callbacks->view_mapped(view);
 }
@@ -201,6 +233,7 @@ static void handle_xdg_toplevel_commit(struct wl_listener *listener,
         view_apply_decoration_mode(view);
         view->callbacks->new_view(view);
     } else if (view->xdg_surface->surface->mapped) {
+        view_apply_geometry(view);
         const uint32_t committed = toplevel->base->current.committed;
         if (committed & WLR_XDG_SURFACE_STATE_WINDOW_GEOMETRY) {
             view->callbacks->view_size_changed(view);
