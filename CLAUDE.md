@@ -113,6 +113,18 @@ then runs the compositor, `mahogany::main`, in the image's main thread
 - Format C with `clang-format -i FILE` (in the dev shell, `.clang-format`
   at the root); the tree is clean under `clang-format --dry-run --Werror`.
 
+## Upstream
+
+This is a fork of stumpwm/mahogany (remote `upstream`,
+`git remote add upstream https://github.com/stumpwm/mahogany.git`). The
+fork reworked groups (per output), so upstream is brought in commit by
+commit: cherry-pick with `-x` onto a branch, resolving each against the
+fork's model (note what was adapted under "Downstream:" in the commit
+message), skip what the fork has superseded, then `git merge -s ours
+upstream/master` with the list of what was taken, adapted and skipped,
+so the next sync starts from there. `git log master..upstream/master`
+lists what is new since.
+
 ## Tracking work: ferdig
 
 Features, bugs and what is being worked on are in ferdig, Jonas's

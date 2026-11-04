@@ -48,10 +48,10 @@ The grammar for this macro is as follows:
      | :transform-90
      | :transform-180
      | :transform-270
-     | :transform-flipped
-     | :transform-flipped-90
-     | :transform-flipped-180
-     | :transform-flipped-270
+     | :flipped
+     | :flipped-90
+     | :flipped-180
+     | :flipped-270
 
   OUTPUT-PROPERTIES :
        (:scale scale)
@@ -151,10 +151,10 @@ default, but can be made to match if the `exact` flag is `nil`.
      | :transform-90
      | :transform-180
      | :transform-270
-     | :transform-flipped
-     | :transform-flipped-90
-     | :transform-flipped-180
-     | :transform-flipped-270
+     | :flipped
+     | :flipped-90
+     | :flipped-180
+     | :flipped-270
 
   OUTPUT-PROPERTIES :
        (:scale scale)
