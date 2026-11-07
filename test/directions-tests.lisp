@@ -48,3 +48,12 @@
   (is (equal '((1 2 3) (4 5 6) (7)) (mahogany::%key-help-columns '(1 2 3 4 5 6 7) 3)))
   (is (equal '((1 2)) (mahogany::%key-help-columns '(1 2) 5)))
   (is (null (mahogany::%key-help-columns '() 5))))
+
+(fiasco:deftest left-and-right-step-through-tabs ()
+  ;; The tab strip, oldest first; the end of it has no tab beside:
+  (let ((views '(a b c)))
+    (is (eq 'a (mahogany::%tab-step views 'b :left)))
+    (is (eq 'c (mahogany::%tab-step views 'b :right)))
+    (is (null (mahogany::%tab-step views 'a :left)))
+    (is (null (mahogany::%tab-step views 'c :right)))
+    (is (null (mahogany::%tab-step views 'd :right)))))

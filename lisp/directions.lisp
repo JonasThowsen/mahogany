@@ -90,11 +90,21 @@ coordinates (pixels divided by the scale)."
                              (remove output (outputs) :test #'hrt:output=)
                              #'%output-rectangle))))
 
+(declaim (ftype function tab-in-direction))
+
 (defun focus-in-direction (direction)
-  "Focus the frame in DIRECTION; returns it, or NIL at the edge."
-  (alexandria:when-let ((frame (frame-in-direction direction)))
-    (state-focus-frame *compositor-state* frame (server-seat *compositor-state*))
-    frame))
+  "Focus the frame in DIRECTION; returns it, or NIL at the edge. In the
+:tabs layout, left and right show the tab beside the shown one first,
+and go on to the frame beside only from the first or last tab."
+  (let ((state *compositor-state*))
+    (alexandria:if-let ((view (tab-in-direction direction)))
+      (progn
+        (mahogany-state-show-view state view)
+        (mode-line-update)
+        (state-current-frame state))
+      (alexandria:when-let ((frame (frame-in-direction direction)))
+        (state-focus-frame state frame (server-seat state))
+        frame))))
 
 (defun move-window-in-direction (direction)
   "Move the focused window into the frame in DIRECTION and follow it:

@@ -4,7 +4,8 @@
 ;;; and a strip under the mode-line names every window of the group,
 ;;; the shown one marked, as dwm's monocle with a tab bar. A click on a
 ;;; name shows that window, the wheel over the strip goes through them;
-;;; s-Tab (next-view) does too. The strip is drawn per output on a
+;;; s-Tab (next-view) does too, and s-h / s-l (focus-left/-right) step
+;;; to the tab beside the shown one. The strip is drawn per output on a
 ;;; canvas of its own, and the mode-line reserves its height along with
 ;;; its own while a :tabs group is shown, so the window sits below both.
 
@@ -53,6 +54,26 @@ in the stack."
     (let ((leaf (tree:find-first-leaf node)))
       (and (typep leaf 'tree:view-frame) (tree:frame-surface leaf)))))
 
+(defun %tab-step (views shown direction)
+  "The window of the tab beside SHOWN among VIEWS, to the left (:left)
+or right (:right), or NIL at the end of the strip."
+  (alexandria:when-let ((position (position shown views)))
+    (let ((next (ecase direction (:left (1- position)) (:right (1+ position)))))
+      (and (< -1 next (length views)) (nth next views)))))
+
+(defun tab-in-direction (direction)
+  "The window of the tab to the left or right of the shown one, when the
+focus is in the frame of a :tabs group; NIL at the end of the strip,
+for another direction, or in another layout."
+  (when (member direction '(:left :right))
+    (let* ((state *compositor-state*)
+           (group (state-current-group state))
+           (frame (state-current-frame state)))
+      (when (and group (eq (group-layout group) :tabs)
+                 (typep frame 'tree:view-frame)
+                 (not (typep frame 'tree:floating-frame)))
+        (%tab-step (%tab-views group) (tree:frame-surface frame) direction)))))
+
 (defun %tab-title (view)
   (let ((title (hrt:view-title view)))
     (if (and title (plusp (length title)))
@@ -92,7 +113,8 @@ there has another layout."
                  (hrt:with-canvas-frame (cr canvas width height)
                    (draw:clear cr (mh/theme:theme-background-color theme))
                    (loop for view in views
-                         for x from pad by tab-width
+                         ;; Not BY: with no window TAB-WIDTH is 0, and LOOP refuses a step of 0.
+                         for x = pad then (+ x tab-width)
                          for shown-p = (eq view shown)
                          do (when shown-p
                               (draw:fill-rounded-rectangle cr x 3 (- tab-width (round pad 2)) (- height 6)

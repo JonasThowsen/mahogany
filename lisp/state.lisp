@@ -943,7 +943,10 @@ window it started here, and window rules can be built on it.")
         (%with-found-group state (group view)
           (group-remove-view group view))
         (view-forget-origin view state)
-        (remhash (cffi:pointer-address view-ptr) views))
+        (remhash (cffi:pointer-address view-ptr) views)
+        ;; The layout redrew the bar while the view was still in its
+        ;; group's list: the tab strip would name it on.
+        (mode-line-update))
       (log-string :error "Could not find mahogany view associated with pointer ~S" view-ptr))))
 
 (defun %cur-frame-set-from-group (state group)
