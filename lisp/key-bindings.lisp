@@ -284,6 +284,11 @@ keymap is listed once, with the binding that wins."
   (error 'mahogany/util:invalid-operation
          :text "No view to move."))
 
+(defun %move-current-surface (destination)
+  (multiple-value-bind (cur-group surface)
+      (%prep-move-cur-view)
+    (state-move-view *compositor-state* cur-group destination surface)))
+
 (defcommand gmerge
     ((from (:function interactively-read-group :data "From Group")))
   (:documentation "Merge FROM into the current group. FROM is not deleted")

@@ -37,6 +37,16 @@ constructs that need a reference to it.")
                               (lambda (q)
                                 (fset:with-first q ,var))))))
 
+(defparameter *stall-threshold-msec* 50
+  "Log a warning when a main-thread work-queue item or timer callback takes
+at least this many milliseconds.")
+
+(defun %log-if-stalled (kind label start-time)
+  (let ((elapsed-ms (truncate (* 1000 (- (get-internal-real-time) start-time))
+                              internal-time-units-per-second)))
+    (when (>= elapsed-ms *stall-threshold-msec*)
+      (mahogany/log:log-string :warn "Stall: ~A ~S took ~D ms" kind label elapsed-ms))))
+
 (define-hrt-callback work-queue-callback :int
     ((fd :int)
      (mask :uint32)
@@ -45,9 +55,14 @@ constructs that need a reference to it.")
   (declare (ignore fd data))
   (flet ((run-with-restarts (func)
            (declare (type function func))
-           (restart-case (funcall func)
-             (continue ()
-               :report "Continue executing, ignoring the error"))))
+           (let ((start (get-internal-real-time)))
+             (unwind-protect
+                  (restart-case (funcall func)
+                    (work-queue-skip ()
+                      :report "Skip this work-queue item and continue")
+                    (continue ()
+                      :report "Continue executing, ignoring the error"))
+               (%log-if-stalled "work-queue item" func start)))))
     (when (or (plusp (logand mask +hrt-event-hangup+))
 	      (plusp (logand mask +hrt-event-error+)))
       (mahogany/log:log-string :error
@@ -95,10 +110,13 @@ The order of execution is not guaranteed if multiple lambdas are added at the sa
     ()
   (declare #+sbcl
            (sb-ext:muffle-conditions sb-ext:compiler-note))
-  (let ((handle (gethash (cffi:pointer-address data) *timer-table*)))
+  (let ((handle (gethash (cffi:pointer-address data) *timer-table*))
+        (start (get-internal-real-time)))
     (declare (type timer-handle handle))
     (mahogany/log:log-string :trace "timer callback called: ~S" handle)
-    (funcall (timer-handle-callback handle) handle)
+    (unwind-protect
+         (funcall (timer-handle-callback handle) handle)
+      (%log-if-stalled "timer" (timer-handle-callback handle) start))
     0))
 
 (defun server-make-timer (server callback &optional data)

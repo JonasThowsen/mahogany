@@ -46,15 +46,18 @@ every error before."
                   (format nil "Internal error (see the log): ~A" condition)
                   :theme *message-error-theme* :ms-delay 8000))
   ;; The nearest way out, and never one outside the event loop (that
-  ;; would unwind through C): the work item's continue when the error
-  ;; is in one, else the callback's exit with a value of its type. Not
-  ;; after a memory fault or exhausted storage, though: C was in the
+  ;; would unwind through C): the work item's work-queue-skip when the
+  ;; error is in one, else the callback's exit with a value of its type.
+  ;; Never match CL:CONTINUE: SBCL binds an inner CONTINUE for
+  ;; UNDEFINED-FUNCTION that retries the call in an infinite loop.
+  ;; Not after a memory fault or exhausted storage, though: C was in the
   ;; middle of something, and going on from there froze the session;
   ;; exiting to the display manager is the lesser evil.
   (let ((restart (and (not (typep condition '(or storage-condition
                                              #+sbcl sb-sys:memory-fault-error)))
                       (find-if (lambda (r)
-                                 (member (restart-name r) '(continue hrt::callback-exit-default)))
+                                 (member (restart-name r)
+                                         '(hrt::work-queue-skip hrt::callback-exit-default)))
                                (compute-restarts condition)))))
     (cond (restart
            (log-string :warn "Going on past the error with ~A" (restart-name restart))
@@ -63,6 +66,20 @@ every error before."
            (log-string :error "No way past the error: exiting")
            (finish-output)
            (uiop:quit 1)))))
+
+#+sbcl
+(defvar *last-gc-run-time* 0)
+
+#+sbcl
+(defun %log-gc-stall ()
+  (let* ((now sb-ext:*gc-run-time*)
+         (delta-ms (truncate (* 1000 (- now *last-gc-run-time*))
+                             internal-time-units-per-second)))
+    (setf *last-gc-run-time* now)
+    (when (>= delta-ms hrt::*stall-threshold-msec*)
+      (log-string :warn "Stall: SBCL GC took ~D ms (dynamic usage ~D MiB)"
+                  delta-ms
+                  (truncate (sb-kernel:dynamic-usage) (* 1024 1024))))))
 
 (defun run-server (args
                    &aux (log-level (intern (gethash 'loglevel args) 'keyword)))
@@ -126,8 +143,14 @@ every error before."
       (mode-line-start))
     (start-idle)
     (run-autostart)
+    #+sbcl
+    (progn
+      (setf *last-gc-run-time* sb-ext:*gc-run-time*)
+      (pushnew #'%log-gc-stall sb-ext:*after-gc-hooks*))
     (unwind-protect
          (hrt:server-start server)
+      #+sbcl
+      (setf sb-ext:*after-gc-hooks* (remove #'%log-gc-stall sb-ext:*after-gc-hooks*))
       (log-string :debug "Cleaning up...")
       (ignore-errors (stop-slynk))
       (server-stop *compositor-state*)
